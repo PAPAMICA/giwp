@@ -1,0 +1,33 @@
+/* Styles pour le header fixe */
+.giwp-header-fixed {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+/* Animation pour le header lors du défilement */
+.giwp-header-hidden {
+    transform: translateY(-100%);
+}
+
+/* Ajustement pour la barre d'admin WordPress */
+.admin-bar .site-header,
+.admin-bar header.site-header,
+.admin-bar .elementor-location-header {
+    top: 32px;
+}
+
+@media screen and (max-width: 782px) {
+    .admin-bar .site-header,
+    .admin-bar header.site-header,
+    .admin-bar .elementor-location-header {
+        top: 46px;
+    }
+}
+
+/* Animation de transition */
+.giwp-header-transition {
+    transition: transform 0.3s ease-in-out, 
+                background-color 0.3s ease-in-out,
+                box-shadow 0.3s ease-in-out;
+} 
