@@ -24,6 +24,7 @@ define('GIWP_PLUGIN_URL', plugin_dir_url(__FILE__));
 class GIWP {
     private static $instance = null;
     private $modules = [];
+    private $logs = [];
 
     public static function get_instance() {
         if (null === self::$instance) {
@@ -36,6 +37,9 @@ class GIWP {
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_init', [$this, 'init_modules']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
+        add_action('wp_ajax_giwp_toggle_module', [$this, 'ajax_toggle_module']);
+        add_action('wp_ajax_giwp_export_settings', [$this, 'ajax_export_settings']);
+        add_action('wp_ajax_giwp_import_settings', [$this, 'ajax_import_settings']);
         
         // Chargement des modules
         $this->load_modules();
@@ -60,6 +64,93 @@ class GIWP {
                 $module->init();
             }
         }
+    }
+
+    public function add_log($message, $type = 'info') {
+        $this->logs[] = [
+            'message' => $message,
+            'type' => $type,
+            'time' => current_time('mysql')
+        ];
+        update_option('giwp_logs', array_slice($this->logs, -100)); // Garde les 100 derniers logs
+    }
+
+    public function get_logs() {
+        return get_option('giwp_logs', []);
+    }
+
+    public function ajax_toggle_module() {
+        check_ajax_referer('giwp_admin', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+        }
+
+        $module_id = isset($_POST['module']) ? sanitize_text_field($_POST['module']) : '';
+        $active = isset($_POST['active']) ? (bool)$_POST['active'] : false;
+
+        if (empty($module_id) || !isset($this->modules[$module_id])) {
+            wp_send_json_error('Module not found');
+        }
+
+        $module = $this->modules[$module_id];
+        
+        if ($active) {
+            $module->activate();
+            $this->add_log(sprintf('Module "%s" activé', $module->get_name()), 'success');
+        } else {
+            $module->deactivate();
+            $this->add_log(sprintf('Module "%s" désactivé', $module->get_name()), 'info');
+        }
+
+        wp_send_json_success();
+    }
+
+    public function ajax_export_settings() {
+        check_ajax_referer('giwp_admin', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+        }
+
+        $settings = [];
+        foreach ($this->modules as $module) {
+            $settings[$module->get_id()] = [
+                'active' => $module->is_active(),
+                'settings' => $module->get_settings()
+            ];
+        }
+
+        $this->add_log('Export des paramètres effectué', 'info');
+        wp_send_json_success($settings);
+    }
+
+    public function ajax_import_settings() {
+        check_ajax_referer('giwp_admin', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+        }
+
+        $settings = isset($_POST['settings']) ? json_decode(stripslashes($_POST['settings']), true) : null;
+        
+        if (!$settings) {
+            wp_send_json_error('Invalid settings data');
+        }
+
+        foreach ($settings as $module_id => $module_data) {
+            if (isset($this->modules[$module_id])) {
+                if ($module_data['active']) {
+                    $this->modules[$module_id]->activate();
+                } else {
+                    $this->modules[$module_id]->deactivate();
+                }
+                $this->modules[$module_id]->import_settings($module_data['settings']);
+            }
+        }
+
+        $this->add_log('Import des paramètres effectué', 'success');
+        wp_send_json_success();
     }
 
     private function load_modules() {
@@ -89,31 +180,15 @@ class GIWP {
     public function enqueue_admin_assets() {
         wp_enqueue_style('giwp-admin', GIWP_PLUGIN_URL . 'assets/css/admin.css', [], GIWP_VERSION);
         wp_enqueue_script('giwp-admin', GIWP_PLUGIN_URL . 'assets/js/admin.js', ['jquery'], GIWP_VERSION, true);
+        
+        wp_localize_script('giwp-admin', 'giwpAjax', [
+            'nonce' => wp_create_nonce('giwp_admin'),
+            'ajaxurl' => admin_url('admin-ajax.php')
+        ]);
     }
 
     public function render_admin_page() {
         include GIWP_PLUGIN_DIR . 'templates/admin-page.php';
-    }
-
-    // Méthodes pour l'import/export des paramètres
-    public function export_settings() {
-        $settings = [];
-        foreach ($this->modules as $module) {
-            $settings[$module->get_id()] = $module->get_settings();
-        }
-        return json_encode($settings);
-    }
-
-    public function import_settings($settings_json) {
-        $settings = json_decode($settings_json, true);
-        if (!$settings) return false;
-
-        foreach ($settings as $module_id => $module_settings) {
-            if (isset($this->modules[$module_id])) {
-                $this->modules[$module_id]->import_settings($module_settings);
-            }
-        }
-        return true;
     }
 }
 

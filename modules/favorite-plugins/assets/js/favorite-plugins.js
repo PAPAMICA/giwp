@@ -1,4 +1,49 @@
 jQuery(document).ready(function($) {
+    // Sauvegarde des paramètres des plugins
+    $('#save-plugin-settings').on('click', function() {
+        const plugins = {};
+        
+        $('.giwp-plugin-card').each(function() {
+            const card = $(this);
+            const slug = card.data('plugin');
+            const enabled = card.find('.giwp-plugin-enabled').prop('checked');
+            
+            plugins[slug] = {
+                enabled: enabled,
+                config: {}
+            };
+            
+            // Récupérer la configuration de chaque option
+            card.find('.giwp-config-option').each(function() {
+                const option = $(this);
+                const optionName = option.find('.giwp-config-enabled').data('option');
+                plugins[slug].config[optionName] = {
+                    enabled: option.find('.giwp-config-enabled').prop('checked')
+                };
+            });
+        });
+        
+        $.ajax({
+            url: giwpAjax.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'giwp_save_plugin_list',
+                plugins: JSON.stringify(plugins),
+                nonce: giwpAjax.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    alert('Paramètres sauvegardés avec succès !');
+                } else {
+                    alert('Erreur lors de la sauvegarde des paramètres');
+                }
+            },
+            error: function() {
+                alert('Erreur de connexion');
+            }
+        });
+    });
+
     // Installation d'un plugin
     $('.install-plugin').on('click', function() {
         const button = $(this);
@@ -40,6 +85,7 @@ jQuery(document).ready(function($) {
         const card = button.closest('.giwp-plugin-card');
         const plugin = card.data('plugin');
         const status = card.find('.giwp-plugin-status');
+        const applyConfig = card.find('.giwp-config-enabled:checked').length > 0;
 
         button.prop('disabled', true);
         status.html('Activation en cours...');
@@ -50,11 +96,12 @@ jQuery(document).ready(function($) {
             data: {
                 action: 'giwp_activate_plugin',
                 plugin: plugin,
+                apply_config: applyConfig,
                 nonce: giwpAjax.nonce
             },
             success: function(response) {
                 if (response.success) {
-                    status.html('Activation et configuration réussies !');
+                    status.html('Activation' + (applyConfig ? ' et configuration' : '') + ' réussie !');
                     button.text('Activé').addClass('button-disabled');
                 } else {
                     status.html('Erreur : ' + response.data);

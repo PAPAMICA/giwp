@@ -15,6 +15,7 @@ class GIWP_Favorite_Plugins extends GIWP_Module {
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
         add_action('wp_ajax_giwp_install_plugin', [$this, 'ajax_install_plugin']);
         add_action('wp_ajax_giwp_activate_plugin', [$this, 'ajax_activate_plugin']);
+        add_action('wp_ajax_giwp_save_plugin_list', [$this, 'ajax_save_plugin_list']);
     }
 
     public function enqueue_admin_scripts() {
@@ -37,10 +38,18 @@ class GIWP_Favorite_Plugins extends GIWP_Module {
             'elementor' => [
                 'name' => 'Elementor',
                 'slug' => 'elementor',
-                'required' => true,
+                'required' => false,
                 'config' => [
-                    'elementor_disable_color_schemes' => 'yes',
-                    'elementor_disable_typography_schemes' => 'yes'
+                    'elementor_disable_color_schemes' => [
+                        'value' => 'yes',
+                        'description' => 'Désactiver les schémas de couleurs par défaut',
+                        'enabled' => true
+                    ],
+                    'elementor_disable_typography_schemes' => [
+                        'value' => 'yes',
+                        'description' => 'Désactiver les schémas de typographie par défaut',
+                        'enabled' => true
+                    ]
                 ]
             ],
             'wordpress-seo' => [
@@ -49,8 +58,12 @@ class GIWP_Favorite_Plugins extends GIWP_Module {
                 'required' => false,
                 'config' => [
                     'wpseo_social' => [
-                        'opengraph' => true,
-                        'twitter' => true
+                        'value' => [
+                            'opengraph' => true,
+                            'twitter' => true
+                        ],
+                        'description' => 'Activer les fonctionnalités sociales',
+                        'enabled' => true
                     ]
                 ]
             ],
@@ -59,14 +72,50 @@ class GIWP_Favorite_Plugins extends GIWP_Module {
                 'slug' => 'wp-super-cache',
                 'required' => false,
                 'config' => [
-                    'wp_cache_enabled' => true
+                    'wp_cache_enabled' => [
+                        'value' => true,
+                        'description' => 'Activer le cache',
+                        'enabled' => true
+                    ]
                 ]
             ]
         ];
     }
 
+    public function get_saved_plugins() {
+        $saved_plugins = get_option('giwp_favorite_plugins', []);
+        $default_plugins = $this->get_default_plugins();
+
+        // Fusionner les plugins sauvegardés avec les plugins par défaut
+        foreach ($default_plugins as $slug => $plugin) {
+            if (!isset($saved_plugins[$slug])) {
+                $saved_plugins[$slug] = $plugin;
+            }
+        }
+
+        return $saved_plugins;
+    }
+
+    public function ajax_save_plugin_list() {
+        check_ajax_referer('giwp_admin', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+        }
+
+        $plugins = isset($_POST['plugins']) ? json_decode(stripslashes($_POST['plugins']), true) : [];
+        
+        if (!is_array($plugins)) {
+            wp_send_json_error('Invalid plugin data');
+        }
+
+        update_option('giwp_favorite_plugins', $plugins);
+        GIWP()->add_log('Liste des plugins favoris mise à jour', 'success');
+        wp_send_json_success();
+    }
+
     public function ajax_install_plugin() {
-        check_ajax_referer('giwp_favorite_plugins', 'nonce');
+        check_ajax_referer('giwp_admin', 'nonce');
 
         if (!current_user_can('install_plugins')) {
             wp_send_json_error('Permission denied');
@@ -99,6 +148,7 @@ class GIWP_Favorite_Plugins extends GIWP_Module {
         ]);
 
         if (is_wp_error($api)) {
+            GIWP()->add_log(sprintf('Erreur lors de l\'installation de %s: %s', $plugin_slug, $api->get_error_message()), 'error');
             wp_send_json_error($api->get_error_message());
         }
 
@@ -106,25 +156,29 @@ class GIWP_Favorite_Plugins extends GIWP_Module {
         $result = $upgrader->install($api->download_link);
 
         if (is_wp_error($result)) {
+            GIWP()->add_log(sprintf('Erreur lors de l\'installation de %s: %s', $plugin_slug, $result->get_error_message()), 'error');
             wp_send_json_error($result->get_error_message());
         }
 
+        GIWP()->add_log(sprintf('Plugin %s installé avec succès', $plugin_slug), 'success');
         wp_send_json_success('Plugin installed successfully');
     }
 
     public function ajax_activate_plugin() {
-        check_ajax_referer('giwp_favorite_plugins', 'nonce');
+        check_ajax_referer('giwp_admin', 'nonce');
 
         if (!current_user_can('activate_plugins')) {
             wp_send_json_error('Permission denied');
         }
 
         $plugin_slug = isset($_POST['plugin']) ? sanitize_text_field($_POST['plugin']) : '';
+        $apply_config = isset($_POST['apply_config']) ? (bool)$_POST['apply_config'] : false;
+
         if (empty($plugin_slug)) {
             wp_send_json_error('Plugin slug is required');
         }
 
-        $plugins = $this->get_default_plugins();
+        $plugins = $this->get_saved_plugins();
         if (!isset($plugins[$plugin_slug])) {
             wp_send_json_error('Plugin not found in favorites');
         }
@@ -138,15 +192,28 @@ class GIWP_Favorite_Plugins extends GIWP_Module {
 
         $result = activate_plugin($plugin_file);
         if (is_wp_error($result)) {
+            GIWP()->add_log(sprintf('Erreur lors de l\'activation de %s: %s', $plugin_slug, $result->get_error_message()), 'error');
             wp_send_json_error($result->get_error_message());
         }
 
-        // Appliquer la configuration par défaut
-        if (isset($plugin_data['config'])) {
-            $this->apply_plugin_config($plugin_slug, $plugin_data['config']);
+        // Appliquer la configuration si demandé
+        if ($apply_config && isset($plugin_data['config'])) {
+            foreach ($plugin_data['config'] as $option_name => $config) {
+                if ($config['enabled']) {
+                    if (is_array($config['value'])) {
+                        $existing_value = get_option($option_name, []);
+                        $new_value = array_merge($existing_value, $config['value']);
+                        update_option($option_name, $new_value);
+                    } else {
+                        update_option($option_name, $config['value']);
+                    }
+                }
+            }
+            GIWP()->add_log(sprintf('Configuration appliquée pour %s', $plugin_slug), 'success');
         }
 
-        wp_send_json_success('Plugin activated and configured successfully');
+        GIWP()->add_log(sprintf('Plugin %s activé avec succès', $plugin_slug), 'success');
+        wp_send_json_success('Plugin activated successfully');
     }
 
     private function get_plugin_file($plugin_slug) {
@@ -165,27 +232,39 @@ class GIWP_Favorite_Plugins extends GIWP_Module {
         return false;
     }
 
-    private function apply_plugin_config($plugin_slug, $config) {
-        foreach ($config as $option_name => $option_value) {
-            if (is_array($option_value)) {
-                $existing_value = get_option($option_name, []);
-                $new_value = array_merge($existing_value, $option_value);
-                update_option($option_name, $new_value);
-            } else {
-                update_option($option_name, $option_value);
-            }
-        }
-    }
-
     public function render_settings_page() {
-        $plugins = $this->get_default_plugins();
+        $plugins = $this->get_saved_plugins();
         ?>
         <div class="wrap">
             <h2><?php echo esc_html($this->get_name()); ?></h2>
             <div class="giwp-plugins-list">
                 <?php foreach ($plugins as $slug => $plugin) : ?>
                     <div class="giwp-plugin-card" data-plugin="<?php echo esc_attr($slug); ?>">
-                        <h3><?php echo esc_html($plugin['name']); ?></h3>
+                        <div class="giwp-plugin-header">
+                            <h3><?php echo esc_html($plugin['name']); ?></h3>
+                            <label class="giwp-switch">
+                                <input type="checkbox" class="giwp-plugin-enabled" 
+                                       <?php checked(isset($plugin['enabled']) && $plugin['enabled']); ?>>
+                                <span class="giwp-slider"></span>
+                            </label>
+                        </div>
+
+                        <?php if (!empty($plugin['config'])) : ?>
+                            <div class="giwp-plugin-config">
+                                <h4>Configuration</h4>
+                                <?php foreach ($plugin['config'] as $option_name => $config) : ?>
+                                    <div class="giwp-config-option">
+                                        <label>
+                                            <input type="checkbox" class="giwp-config-enabled" 
+                                                   data-option="<?php echo esc_attr($option_name); ?>"
+                                                   <?php checked($config['enabled']); ?>>
+                                            <?php echo esc_html($config['description']); ?>
+                                        </label>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+
                         <div class="giwp-plugin-actions">
                             <button class="button install-plugin">Installer</button>
                             <button class="button button-primary activate-plugin">Activer</button>
@@ -193,6 +272,9 @@ class GIWP_Favorite_Plugins extends GIWP_Module {
                         <div class="giwp-plugin-status"></div>
                     </div>
                 <?php endforeach; ?>
+            </div>
+            <div class="giwp-plugin-save">
+                <button class="button button-primary" id="save-plugin-settings">Enregistrer les modifications</button>
             </div>
         </div>
         <?php
