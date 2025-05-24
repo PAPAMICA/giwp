@@ -14,6 +14,7 @@ class GIWP_Fixed_Header extends GIWP_Module {
 
         add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
         add_action('wp_head', [$this, 'add_custom_css']);
+        add_action('wp_footer', [$this, 'add_debug_info']);
     }
 
     public function enqueue_scripts() {
@@ -31,31 +32,64 @@ class GIWP_Fixed_Header extends GIWP_Module {
             $this->version,
             true
         );
+
+        // Passer les paramètres au JavaScript
+        $settings = $this->get_settings();
+        wp_localize_script('giwp-fixed-header', 'giwpFixedHeader', [
+            'headerSelector' => !empty($settings['header_selector']) ? $settings['header_selector'] : '.elementor-section[data-id="1640de85"]',
+            'backgroundColor' => !empty($settings['background_color']) ? $settings['background_color'] : '#ffffff',
+            'debug' => true
+        ]);
     }
 
     public function add_custom_css() {
         $settings = $this->get_settings();
-        $header_selector = !empty($settings['header_selector']) ? $settings['header_selector'] : '.elementor-section[data-element_type="section"]';
+        $header_selector = !empty($settings['header_selector']) ? $settings['header_selector'] : '.elementor-section[data-id="1640de85"]';
+        $background_color = !empty($settings['background_color']) ? $settings['background_color'] : '#ffffff';
         ?>
         <style type="text/css">
-            <?php echo esc_html($header_selector); ?> {
+            :root {
+                --header-background-color: <?php echo esc_html($background_color); ?>;
+            }
+            
+            <?php echo esc_html($header_selector); ?>.giwp-fixed-header {
                 position: fixed !important;
                 width: 100%;
                 top: 0;
                 left: 0;
                 z-index: 999;
                 transition: all 0.3s ease;
-                background-color: var(--header-background-color, #ffffff);
+                background-color: var(--header-background-color);
             }
+
+            .admin-bar <?php echo esc_html($header_selector); ?>.giwp-fixed-header {
+                top: 32px;
+            }
+
+            @media screen and (max-width: 782px) {
+                .admin-bar <?php echo esc_html($header_selector); ?>.giwp-fixed-header {
+                    top: 46px;
+                }
+            }
+
             body {
                 padding-top: var(--header-height, 100px);
             }
-            @media screen and (max-width: 767px) {
-                <?php echo esc_html($header_selector); ?>.elementor-hidden-mobile {
-                    display: none !important;
-                }
-            }
         </style>
+        <?php
+    }
+
+    public function add_debug_info() {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+        ?>
+        <div id="giwp-fixed-header-debug" style="position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; z-index: 9999;">
+            <div>GIWP Fixed Header Debug</div>
+            <div id="giwp-header-status">Statut: En attente...</div>
+            <div id="giwp-header-selector"></div>
+            <div id="giwp-header-height"></div>
+        </div>
         <?php
     }
 
@@ -71,7 +105,7 @@ class GIWP_Fixed_Header extends GIWP_Module {
         }
 
         $settings = $this->get_settings();
-        $header_selector = !empty($settings['header_selector']) ? $settings['header_selector'] : '.elementor-section[data-element_type="section"]';
+        $header_selector = !empty($settings['header_selector']) ? $settings['header_selector'] : '.elementor-section[data-id="1640de85"]';
         $background_color = !empty($settings['background_color']) ? $settings['background_color'] : '#ffffff';
         ?>
         <div class="wrap">
@@ -85,7 +119,7 @@ class GIWP_Fixed_Header extends GIWP_Module {
                             <input type="text" id="header_selector" name="header_selector" 
                                    value="<?php echo esc_attr($header_selector); ?>" class="regular-text">
                             <p class="description">
-                                Sélecteur CSS pour cibler le header. Par défaut : .elementor-section[data-element_type="section"]
+                                Sélecteur CSS pour cibler le header. Par défaut : .elementor-section[data-id="1640de85"]
                             </p>
                         </td>
                     </tr>
@@ -113,6 +147,12 @@ class GIWP_Fixed_Header extends GIWP_Module {
                 <p>Pour votre structure Elementor actuelle, utilisez le sélecteur suivant :</p>
                 <code>.elementor-section[data-id="1640de85"]</code>
                 <p>Ce sélecteur cible spécifiquement votre section de header.</p>
+                <p>Si le header fixe ne fonctionne pas :</p>
+                <ol>
+                    <li>Vérifiez que le sélecteur correspond bien à votre header</li>
+                    <li>Assurez-vous que le header n'est pas déjà fixé par Elementor</li>
+                    <li>Consultez les informations de debug en bas à droite de votre site (visible uniquement pour les administrateurs)</li>
+                </ol>
             </div>
         </div>
         <?php

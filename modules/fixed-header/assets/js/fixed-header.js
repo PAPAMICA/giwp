@@ -1,52 +1,65 @@
 jQuery(document).ready(function($) {
-    // Variables pour le scroll
-    let lastScrollTop = 0;
-    let header = $(document).find('.site-header, header.site-header, .elementor-location-header').first();
-    let headerHeight = header.outerHeight();
-
-    // Ajouter la classe de transition
-    header.addClass('giwp-header-transition');
-
-    // Définir la variable CSS pour la hauteur du header
-    document.documentElement.style.setProperty('--header-height', headerHeight + 'px');
-
-    // Fonction pour gérer le scroll
-    function handleScroll() {
-        let currentScroll = $(window).scrollTop();
+    // Fonction pour mettre à jour les informations de debug
+    function updateDebugInfo(message, selector, height) {
+        if (!window.giwpFixedHeader || !window.giwpFixedHeader.debug) return;
         
-        // Ajouter/Retirer la classe fixed en fonction du scroll
-        if (currentScroll > headerHeight) {
-            header.addClass('giwp-header-fixed');
-        } else {
-            header.removeClass('giwp-header-fixed');
+        $('#giwp-header-status').text('Statut: ' + message);
+        $('#giwp-header-selector').text('Sélecteur: ' + selector);
+        if (height) {
+            $('#giwp-header-height').text('Hauteur: ' + height + 'px');
         }
-
-        // Cacher/Montrer le header en fonction de la direction du scroll
-        if (currentScroll > lastScrollTop && currentScroll > headerHeight) {
-            // Scroll vers le bas
-            header.addClass('giwp-header-hidden');
-        } else {
-            // Scroll vers le haut
-            header.removeClass('giwp-header-hidden');
-        }
-
-        lastScrollTop = currentScroll;
     }
 
-    // Écouter l'événement de scroll avec throttle pour les performances
-    let scrollTimeout;
-    $(window).scroll(function() {
-        if (!scrollTimeout) {
-            scrollTimeout = setTimeout(function() {
-                handleScroll();
-                scrollTimeout = null;
-            }, 10);
+    // Fonction pour initialiser le header fixe
+    function initFixedHeader() {
+        // Utiliser le sélecteur des paramètres
+        const headerSelector = window.giwpFixedHeader ? window.giwpFixedHeader.headerSelector : '.elementor-section[data-id="1640de85"]';
+        const $header = $(headerSelector);
+        
+        if ($header.length === 0) {
+            updateDebugInfo('Header non trouvé', headerSelector);
+            console.error('GIWP: Header non trouvé avec le sélecteur:', headerSelector);
+            return;
         }
-    });
 
-    // Gérer le redimensionnement de la fenêtre
-    $(window).resize(function() {
-        headerHeight = header.outerHeight();
+        // Ajouter la classe pour le style fixe
+        $header.addClass('giwp-fixed-header');
+
+        // Calculer et appliquer la hauteur du header
+        const headerHeight = $header.outerHeight();
         document.documentElement.style.setProperty('--header-height', headerHeight + 'px');
-    });
+        $('body').css('padding-top', headerHeight + 'px');
+
+        updateDebugInfo('Initialisé avec succès', headerSelector, headerHeight);
+
+        // Gérer le scroll
+        let lastScroll = 0;
+        $(window).scroll(function() {
+            const currentScroll = $(this).scrollTop();
+            
+            // Si on scrolle vers le bas et qu'on a dépassé la hauteur du header
+            if (currentScroll > lastScroll && currentScroll > headerHeight) {
+                $header.css('transform', 'translateY(-100%)');
+                updateDebugInfo('Masqué', headerSelector, headerHeight);
+            } else {
+                $header.css('transform', 'translateY(0)');
+                updateDebugInfo('Visible', headerSelector, headerHeight);
+            }
+            
+            lastScroll = currentScroll;
+        });
+
+        // Gérer le redimensionnement de la fenêtre
+        $(window).resize(function() {
+            const newHeaderHeight = $header.outerHeight();
+            document.documentElement.style.setProperty('--header-height', newHeaderHeight + 'px');
+            $('body').css('padding-top', newHeaderHeight + 'px');
+            updateDebugInfo('Redimensionné', headerSelector, newHeaderHeight);
+        });
+
+        console.log('GIWP: Header fixe initialisé avec succès');
+    }
+
+    // Initialiser après un court délai pour s'assurer que tout est chargé
+    setTimeout(initFixedHeader, 500);
 }); 
