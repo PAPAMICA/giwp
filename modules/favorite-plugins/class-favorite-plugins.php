@@ -78,6 +78,58 @@ class GIWP_Favorite_Plugins extends GIWP_Module {
                         'enabled' => true
                     ]
                 ]
+            ],
+            'updraftplus' => [
+                'name' => 'UpdraftPlus',
+                'slug' => 'updraftplus',
+                'required' => false,
+                'config' => [
+                    'updraft_interval' => [
+                        'value' => 'daily',
+                        'description' => 'Sauvegardes quotidiennes',
+                        'enabled' => true
+                    ],
+                    'updraft_retain' => [
+                        'value' => '7',
+                        'description' => 'Conserver 7 sauvegardes',
+                        'enabled' => true
+                    ],
+                    'updraft_include_files' => [
+                        'value' => true,
+                        'description' => 'Inclure les fichiers dans la sauvegarde',
+                        'enabled' => true
+                    ],
+                    'updraft_include_database' => [
+                        'value' => true,
+                        'description' => 'Inclure la base de données dans la sauvegarde',
+                        'enabled' => true
+                    ],
+                    'updraft_include_plugins' => [
+                        'value' => true,
+                        'description' => 'Inclure les plugins dans la sauvegarde',
+                        'enabled' => true
+                    ],
+                    'updraft_include_themes' => [
+                        'value' => true,
+                        'description' => 'Inclure les thèmes dans la sauvegarde',
+                        'enabled' => true
+                    ],
+                    'updraft_include_uploads' => [
+                        'value' => true,
+                        'description' => 'Inclure les uploads dans la sauvegarde',
+                        'enabled' => true
+                    ],
+                    'updraft_include_others' => [
+                        'value' => true,
+                        'description' => 'Inclure les autres fichiers WP dans la sauvegarde',
+                        'enabled' => true
+                    ],
+                    'updraft_compression_level' => [
+                        'value' => '1',
+                        'description' => 'Niveau de compression (1 = rapide)',
+                        'enabled' => true
+                    ]
+                ]
             ]
         ];
     }

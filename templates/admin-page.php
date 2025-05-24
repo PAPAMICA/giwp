@@ -20,74 +20,73 @@ if (!defined('ABSPATH')) {
         </div>
     </div>
 
-    <div class="giwp-admin-content">
-        <div class="giwp-modules-grid">
+    <div class="giwp-logs-section">
+        <h2>Logs du plugin</h2>
+        <div class="giwp-logs-container">
             <?php
-            $modules = GIWP()->modules;
-            foreach ($modules as $module) :
-                $is_active = $module->is_active();
+            $logs = array_reverse(GIWP()->get_logs());
+            if (empty($logs)) :
                 ?>
-                <div class="giwp-module-card">
-                    <div class="giwp-module-header">
-                        <h2><?php echo esc_html($module->get_name()); ?></h2>
-                        <label class="giwp-switch">
-                            <input type="checkbox" 
-                                   class="giwp-module-toggle" 
-                                   data-module="<?php echo esc_attr($module->get_id()); ?>"
-                                   <?php checked($is_active); ?>>
-                            <span class="giwp-slider"></span>
-                        </label>
-                    </div>
-                    
-                    <p class="giwp-module-description">
-                        <?php echo esc_html($module->get_description()); ?>
-                    </p>
-                    
-                    <?php if ($is_active) : ?>
-                        <div class="giwp-module-settings">
-                            <?php $module->render_settings_page(); ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            <?php endforeach; ?>
-        </div>
-
-        <div class="giwp-logs-section">
-            <h2>Logs du plugin</h2>
-            <div class="giwp-logs-container">
-                <?php
-                $logs = array_reverse(GIWP()->get_logs());
-                if (empty($logs)) :
-                    ?>
-                    <p class="giwp-no-logs">Aucun log disponible</p>
-                <?php else : ?>
-                    <table class="giwp-logs-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Type</th>
-                                <th>Message</th>
+                <p class="giwp-no-logs">Aucun log disponible</p>
+            <?php else : ?>
+                <table class="giwp-logs-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($logs as $log) : ?>
+                            <tr class="giwp-log-entry giwp-log-<?php echo esc_attr($log['type']); ?>">
+                                <td class="giwp-log-time">
+                                    <?php echo esc_html(date_i18n('d/m/Y H:i:s', strtotime($log['time']))); ?>
+                                </td>
+                                <td class="giwp-log-type">
+                                    <?php echo esc_html(ucfirst($log['type'])); ?>
+                                </td>
+                                <td class="giwp-log-message">
+                                    <?php echo esc_html($log['message']); ?>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($logs as $log) : ?>
-                                <tr class="giwp-log-entry giwp-log-<?php echo esc_attr($log['type']); ?>">
-                                    <td class="giwp-log-time">
-                                        <?php echo esc_html(date_i18n('d/m/Y H:i:s', strtotime($log['time']))); ?>
-                                    </td>
-                                    <td class="giwp-log-type">
-                                        <?php echo esc_html(ucfirst($log['type'])); ?>
-                                    </td>
-                                    <td class="giwp-log-message">
-                                        <?php echo esc_html($log['message']); ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="giwp-modules-section">
+        <h2>Modules</h2>
+        <?php
+        $modules = GIWP()->modules;
+        foreach ($modules as $module) :
+            $is_active = $module->is_active();
+            ?>
+            <div class="giwp-module-card">
+                <div class="giwp-module-header">
+                    <h3><?php echo esc_html($module->get_name()); ?></h3>
+                    <label class="giwp-switch">
+                        <input type="checkbox" 
+                               class="giwp-module-toggle" 
+                               data-module="<?php echo esc_attr($module->get_id()); ?>"
+                               <?php checked($is_active); ?>>
+                        <span class="giwp-slider"></span>
+                    </label>
+                </div>
+                
+                <p class="giwp-module-description">
+                    <?php echo esc_html($module->get_description()); ?>
+                </p>
+                
+                <?php if ($is_active) : ?>
+                    <div class="giwp-module-settings">
+                        <?php $module->render_settings_page(); ?>
+                    </div>
                 <?php endif; ?>
             </div>
-        </div>
+        <?php endforeach; ?>
     </div>
 </div>
 
@@ -99,25 +98,63 @@ if (!defined('ABSPATH')) {
 }
 
 .giwp-admin-header {
-    display: flex;
-    justify-content: flex-end;
     margin-bottom: 30px;
+    text-align: right;
 }
 
 .giwp-admin-header-actions .button {
     margin-left: 10px;
 }
 
-.giwp-admin-content {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 20px;
+.giwp-logs-section {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.giwp-modules-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
+.giwp-logs-container {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.giwp-logs-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.giwp-logs-table th,
+.giwp-logs-table td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.giwp-log-entry {
+    font-size: 13px;
+}
+
+.giwp-log-time {
+    white-space: nowrap;
+    color: #666;
+}
+
+.giwp-log-type {
+    white-space: nowrap;
+}
+
+.giwp-log-success .giwp-log-type {
+    color: #46b450;
+}
+
+.giwp-log-error .giwp-log-type {
+    color: #dc3232;
+}
+
+.giwp-log-info .giwp-log-type {
+    color: #00a0d2;
 }
 
 .giwp-module-card {
@@ -125,6 +162,7 @@ if (!defined('ABSPATH')) {
     border: 1px solid #ddd;
     border-radius: 8px;
     padding: 20px;
+    margin-bottom: 20px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
@@ -135,7 +173,7 @@ if (!defined('ABSPATH')) {
     margin-bottom: 15px;
 }
 
-.giwp-module-header h2 {
+.giwp-module-header h3 {
     margin: 0;
     font-size: 1.4em;
 }
@@ -191,91 +229,20 @@ input:checked + .giwp-slider:before {
     transform: translateX(26px);
 }
 
-/* Module Settings */
 .giwp-module-settings {
     margin-top: 20px;
     padding-top: 20px;
     border-top: 1px solid #eee;
 }
 
-/* Logs Section */
-.giwp-logs-section {
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.giwp-logs-container {
-    max-height: 600px;
-    overflow-y: auto;
-}
-
-.giwp-logs-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.giwp-logs-table th,
-.giwp-logs-table td {
-    padding: 8px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
-}
-
-.giwp-log-entry {
-    font-size: 13px;
-}
-
-.giwp-log-time {
-    white-space: nowrap;
-    color: #666;
-}
-
-.giwp-log-type {
-    white-space: nowrap;
-}
-
-.giwp-log-success .giwp-log-type {
-    color: #46b450;
-}
-
-.giwp-log-error .giwp-log-type {
-    color: #dc3232;
-}
-
-.giwp-log-info .giwp-log-type {
-    color: #00a0d2;
-}
-
-.giwp-no-logs {
-    color: #666;
-    text-align: center;
-    padding: 20px;
-}
-
-/* Responsive Design */
-@media screen and (max-width: 1200px) {
-    .giwp-admin-content {
-        grid-template-columns: 1fr;
-    }
-}
-
 @media screen and (max-width: 782px) {
-    .giwp-modules-grid {
-        grid-template-columns: 1fr;
-    }
-    
     .giwp-admin-header {
-        flex-direction: column;
-        align-items: stretch;
+        text-align: center;
     }
     
     .giwp-admin-header-actions .button {
-        margin: 5px 0;
-        width: 100%;
-        text-align: center;
+        margin: 5px;
+        width: calc(50% - 10px);
     }
 
     .giwp-logs-table th:first-child,
