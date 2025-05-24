@@ -80,30 +80,54 @@ class GIWP {
     }
 
     public function ajax_toggle_module() {
-        check_ajax_referer('giwp_admin', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error('Permission denied');
+        // Vérification du nonce
+        if (!check_ajax_referer('giwp_admin', 'nonce', false)) {
+            wp_send_json_error([
+                'message' => 'Erreur de sécurité. Veuillez rafraîchir la page.',
+                'code' => 'invalid_nonce'
+            ]);
         }
 
+        // Vérification des permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error([
+                'message' => 'Permissions insuffisantes.',
+                'code' => 'insufficient_permissions'
+            ]);
+        }
+
+        // Vérification des paramètres
         $module_id = isset($_POST['module']) ? sanitize_text_field($_POST['module']) : '';
         $active = isset($_POST['active']) ? (bool)$_POST['active'] : false;
 
         if (empty($module_id) || !isset($this->modules[$module_id])) {
-            wp_send_json_error('Module not found');
+            wp_send_json_error([
+                'message' => 'Module non trouvé.',
+                'code' => 'module_not_found'
+            ]);
         }
 
-        $module = $this->modules[$module_id];
-        
-        if ($active) {
-            $module->activate();
-            $this->add_log(sprintf('Module "%s" activé', $module->get_name()), 'success');
-        } else {
-            $module->deactivate();
-            $this->add_log(sprintf('Module "%s" désactivé', $module->get_name()), 'info');
-        }
+        try {
+            $module = $this->modules[$module_id];
+            
+            if ($active) {
+                $module->activate();
+                $this->add_log(sprintf('Module "%s" activé', $module->get_name()), 'success');
+            } else {
+                $module->deactivate();
+                $this->add_log(sprintf('Module "%s" désactivé', $module->get_name()), 'info');
+            }
 
-        wp_send_json_success();
+            wp_send_json_success([
+                'message' => $active ? 'Module activé avec succès.' : 'Module désactivé avec succès.',
+                'code' => 'success'
+            ]);
+        } catch (Exception $e) {
+            wp_send_json_error([
+                'message' => 'Erreur lors de la modification du statut du module : ' . $e->getMessage(),
+                'code' => 'module_error'
+            ]);
+        }
     }
 
     public function ajax_export_settings() {

@@ -157,7 +157,23 @@ if (!defined('ABSPATH')) {
     color: #00a0d2;
 }
 
+.giwp-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #666;
+    z-index: 10;
+}
+
 .giwp-module-card {
+    position: relative;
     background: #fff;
     border: 1px solid #ddd;
     border-radius: 8px;
@@ -256,9 +272,16 @@ input:checked + .giwp-slider:before {
 jQuery(document).ready(function($) {
     // Gestion de l'activation/désactivation des modules
     $('.giwp-module-toggle').on('change', function() {
-        const moduleId = $(this).data('module');
-        const isActive = $(this).prop('checked');
-        const card = $(this).closest('.giwp-module-card');
+        const $this = $(this);
+        const moduleId = $this.data('module');
+        const isActive = $this.prop('checked');
+        const card = $this.closest('.giwp-module-card');
+        
+        // Désactiver le toggle pendant la requête
+        $this.prop('disabled', true);
+        
+        // Ajouter un indicateur de chargement
+        card.append('<div class="giwp-loading">Chargement...</div>');
         
         $.ajax({
             url: ajaxurl,
@@ -271,15 +294,27 @@ jQuery(document).ready(function($) {
             },
             success: function(response) {
                 if (response.success) {
-                    location.reload();
+                    // Recharger la page après un court délai
+                    setTimeout(function() {
+                        location.reload();
+                    }, 500);
                 } else {
-                    alert('Erreur lors de la modification du statut du module');
-                    $(this).prop('checked', !isActive);
+                    // Afficher l'erreur
+                    alert(response.data.message || 'Erreur lors de la modification du statut du module');
+                    // Remettre le toggle dans son état précédent
+                    $this.prop('checked', !isActive);
                 }
             },
-            error: function() {
-                alert('Erreur de connexion');
-                $(this).prop('checked', !isActive);
+            error: function(xhr, status, error) {
+                // Afficher l'erreur
+                alert('Erreur de connexion. Veuillez vérifier votre connexion internet et réessayer.');
+                // Remettre le toggle dans son état précédent
+                $this.prop('checked', !isActive);
+            },
+            complete: function() {
+                // Réactiver le toggle et supprimer l'indicateur de chargement
+                $this.prop('disabled', false);
+                card.find('.giwp-loading').remove();
             }
         });
     });

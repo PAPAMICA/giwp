@@ -36,7 +36,7 @@ class GIWP_Fixed_Header extends GIWP_Module {
         // Passer les paramètres au JavaScript
         $settings = $this->get_settings();
         wp_localize_script('giwp-fixed-header', 'giwpFixedHeader', [
-            'headerSelector' => !empty($settings['header_selector']) ? $settings['header_selector'] : '.elementor-section[data-id="1640de85"]',
+            'headerSelector' => !empty($settings['header_selector']) ? $settings['header_selector'] : '#masthead',
             'backgroundColor' => !empty($settings['background_color']) ? $settings['background_color'] : '#ffffff',
             'debug' => true
         ]);
@@ -44,7 +44,7 @@ class GIWP_Fixed_Header extends GIWP_Module {
 
     public function add_custom_css() {
         $settings = $this->get_settings();
-        $header_selector = !empty($settings['header_selector']) ? $settings['header_selector'] : '.elementor-section[data-id="1640de85"]';
+        $header_selector = !empty($settings['header_selector']) ? $settings['header_selector'] : '#masthead';
         $background_color = !empty($settings['background_color']) ? $settings['background_color'] : '#ffffff';
         ?>
         <style type="text/css">
@@ -52,7 +52,7 @@ class GIWP_Fixed_Header extends GIWP_Module {
                 --header-background-color: <?php echo esc_html($background_color); ?>;
             }
             
-            <?php echo esc_html($header_selector); ?>.giwp-fixed-header {
+            <?php echo esc_html($header_selector); ?> {
                 position: fixed !important;
                 width: 100%;
                 top: 0;
@@ -62,12 +62,12 @@ class GIWP_Fixed_Header extends GIWP_Module {
                 background-color: var(--header-background-color);
             }
 
-            .admin-bar <?php echo esc_html($header_selector); ?>.giwp-fixed-header {
+            .admin-bar <?php echo esc_html($header_selector); ?> {
                 top: 32px;
             }
 
             @media screen and (max-width: 782px) {
-                .admin-bar <?php echo esc_html($header_selector); ?>.giwp-fixed-header {
+                .admin-bar <?php echo esc_html($header_selector); ?> {
                     top: 46px;
                 }
             }
@@ -95,6 +95,7 @@ class GIWP_Fixed_Header extends GIWP_Module {
 
     public function render_settings_page() {
         if (isset($_POST['giwp_fixed_header_settings'])) {
+            check_admin_referer('giwp_fixed_header_settings');
             $settings = [
                 'header_selector' => sanitize_text_field($_POST['header_selector']),
                 'background_color' => sanitize_text_field($_POST['background_color'])
@@ -105,11 +106,12 @@ class GIWP_Fixed_Header extends GIWP_Module {
         }
 
         $settings = $this->get_settings();
-        $header_selector = !empty($settings['header_selector']) ? $settings['header_selector'] : '.elementor-section[data-id="1640de85"]';
+        $header_selector = !empty($settings['header_selector']) ? $settings['header_selector'] : '#masthead';
         $background_color = !empty($settings['background_color']) ? $settings['background_color'] : '#ffffff';
         ?>
         <div class="wrap">
             <form method="post" action="">
+                <?php wp_nonce_field('giwp_fixed_header_settings'); ?>
                 <table class="form-table">
                     <tr>
                         <th scope="row">
@@ -119,7 +121,7 @@ class GIWP_Fixed_Header extends GIWP_Module {
                             <input type="text" id="header_selector" name="header_selector" 
                                    value="<?php echo esc_attr($header_selector); ?>" class="regular-text">
                             <p class="description">
-                                Sélecteur CSS pour cibler le header. Par défaut : .elementor-section[data-id="1640de85"]
+                                Sélecteur CSS pour cibler le header. Par défaut : #masthead
                             </p>
                         </td>
                     </tr>
@@ -144,9 +146,9 @@ class GIWP_Fixed_Header extends GIWP_Module {
 
             <div class="giwp-fixed-header-help">
                 <h3>Aide</h3>
-                <p>Pour votre structure Elementor actuelle, utilisez le sélecteur suivant :</p>
-                <code>.elementor-section[data-id="1640de85"]</code>
-                <p>Ce sélecteur cible spécifiquement votre section de header.</p>
+                <p>Pour votre structure actuelle, utilisez le sélecteur par défaut :</p>
+                <code>#masthead</code>
+                <p>Ce sélecteur cible l'ensemble de votre header.</p>
                 <p>Si le header fixe ne fonctionne pas :</p>
                 <ol>
                     <li>Vérifiez que le sélecteur correspond bien à votre header</li>
