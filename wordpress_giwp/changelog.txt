@@ -1,8 +1,17 @@
 == Changelog ==
 
+= 2.20.3 =
+Fix: export/import JSON et MainWP — lecture/écriture des réglages modules via get_settings/save_settings privés (Reflection).
+
+= 2.20.2 =
+Fix: export MainWP — gestion des erreurs, limite mémoire/temps (évite les réponses vides « child not detected »).
+
+= 2.20.1 =
+Fix: Bridge MainWP Child via extra_execution / mainwp_child_extra_execution (compatible avec l’API officielle MainWP).
+
 = 2.20.0 =
 Add: API MainWP (Gi_Toolkit_MainWP_API) pour export/import distant des configurations.
-Add: Bridge MainWP Child intégré (Gi_Toolkit_MainWP_Bridge) — un seul plugin GI-Toolkit suffit sur les sites clients.
+Add: Bridge MainWP Child intégré (Gi_Toolkit_MainWP_Bridge) via extra_execution — un seul plugin GI-Toolkit suffit sur les sites clients.
 Update: export_config_bundle() et import_config_bundle() partagés avec l’UI réglages.
 
 = 2.19.0 =

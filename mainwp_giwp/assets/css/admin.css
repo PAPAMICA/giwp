@@ -1,28 +1,192 @@
 /**
- * MainWP GI-Web Extension — admin styles
+ * MainWP GI-Toolkit Manager — thème clair / sombre MainWP.
+ * La classe .mainwp-giweb--dark est posée via PHP (get_current_user_theme).
  */
+
+/* —— Variables communes (héritent de MainWP quand disponibles) —— */
+/* Marge cohérente dans l’UI MainWP (remplace margin: 0 0 0 20px du core). */
+body.mainwp-ui .wrap.mainwp-giweb-wrap {
+	margin: 20px !important;
+}
+
 .mainwp-giweb-wrap {
-	--giweb-accent: #316bff;
-	--giweb-accent-dark: #0027f3;
-	--giweb-surface: #fff;
-	--giweb-border: #e5e7eb;
-	margin-top: 16px;
+	--giweb-accent: var(--accent-color, #316bff);
+	--giweb-accent-dark: var(--accent-color, #1e4fd6);
+	--giweb-surface: var(--background-color-3, #ffffff);
+	--giweb-surface-2: var(--background-color-2, #f0f0f1);
+	--giweb-border: var(--border-color, #c3c4c7);
+	--giweb-text: var(--font-color, #1d2327);
+	--giweb-text-muted: var(--font-light-color, #646970);
+	margin: 0;
+	max-width: none;
+	background: transparent;
+	color: var(--giweb-text);
+}
+
+.mainwp-giweb-wrap h1,
+.mainwp-giweb-wrap h2,
+.mainwp-giweb-wrap h3 {
+	color: var(--giweb-text);
+}
+
+/* Titre écran : MainWP affiche déjà le titre dans #mainwp-page-header */
+.mainwp-giweb-screen-title {
+	margin: 0 0 8px;
+	font-size: 1.25em;
+	font-weight: 600;
+}
+
+/* Évite le doublon si MainWP affiche déjà le titre en haut de page */
+body.mainwp-ui .mainwp-giweb-wrap > .mainwp-giweb-screen-title:first-child {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* —— Mode sombre (MainWP default-dark) —— */
+.mainwp-giweb-wrap.mainwp-giweb--dark,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-wrap {
+	--giweb-surface: var(--background-color-3, #1e1e24);
+	--giweb-surface-2: var(--background-color-2, #16181d);
+	--giweb-border: var(--border-color, rgba(255, 255, 255, 0.12));
+	--giweb-text: var(--font-color, rgba(255, 255, 255, 0.92));
+	--giweb-text-muted: var(--font-light-color, rgba(255, 255, 255, 0.62));
+	--giweb-accent: var(--accent-color, #5b8cff);
+	color-scheme: dark;
 }
 
 .mainwp-giweb-tabs {
 	margin: 16px 0;
 }
 
+.mainwp-giweb-wrap .nav-tab-wrapper {
+	border-color: var(--giweb-border);
+}
+
+.mainwp-giweb-wrap .nav-tab {
+	background: var(--giweb-surface-2);
+	border-color: var(--giweb-border);
+	color: var(--giweb-text);
+}
+
+.mainwp-giweb-wrap .nav-tab:hover {
+	background: var(--giweb-surface);
+	color: var(--giweb-text);
+}
+
+.mainwp-giweb-wrap .nav-tab-active,
+.mainwp-giweb-wrap .nav-tab-active:hover {
+	background: var(--giweb-surface);
+	border-bottom-color: var(--giweb-surface);
+	color: var(--giweb-text);
+}
+
 .mainwp-giweb-panel {
 	background: var(--giweb-surface);
 	border: 1px solid var(--giweb-border);
-	border-radius: 12px;
+	border-radius: 8px;
 	padding: 24px;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+	box-shadow: none;
+}
+
+.mainwp-giweb-toolbar {
+	margin: 0 0 16px;
+}
+
+.mainwp-giweb-inline-notice,
+.mainwp-giweb-flash-notice {
+	margin: 0 0 16px;
 }
 
 .mainwp-giweb-table {
-	margin-top: 16px;
+	margin-top: 0;
+	table-layout: fixed;
+	width: 100%;
+}
+
+.mainwp-giweb-col-site {
+	width: 14%;
+}
+
+.mainwp-giweb-col-url {
+	width: 22%;
+	word-break: break-all;
+}
+
+.mainwp-giweb-col-status {
+	width: 18%;
+	vertical-align: top;
+}
+
+.mainwp-giweb-col-version,
+.mainwp-giweb-col-modules {
+	width: 10%;
+}
+
+.mainwp-giweb-col-actions {
+	width: 14%;
+}
+
+.mainwp-giweb-col-status .mainwp-giweb-badge {
+	display: block;
+	margin-bottom: 4px;
+}
+
+.mainwp-giweb-inline-form-row,
+.mainwp-giweb-pull-form {
+	display: inline;
+	margin: 0;
+}
+
+.mainwp-giweb-pull-form .button[disabled] {
+	opacity: 0.65;
+	cursor: wait;
+}
+
+/* Hôte UI modules GI-Toolkit dans MainWP */
+.mainwp-giweb-modules-host {
+	margin: 0 -8px;
+}
+
+.mainwp-giweb-modules-host .gi-toolkit {
+	max-width: none;
+}
+
+.mainwp-giweb-panel .mainwp-giweb-modules-host .gi-toolkit__header {
+	position: relative;
+	z-index: 2;
+}
+
+.mainwp-giweb-wrap table.widefat,
+.mainwp-giweb-wrap table.widefat td,
+.mainwp-giweb-wrap table.widefat th {
+	background-color: var(--table-background-color, var(--giweb-surface));
+	border-color: var(--giweb-border);
+	color: var(--giweb-text);
+}
+
+.mainwp-giweb-wrap table.widefat.striped > tbody > :nth-child(odd) {
+	background-color: var(--giweb-surface-2);
+}
+
+.mainwp-giweb-wrap table.widefat a {
+	color: var(--giweb-accent);
+}
+
+.mainwp-giweb-wrap .description {
+	color: var(--giweb-text-muted);
+}
+
+.mainwp-giweb-wrap .notice {
+	background: var(--giweb-surface-2);
+	border-color: var(--giweb-border);
+	color: var(--giweb-text);
 }
 
 .mainwp-giweb-badge {
@@ -34,21 +198,30 @@
 }
 
 .mainwp-giweb-badge.ok {
-	background: #e8f5e9;
-	color: #1b5e20;
+	background: color-mix(in srgb, var(--green-color, #46b450) 22%, transparent);
+	color: var(--green-color, #7adc7a);
 }
 
 .mainwp-giweb-badge.err {
-	background: #ffebee;
-	color: #b71c1c;
+	background: color-mix(in srgb, var(--red-color, #dc3232) 20%, transparent);
+	color: var(--red-color, #ff8a80);
+}
+
+.mainwp-giweb-error-hint {
+	display: inline-block;
+	margin-top: 4px;
+	font-size: 11px;
+	color: var(--giweb-text-muted);
+	max-width: 280px;
 }
 
 .mainwp-giweb-notice-warn {
-	background: #fff8e6;
-	border: 1px solid #f0c040;
+	background: color-mix(in srgb, var(--yellow-color, #dba617) 14%, var(--giweb-surface));
+	border: 1px solid color-mix(in srgb, var(--yellow-color, #dba617) 45%, var(--giweb-border));
 	border-radius: 8px;
 	padding: 12px 16px;
 	margin: 12px 0;
+	color: var(--giweb-text);
 }
 
 .mainwp-giweb-inline-form {
@@ -56,18 +229,22 @@
 	gap: 12px;
 	align-items: center;
 	margin-bottom: 20px;
+	flex-wrap: wrap;
 }
 
 .mainwp-giweb-inline-form input[type="text"] {
 	min-width: 280px;
+	background: var(--background-color-4, var(--giweb-surface-2));
+	border-color: var(--giweb-border);
+	color: var(--giweb-text);
 }
 
 .mainwp-giweb-risk {
-	background: #fff5f5;
+	background: color-mix(in srgb, var(--red-color, #dc3232) 10%, var(--giweb-surface));
 }
 
 .mainwp-giweb-risk-tag {
-	color: #c62828;
+	color: var(--red-color, #ff8a80);
 	margin-left: 6px;
 }
 
@@ -76,14 +253,217 @@
 	padding: 16px;
 	border: 1px dashed var(--giweb-border);
 	border-radius: 8px;
+	background: var(--giweb-surface-2);
 }
 
 .mainwp-giweb-wrap .button-primary {
 	background: var(--giweb-accent);
 	border-color: var(--giweb-accent);
+	color: var(--font-button-color, #fff);
 }
 
-.mainwp-giweb-wrap .button-primary:hover {
+.mainwp-giweb-wrap .button-primary:hover,
+.mainwp-giweb-wrap .button-primary:focus {
 	background: var(--giweb-accent-dark);
 	border-color: var(--giweb-accent-dark);
+	color: var(--font-button-color, #fff);
+}
+
+.mainwp-giweb-wrap .button:not(.button-primary) {
+	background: var(--giweb-surface-2);
+	border-color: var(--giweb-border);
+	color: var(--giweb-text);
+}
+
+.mainwp-giweb-wrap .button:not(.button-primary):hover {
+	background: var(--giweb-surface);
+	border-color: var(--giweb-border);
+	color: var(--giweb-text);
+}
+
+.mainwp-giweb-wrap select,
+.mainwp-giweb-wrap input[type="text"],
+.mainwp-giweb-wrap input[type="number"],
+.mainwp-giweb-wrap input[type="datetime-local"] {
+	background: var(--background-color-4, var(--giweb-surface-2));
+	border-color: var(--giweb-border);
+	color: var(--giweb-text);
+}
+
+/* WordPress admin force souvent du blanc sur .widefat — priorité en sombre */
+.mainwp-giweb-wrap.mainwp-giweb--dark table.widefat,
+.mainwp-giweb-wrap.mainwp-giweb--dark table.widefat td,
+.mainwp-giweb-wrap.mainwp-giweb--dark table.widefat th,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-wrap table.widefat,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-wrap table.widefat td,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-wrap table.widefat th {
+	background-color: var(--table-background-color, var(--giweb-surface)) !important;
+	color: var(--giweb-text) !important;
+	border-color: var(--giweb-border) !important;
+}
+
+.mainwp-giweb-wrap.mainwp-giweb--dark table.widefat.striped > tbody > :nth-child(odd),
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-wrap table.widefat.striped > tbody > :nth-child(odd) {
+	background-color: var(--giweb-surface-2) !important;
+}
+
+.mainwp-giweb-wrap.mainwp-giweb--dark .nav-tab,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-wrap .nav-tab {
+	background: var(--giweb-surface-2) !important;
+	border-color: var(--giweb-border) !important;
+	color: var(--giweb-text) !important;
+}
+
+.mainwp-giweb-wrap.mainwp-giweb--dark .nav-tab-active,
+.mainwp-giweb-wrap.mainwp-giweb--dark .nav-tab-active:hover,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-wrap .nav-tab-active,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-wrap .nav-tab-active:hover {
+	background: var(--giweb-surface) !important;
+	border-bottom-color: var(--giweb-surface) !important;
+	color: var(--giweb-text) !important;
+}
+
+.mainwp-giweb-wrap.mainwp-giweb--dark .button:not(.button-primary),
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-wrap .button:not(.button-primary) {
+	background: var(--giweb-surface-2) !important;
+	border-color: var(--giweb-border) !important;
+	color: var(--giweb-text) !important;
+}
+
+/* —— Modale synchronisation —— */
+.mainwp-giweb-modal {
+	display: none;
+	position: fixed;
+	inset: 0;
+	z-index: 999999;
+}
+
+.mainwp-giweb-modal.mainwp-giweb-modal--open {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+}
+
+.mainwp-giweb-modal__backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.55);
+}
+
+.mainwp-giweb-modal__dialog--wide {
+	width: min(900px, 100%);
+}
+
+.mainwp-giweb-module-options-json {
+	flex: 1;
+	min-height: 280px;
+	max-height: 55vh;
+	overflow: auto;
+	margin: 0;
+	padding: 12px;
+	border-radius: 6px;
+	background: var(--giweb-surface-2);
+	border: 1px solid var(--giweb-border);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 12px;
+	line-height: 1.45;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.mainwp-giweb-view-module-options {
+	margin-left: 8px;
+	font-size: 11px;
+	text-transform: uppercase;
+}
+
+.mainwp-giweb-modal__dialog {
+	position: relative;
+	z-index: 1;
+	width: min(640px, 100%);
+	max-height: min(85vh, 720px);
+	display: flex;
+	flex-direction: column;
+	background: var(--giweb-surface);
+	border: 1px solid var(--giweb-border);
+	border-radius: 10px;
+	box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+	color: var(--giweb-text);
+}
+
+.mainwp-giweb-modal__header {
+	padding: 16px 20px;
+	border-bottom: 1px solid var(--giweb-border);
+}
+
+.mainwp-giweb-modal__header h2 {
+	margin: 0;
+	font-size: 1.1em;
+	color: var(--giweb-text);
+}
+
+.mainwp-giweb-modal__body {
+	padding: 16px 20px;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	flex: 1;
+	min-height: 0;
+}
+
+.mainwp-giweb-modal__footer {
+	padding: 12px 20px 16px;
+	border-top: 1px solid var(--giweb-border);
+	text-align: right;
+}
+
+.mainwp-giweb-progress {
+	height: 8px;
+	border-radius: 999px;
+	background: var(--giweb-surface-2);
+	overflow: hidden;
+	border: 1px solid var(--giweb-border);
+}
+
+.mainwp-giweb-progress__bar {
+	height: 100%;
+	width: 0;
+	background: var(--giweb-accent);
+	border-radius: 999px;
+	transition: width 0.2s ease;
+}
+
+.mainwp-giweb-progress__label {
+	margin: 0;
+	font-size: 12px;
+	color: var(--giweb-text-muted);
+}
+
+.mainwp-giweb-sync-log {
+	flex: 1;
+	min-height: 200px;
+	max-height: 360px;
+	overflow-y: auto;
+	padding: 12px;
+	border-radius: 6px;
+	background: var(--giweb-surface-2);
+	border: 1px solid var(--giweb-border);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.mainwp-giweb-sync-log__line {
+	margin: 0 0 4px;
+	word-break: break-word;
+}
+
+.mainwp-giweb-sync-log__line--ok {
+	color: var(--green-color, #46b450);
+}
+
+.mainwp-giweb-sync-log__line--err {
+	color: var(--red-color, #dc3232);
 }

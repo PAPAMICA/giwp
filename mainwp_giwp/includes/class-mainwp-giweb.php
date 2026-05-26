@@ -9,6 +9,106 @@ if ( ! defined( 'ABSPATH' ) ) {
 class MainWP_GIWeb {
 
 	/**
+	 * Enregistre CSS/JS (hook admin_enqueue_scripts).
+	 *
+	 * @return void
+	 */
+	public static function enqueue_assets() {
+		if ( ! MainWP_GIWeb_UI::is_extension_admin_page() ) {
+			return;
+		}
+
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'overview';
+		if ( 'modules' === $tab ) {
+			MainWP_GIWeb_Modules_UI::enqueue_assets();
+		}
+
+		wp_enqueue_style(
+			'mainwp-giweb-admin',
+			MAINWP_GIWEB_PLUGIN_URL . 'assets/css/admin.css',
+			array(),
+			MAINWP_GIWEB_VERSION
+		);
+		wp_enqueue_script(
+			'mainwp-giweb-admin',
+			MAINWP_GIWEB_PLUGIN_URL . 'assets/js/admin.js',
+			array( 'jquery' ),
+			MAINWP_GIWEB_VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'mainwp-giweb-admin',
+			'mainwpGiwebAdmin',
+			self::script_config()
+		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public static function script_config() {
+		return array(
+			'debug'   => true,
+			'version' => MAINWP_GIWEB_VERSION,
+			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+			'nonce'   => wp_create_nonce( MainWP_GIWeb_Sync_Ajax::NONCE_ACTION ),
+			'i18n'    => array(
+				'syncTitle'      => __( 'Synchronisation des statuts', 'mainwp-giweb' ),
+				'syncStarting'   => __( 'Préparation de la synchronisation…', 'mainwp-giweb' ),
+				'syncConnecting' => __( 'Interrogation de %s…', 'mainwp-giweb' ),
+				'syncDone'       => __( 'Synchronisation terminée.', 'mainwp-giweb' ),
+				'syncNoSites'    => __( 'Aucun site enfant à synchroniser.', 'mainwp-giweb' ),
+				'syncError'      => __( 'Erreur réseau ou serveur.', 'mainwp-giweb' ),
+				'syncClose'      => __( 'Fermer', 'mainwp-giweb' ),
+				'syncInProgress' => __( 'Synchronisation en cours…', 'mainwp-giweb' ),
+				'progressLabel'  => __( '%1$d / %2$d sites', 'mainwp-giweb' ),
+				'badgeOk'        => __( 'OK', 'mainwp-giweb' ),
+				'badgeErr'       => __( 'Erreur', 'mainwp-giweb' ),
+				'pullLoading'    => __( 'Import en cours depuis %s…', 'mainwp-giweb' ),
+				'pullSuccess'    => __( 'Configuration importée.', 'mainwp-giweb' ),
+				'pullError'      => __( 'Impossible d’importer la configuration.', 'mainwp-giweb' ),
+				'pullJsMissing'  => __( 'Scripts non chargés : soumission du formulaire…', 'mainwp-giweb' ),
+					'bundleLoaded'   => __( 'Une configuration est chargée en mémoire sur ce dashboard. Utilisez les onglets Modèles ou Déploiement pour la pousser vers d’autres sites.', 'mainwp-giweb' ),
+					'templateSaved'  => __( 'Modèle enregistré.', 'mainwp-giweb' ),
+					'templateDeleted' => __( 'Modèle supprimé.', 'mainwp-giweb' ),
+					'optionsLoading' => __( 'Chargement des réglages…', 'mainwp-giweb' ),
+					'modulesSaved'   => __( 'Configuration enregistrée.', 'mainwp-giweb' ),
+					'deployTitle'    => __( 'Déploiement de la configuration', 'mainwp-giweb' ),
+					'deployStarting' => __( 'Préparation du déploiement…', 'mainwp-giweb' ),
+					'deployConnecting' => __( 'Déploiement vers %s…', 'mainwp-giweb' ),
+					'deployDone'       => __( 'Déploiement terminé. Consultez l’onglet Historique.', 'mainwp-giweb' ),
+					'deployDoneOk'     => __( 'Déploiement réussi sur %d site(s).', 'mainwp-giweb' ),
+					'deployDonePartial' => __( 'Déploiement terminé : %1$d réussi(s), %2$d en échec. Voir l’historique.', 'mainwp-giweb' ),
+					'deployDoneFailed' => __( 'Échec du déploiement sur tous les sites (%d). Vérifiez la connexion MainWP de chaque site.', 'mainwp-giweb' ),
+					'deployNoSites'    => __( 'Sélectionnez au moins un site.', 'mainwp-giweb' ),
+				),
+		);
+	}
+
+	/**
+	 * Imprime les assets si MainWP a déjà envoyé le &lt;head&gt; (enqueue trop tardif).
+	 *
+	 * @return void
+	 */
+	public static function print_assets() {
+		if ( ! MainWP_GIWeb_UI::is_extension_admin_page() ) {
+			return;
+		}
+
+		if ( ! wp_script_is( 'mainwp-giweb-admin', 'enqueued' ) && ! wp_script_is( 'mainwp-giweb-admin', 'done' ) ) {
+			self::enqueue_assets();
+		}
+
+		if ( ! wp_style_is( 'mainwp-giweb-admin', 'done' ) ) {
+			wp_print_styles( 'mainwp-giweb-admin' );
+		}
+		if ( ! wp_script_is( 'mainwp-giweb-admin', 'done' ) ) {
+			wp_print_scripts( 'mainwp-giweb-admin' );
+		}
+	}
+
+	/**
 	 * @return void
 	 */
 	public static function render_page() {
@@ -19,31 +119,25 @@ class MainWP_GIWeb {
 		self::handle_post();
 
 		$tab         = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'overview';
-		$current_page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : 'Extensions-Mainwp-Giweb-Extension';
+		$current_page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : MainWP_GIWeb_UI::PAGE_SLUG;
 		$act = self::activator();
 
-		$websites = array();
-		if ( $act ) {
-			$websites = apply_filters( 'mainwp_getsites', $act->getChildFile(), $act->getChildKey(), null );
-		}
-		if ( ! is_array( $websites ) ) {
-			$websites = array();
-		}
+		$websites = MainWP_GIWeb_Sites::fetch_all( $act );
 
 		$status_cache = get_transient( 'mainwp_giweb_status_cache' );
 		if ( ! is_array( $status_cache ) ) {
 			$status_cache = array();
 		}
 
-		$working_bundle = get_option( 'mainwp_giweb_working_bundle', array() );
-		if ( ! is_array( $working_bundle ) ) {
-			$working_bundle = array();
-		}
+		$working_bundle = MainWP_GIWeb_Bundle::get();
 
-		wp_enqueue_style( 'mainwp-giweb-admin', MAINWP_GIWEB_PLUGIN_URL . 'assets/css/admin.css', array(), MAINWP_GIWEB_VERSION );
-		wp_enqueue_script( 'mainwp-giweb-admin', MAINWP_GIWEB_PLUGIN_URL . 'assets/js/admin.js', array( 'jquery' ), MAINWP_GIWEB_VERSION, true );
+		self::enqueue_assets();
+
+		$giweb_script_config = self::script_config();
 
 		include MAINWP_GIWEB_PLUGIN_PATH . 'views/page-main.php';
+
+		self::print_assets();
 	}
 
 	/**
@@ -63,60 +157,58 @@ class MainWP_GIWeb {
 		}
 
 		$action = isset( $_POST['mainwp_giweb_action'] ) ? sanitize_key( wp_unslash( $_POST['mainwp_giweb_action'] ) ) : '';
+		$tab    = isset( $_POST['tab'] ) ? sanitize_key( wp_unslash( $_POST['tab'] ) ) : 'overview';
 
 		switch ( $action ) {
-			case 'sync_status':
-				$act = self::activator();
-				if ( $act ) {
-					$sites = apply_filters( 'mainwp_getsites', $act->getChildFile(), $act->getChildKey(), null );
-					set_transient( 'mainwp_giweb_status_cache', MainWP_GIWeb_Deploy::sync_all_status( $sites ), 15 * MINUTE_IN_SECONDS );
-				}
-				break;
-
 			case 'pull_config':
 				$site_id = absint( $_POST['source_site_id'] ?? 0 );
 				if ( $site_id ) {
-					$res = MainWP_GIWeb_API::export_site( $site_id );
-					if ( ! empty( $res['success'] ) && ! empty( $res['data'] ) ) {
-						update_option( 'mainwp_giweb_working_bundle', $res['data'], false );
+					$label  = self::site_name( $site_id, MainWP_GIWeb_Sites::fetch_all( self::activator() ) );
+					$res    = MainWP_GIWeb_API::export_site( $site_id );
+					$bundle = MainWP_GIWeb_Bundle::from_api_response( $res );
+					if ( null !== $bundle ) {
+						$saved = MainWP_GIWeb_Bundle::save( $bundle );
+						if ( is_wp_error( $saved ) ) {
+							MainWP_GIWeb_Notices::add( 'error', $saved->get_error_message() );
+						} else {
+							$counts = MainWP_GIWeb_Bundle::count_modules( $bundle );
+							MainWP_GIWeb_Notices::add(
+								'success',
+								sprintf(
+									/* translators: 1: site name, 2: number of modules */
+									__( 'Configuration importée depuis %1$s (%2$d modules).', 'mainwp-giweb' ),
+									$label,
+									$counts['total']
+								)
+							);
+						}
+					} else {
+						$err = ! empty( $res['errors'][0] ) ? (string) $res['errors'][0] : __( 'Échec de l’import.', 'mainwp-giweb' );
+						MainWP_GIWeb_Notices::add( 'error', $err );
 					}
 				}
+				self::redirect_after_post( $tab );
 				break;
 
 			case 'save_template':
 				$name   = sanitize_text_field( wp_unslash( $_POST['template_name'] ?? '' ) );
-				$bundle = get_option( 'mainwp_giweb_working_bundle', array() );
+				$bundle = MainWP_GIWeb_Bundle::get();
 				if ( $name && is_array( $bundle ) && ! empty( $bundle ) ) {
 					MainWP_GIWeb_Templates::save( $name, $bundle );
+					MainWP_GIWeb_Notices::add( 'success', __( 'Modèle enregistré.', 'mainwp-giweb' ) );
+				} else {
+					MainWP_GIWeb_Notices::add( 'warning', __( 'Aucune configuration de travail à enregistrer.', 'mainwp-giweb' ) );
 				}
+				self::redirect_after_post( 'templates' );
 				break;
 
 			case 'delete_template':
 				$tpl_id = sanitize_text_field( wp_unslash( $_POST['template_id'] ?? '' ) );
 				if ( $tpl_id ) {
 					MainWP_GIWeb_Templates::delete( $tpl_id );
+					MainWP_GIWeb_Notices::add( 'success', __( 'Modèle supprimé.', 'mainwp-giweb' ) );
 				}
-				break;
-
-			case 'deploy':
-				$site_ids = array();
-				if ( isset( $_POST['selected_sites'] ) && is_array( $_POST['selected_sites'] ) ) {
-					$site_ids = array_map( 'absint', wp_unslash( $_POST['selected_sites'] ) );
-				} elseif ( isset( $_POST['site_ids'] ) && is_array( $_POST['site_ids'] ) ) {
-					$site_ids = array_map( 'absint', wp_unslash( $_POST['site_ids'] ) );
-				}
-				$tpl_id   = sanitize_text_field( wp_unslash( $_POST['deploy_template_id'] ?? '' ) );
-				$bundle   = get_option( 'mainwp_giweb_working_bundle', array() );
-				if ( $tpl_id ) {
-					$tpl = MainWP_GIWeb_Templates::get( $tpl_id );
-					if ( $tpl && ! empty( $tpl['bundle'] ) ) {
-						$bundle = $tpl['bundle'];
-					}
-				}
-				if ( is_array( $bundle ) && ! empty( $bundle ) && ! empty( $site_ids ) ) {
-					$tpl_name = $tpl_id ? ( MainWP_GIWeb_Templates::get( $tpl_id )['name'] ?? '' ) : __( 'Configuration courante', 'mainwp-giweb' );
-					MainWP_GIWeb_Deploy::push_to_sites( $bundle, $site_ids, $tpl_id, $tpl_name );
-				}
+				self::redirect_after_post( 'templates' );
 				break;
 
 			case 'save_overrides':
@@ -135,33 +227,77 @@ class MainWP_GIWeb {
 							'excluded_option_modules' => $opt_mods,
 						)
 					);
+					MainWP_GIWeb_Notices::add( 'success', __( 'Exclusions enregistrées.', 'mainwp-giweb' ) );
 				}
+				self::redirect_after_post( 'excludes' );
 				break;
 
-			case 'toggle_module_working':
-				$class  = sanitize_text_field( wp_unslash( $_POST['module_class'] ?? '' ) );
-				$active = ! empty( $_POST['module_active'] ) ? '1' : '0';
-				$bundle = get_option( 'mainwp_giweb_working_bundle', array() );
-				if ( is_array( $bundle ) && $class ) {
-					if ( empty( $bundle['modules'] ) ) {
-						$bundle['modules'] = array();
+			case 'save_working_modules':
+				$bundle = MainWP_GIWeb_Bundle::get();
+				if ( ! is_array( $bundle ) ) {
+					$bundle = array();
+				}
+				if ( empty( $bundle['modules'] ) || ! is_array( $bundle['modules'] ) ) {
+					$bundle['modules'] = array();
+				}
+				$states = isset( $_POST['module_states'] ) && is_array( $_POST['module_states'] )
+					? wp_unslash( $_POST['module_states'] )
+					: array();
+				foreach ( $states as $class => $val ) {
+					$class = sanitize_text_field( $class );
+					if ( '' === $class ) {
+						continue;
 					}
 					if ( ! isset( $bundle['modules'][ $class ] ) ) {
 						$bundle['modules'][ $class ] = array();
 					}
-					$bundle['modules'][ $class ]['active'] = $active;
-					update_option( 'mainwp_giweb_working_bundle', $bundle, false );
+					$bundle['modules'][ $class ]['active'] = ( '1' === (string) $val || true === $val ) ? '1' : '0';
 				}
+				$saved = MainWP_GIWeb_Bundle::save( $bundle );
+				if ( is_wp_error( $saved ) ) {
+					MainWP_GIWeb_Notices::add( 'error', $saved->get_error_message() );
+				} else {
+					MainWP_GIWeb_Notices::add( 'success', __( 'Configuration de travail enregistrée.', 'mainwp-giweb' ) );
+				}
+				self::redirect_after_post( 'modules' );
 				break;
 
 			case 'push_single_site':
 				$site_id = absint( $_POST['target_site_id'] ?? 0 );
-				$bundle  = get_option( 'mainwp_giweb_working_bundle', array() );
+				$bundle  = MainWP_GIWeb_Bundle::get();
 				if ( $site_id && is_array( $bundle ) && ! empty( $bundle ) ) {
 					MainWP_GIWeb_Deploy::push_to_sites( $bundle, array( $site_id ), '', __( 'Push site unique', 'mainwp-giweb' ) );
+					MainWP_GIWeb_Notices::add( 'success', __( 'Configuration envoyée au site.', 'mainwp-giweb' ) );
 				}
+				self::redirect_after_post( $tab );
 				break;
 		}
+	}
+
+	/**
+	 * Redirection PRG après POST (évite double envoi).
+	 *
+	 * @param string $tab Onglet cible.
+	 * @return void
+	 */
+	private static function redirect_after_post( $tab = 'overview' ) {
+		$page = isset( $_POST['page'] ) ? sanitize_text_field( wp_unslash( $_POST['page'] ) ) : MainWP_GIWeb_UI::PAGE_SLUG;
+		$tab  = isset( $_POST['tab'] ) ? sanitize_key( wp_unslash( $_POST['tab'] ) ) : $tab;
+
+		$url = add_query_arg(
+			array(
+				'page' => $page,
+				'tab'  => $tab,
+			),
+			admin_url( 'admin.php' )
+		);
+
+		if ( 'excludes' === $tab && ! empty( $_POST['override_site_id'] ) ) {
+			$url = add_query_arg( 'site_id', absint( $_POST['override_site_id'] ), $url );
+		}
+
+		wp_safe_redirect( $url );
+		exit;
 	}
 
 	/**
@@ -170,8 +306,9 @@ class MainWP_GIWeb {
 	 */
 	public static function site_name( $site_id, $websites ) {
 		foreach ( $websites as $site ) {
-			if ( isset( $site->id ) && (int) $site->id === (int) $site_id ) {
-				return $site->name ?? ( $site->url ?? '#' );
+			$row = MainWP_GIWeb_Sites::normalize_one( $site );
+			if ( (int) $row['id'] === (int) $site_id ) {
+				return $row['name'] ?: $row['url'] ?: '#' . $site_id;
 			}
 		}
 		return '#' . $site_id;

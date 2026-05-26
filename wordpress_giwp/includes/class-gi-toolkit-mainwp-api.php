@@ -29,7 +29,7 @@ class Gi_Toolkit_MainWP_API {
 			case 'status':
 				return self::success( self::get_status() );
 			case 'export':
-				return self::success( Gi_Toolkit_Settings::export_config_bundle() );
+				return self::handle_export();
 			case 'import':
 				$bundle = isset( $data['bundle'] ) && is_array( $data['bundle'] ) ? $data['bundle'] : array();
 				$args   = isset( $data['args'] ) && is_array( $data['args'] ) ? $data['args'] : array();
@@ -50,6 +50,43 @@ class Gi_Toolkit_MainWP_API {
 				return self::set_module_options( $class, $options );
 			default:
 				return self::error( __( 'Action MainWP inconnue.', 'gi-toolkit' ) );
+		}
+	}
+
+	/**
+	 * Export configuration (limite temps / mémoire, erreurs explicites).
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function handle_export() {
+		if ( function_exists( 'wp_raise_memory_limit' ) ) {
+			wp_raise_memory_limit( 'admin' );
+		}
+		if ( function_exists( 'set_time_limit' ) ) {
+			set_time_limit( 300 );
+		}
+
+		try {
+			$bundle = Gi_Toolkit_Settings::export_config_bundle();
+			if ( ! is_array( $bundle ) || empty( $bundle['modules'] ) ) {
+				return self::error( __( 'Export vide ou invalide.', 'gi-toolkit' ) );
+			}
+			return self::success( $bundle );
+		} catch ( Throwable $e ) {
+			return self::error(
+				sprintf(
+					/* translators: %s: exception message */
+					__( 'Erreur export GI-Toolkit : %s', 'gi-toolkit' ),
+					$e->getMessage()
+				)
+			);
+		} catch ( Exception $e ) {
+			return self::error(
+				sprintf(
+					__( 'Erreur export GI-Toolkit : %s', 'gi-toolkit' ),
+					$e->getMessage()
+				)
+			);
 		}
 	}
 
@@ -87,11 +124,8 @@ class Gi_Toolkit_MainWP_API {
 			return self::error( __( 'Module introuvable.', 'gi-toolkit' ) );
 		}
 		Gi_Toolkit_Handle_options::require_once_all_options();
-		if ( ! method_exists( $class, 'get_settings' ) ) {
-			return self::success( array( 'options' => array() ) );
-		}
-		$instance = new $class();
-		return self::success( array( 'options' => $instance->get_settings() ) );
+		$options = Gi_Toolkit_Settings::invoke_module_get_settings( $class );
+		return self::success( array( 'options' => null !== $options ? $options : array() ) );
 	}
 
 	/**
@@ -107,8 +141,9 @@ class Gi_Toolkit_MainWP_API {
 		if ( ! method_exists( $class, 'save_settings' ) ) {
 			return self::error( __( 'Ce module ne supporte pas la sauvegarde distante.', 'gi-toolkit' ) );
 		}
-		$instance = new $class();
-		$instance->save_settings( $options );
+		if ( ! Gi_Toolkit_Settings::invoke_module_save_settings( $class, $options ) ) {
+			return self::error( __( 'Échec de la sauvegarde des réglages du module.', 'gi-toolkit' ) );
+		}
 		return self::success( array( 'saved' => true ) );
 	}
 

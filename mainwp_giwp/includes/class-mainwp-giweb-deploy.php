@@ -51,12 +51,59 @@ class MainWP_GIWeb_Deploy {
 			return $out;
 		}
 		foreach ( $websites as $site ) {
-			$id = isset( $site->id ) ? (int) $site->id : 0;
-			if ( ! $id ) {
+			$row = MainWP_GIWeb_Sites::normalize_one( $site );
+			if ( $row['id'] <= 0 ) {
 				continue;
 			}
-			$out[ $id ] = MainWP_GIWeb_API::get_status( $id );
+			$label        = $row['name'] ?: $row['url'] ?: ( '#' . $row['id'] );
+			$out[ $row['id'] ] = self::sync_site_status( $row['id'], $label )['api'];
 		}
 		return $out;
+	}
+
+	/**
+	 * Interroge le statut GI-Toolkit d’un site (avec message de log).
+	 *
+	 * @param int    $site_id ID MainWP.
+	 * @param string $label   Libellé affiché dans les logs.
+	 * @return array<string, mixed>
+	 */
+	public static function sync_site_status( $site_id, $label ) {
+		$site_id = absint( $site_id );
+		$label   = '' !== $label ? $label : '#' . $site_id;
+
+		$api    = MainWP_GIWeb_API::get_status( $site_id );
+		$ok     = ! empty( $api['success'] );
+		$data   = is_array( $api['data'] ) ? $api['data'] : array();
+		$detail = '';
+
+		if ( $ok ) {
+			$version = isset( $data['gi_toolkit_version'] ) ? (string) $data['gi_toolkit_version'] : '—';
+			$modules = isset( $data['active_modules'] ) ? (string) $data['active_modules'] : '0';
+			$detail  = sprintf(
+				/* translators: 1: version, 2: active module count */
+				__( 'GI-Toolkit %1$s — %2$s modules actifs', 'mainwp-giweb' ),
+				$version,
+				$modules
+			);
+		} else {
+			$detail = ! empty( $api['errors'][0] ) ? (string) $api['errors'][0] : __( 'Échec', 'mainwp-giweb' );
+		}
+
+		$log = sprintf(
+			'[%s] %s — %s',
+			$ok ? 'OK' : __( 'ERR', 'mainwp-giweb' ),
+			$label,
+			$detail
+		);
+
+		return array(
+			'site_id' => $site_id,
+			'success' => $ok,
+			'log'     => $log,
+			'message' => $detail,
+			'data'    => $data,
+			'api'     => $api,
+		);
 	}
 }

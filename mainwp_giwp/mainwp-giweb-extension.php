@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'MAINWP_GIWEB_VERSION' ) ) {
-	define( 'MAINWP_GIWEB_VERSION', '1.0.0' );
+	define( 'MAINWP_GIWEB_VERSION', '1.1.5' );
 }
 if ( ! defined( 'MAINWP_GIWEB_PLUGIN_FILE' ) ) {
 	define( 'MAINWP_GIWEB_PLUGIN_FILE', __DIR__ . '/mainwp-giwp.php' );
@@ -25,12 +25,18 @@ if ( ! defined( 'MAINWP_GIWEB_GI_TOOLKIT_PATH' ) ) {
 	define( 'MAINWP_GIWEB_GI_TOOLKIT_PATH', MAINWP_GIWEB_PLUGIN_PATH . '../wordpress_giwp/' );
 }
 
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-ui.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-sites.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-catalog.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-overrides.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-templates.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-history.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-bundle.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-modules-ui.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-api.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-deploy.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-notices.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-sync-ajax.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb.php';
 
 /**
@@ -39,7 +45,7 @@ require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb.php';
 class MainWP_GIWeb_Extension_Activator {
 
 	/** @var string */
-	public $plugin_handle = 'mainwp-giweb-extension';
+	public $plugin_handle = 'mainwp-giwp';
 
 	/** @var string */
 	public $childFile;
@@ -71,7 +77,40 @@ class MainWP_GIWeb_Extension_Activator {
 
 		add_action( 'admin_notices', array( $this, 'admin_notice_mainwp_required' ) );
 
+		add_filter( 'mainwp_extensions_page_top_header', array( $this, 'filter_extensions_page_title' ), 10, 2 );
+		add_filter( 'admin_title', array( $this, 'filter_admin_document_title' ), 10, 2 );
+		add_action( 'admin_enqueue_scripts', array( 'MainWP_GIWeb', 'enqueue_assets' ) );
+
 		register_activation_hook( MAINWP_GIWEB_PLUGIN_FILE, array( 'MainWP_GIWeb_History', 'install_tables' ) );
+	}
+
+	/**
+	 * Titre en-tête MainWP (évite « mainwp_giwp » / « _giwp » dérivé du dossier plugin).
+	 *
+	 * @param string $title Titre courant.
+	 * @param string $page  Slug page admin.
+	 * @return string
+	 */
+	public function filter_extensions_page_title( $title, $page ) {
+		if ( MainWP_GIWeb_UI::is_extension_admin_page( $page ) ) {
+			return MainWP_GIWeb_UI::page_title();
+		}
+		return $title;
+	}
+
+	/**
+	 * Titre de l’onglet navigateur.
+	 *
+	 * @param string $admin_title Titre admin complet.
+	 * @param string $title       Partie titre.
+	 * @return string
+	 */
+	public function filter_admin_document_title( $admin_title, $title ) {
+		if ( ! MainWP_GIWeb_UI::is_extension_admin_page() ) {
+			return $admin_title;
+		}
+		$site = get_bloginfo( 'name', 'display' );
+		return MainWP_GIWeb_UI::page_title() . ( $site ? ' ‹ ' . $site : '' );
 	}
 
 	/**
@@ -82,6 +121,7 @@ class MainWP_GIWeb_Extension_Activator {
 		$extensions[] = array(
 			'plugin'   => MAINWP_GIWEB_PLUGIN_FILE,
 			'api'      => $this->plugin_handle,
+			'name'     => MainWP_GIWeb_UI::page_title(),
 			'mainwp'   => true,
 			'callback' => array( $this, 'settings_page' ),
 		);
@@ -106,8 +146,8 @@ class MainWP_GIWeb_Extension_Activator {
 	 */
 	public function add_submenu( $subpages ) {
 		$subpages[] = array(
-			'title'      => __( 'GI-Toolkit Manager', 'mainwp-giweb' ),
-			'slug'       => 'Mainwp-Giweb-Extension',
+			'title'      => MainWP_GIWeb_UI::page_title(),
+			'slug'       => 'Mainwp-Gi-Toolkit-Manager',
 			'sitetab'    => false,
 			'menu_hidden' => false,
 			'callback'   => array( 'MainWP_GIWeb', 'render_page' ),

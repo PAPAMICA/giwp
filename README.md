@@ -12,7 +12,7 @@ Dépôt regroupant **GI-Toolkit** (sites clients) et l’extension **MainWP GI-T
 ## Prérequis sites enfants
 
 1. [MainWP Child](https://mainwp.com/) actif  
-2. **GI-Toolkit** ≥ 2.20.0 actif (aucun plugin bridge séparé)
+2. **GI-Toolkit** ≥ 2.20.1 actif (aucun plugin bridge séparé)
 
 ## Prérequis dashboard
 
@@ -33,7 +33,7 @@ En développement depuis ce monorepo, le catalogue modules du dashboard lit `wor
 ## Communication MainWP
 
 ```
-Dashboard → mainwp_fetchurlauthed(…, 'gi_toolkit', …)
+Dashboard → mainwp_fetchurlauthed(…, 'extra_execution', …) → filtre mainwp_child_extra_execution
          → GI-Toolkit (bridge) → Gi_Toolkit_MainWP_API
 ```
 

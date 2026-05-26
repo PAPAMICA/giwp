@@ -10,21 +10,26 @@ $override_site = isset( $_GET['site_id'] ) ? absint( $_GET['site_id'] ) : 0;
 <form method="get">
 	<input type="hidden" name="page" value="<?php echo esc_attr( $current_page ); ?>" />
 	<input type="hidden" name="tab" value="excludes" />
-	<select name="site_id" onchange="this.form.submit()">
+	<select name="site_id">
 		<option value=""><?php esc_html_e( 'Choisir un site…', 'mainwp-giweb' ); ?></option>
 		<?php foreach ( $websites as $site ) :
-			$sid = (int) ( $site->id ?? 0 );
+			$row = MainWP_GIWeb_Sites::normalize_one( $site );
+			$sid = (int) $row['id'];
 			?>
-			<option value="<?php echo esc_attr( $sid ); ?>" <?php selected( $override_site, $sid ); ?>><?php echo esc_html( $site->name ?? $site->url ?? $sid ); ?></option>
+			<option value="<?php echo esc_attr( $sid ); ?>" <?php selected( $override_site, $sid ); ?>><?php echo esc_html( $row['name'] ?: $row['url'] ?: (string) $sid ); ?></option>
 		<?php endforeach; ?>
 	</select>
+	<button type="submit" class="button"><?php esc_html_e( 'Afficher', 'mainwp-giweb' ); ?></button>
 </form>
 
 <?php if ( $override_site ) :
 	$ov = MainWP_GIWeb_Overrides::get( $override_site );
 	?>
-	<form method="post">
-		<?php wp_nonce_field( 'mainwp_giweb_action', 'mainwp_giweb_nonce' ); ?>
+	<form method="post" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>">
+		<?php
+		wp_nonce_field( 'mainwp_giweb_action', 'mainwp_giweb_nonce' );
+		include MAINWP_GIWEB_PLUGIN_PATH . 'views/partials/form-context.php';
+		?>
 		<input type="hidden" name="mainwp_giweb_action" value="save_overrides" />
 		<input type="hidden" name="override_site_id" value="<?php echo esc_attr( $override_site ); ?>" />
 

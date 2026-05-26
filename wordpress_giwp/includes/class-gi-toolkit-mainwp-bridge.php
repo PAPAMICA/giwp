@@ -6,12 +6,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Bridge MainWP Child intégré à GI-Toolkit (aucun plugin séparé requis sur les sites clients).
  *
- * @since 2.20.0
+ * @since 2.20.1
  */
 class Gi_Toolkit_MainWP_Bridge {
 
 	/**
-	 * Enregistre le handler distant `gi_toolkit` pour MainWP Child.
+	 * Enregistre le handler distant pour MainWP Child.
 	 *
 	 * @return void
 	 */
@@ -20,38 +20,30 @@ class Gi_Toolkit_MainWP_Bridge {
 			return;
 		}
 
-		if ( ! function_exists( 'gi_toolkit' ) ) {
-			/**
-			 * Handler appelé par MainWP Dashboard via mainwp_fetchurlauthed (fonction = gi_toolkit).
-			 *
-			 * @param array<string, mixed> $data Payload.
-			 * @return array<string, mixed>
-			 */
-			function gi_toolkit( $data = array() ) {
-				if ( ! class_exists( 'Gi_Toolkit_MainWP_API' ) ) {
-					return array(
-						'success' => false,
-						'data'    => array(),
-						'errors'  => array( __( 'GI-Toolkit API MainWP indisponible.', 'gi-toolkit' ) ),
-					);
-				}
-				return Gi_Toolkit_MainWP_API::handle_request( is_array( $data ) ? $data : array() );
-			}
-		}
-
-		add_filter( 'mainwp_child_actions', array( __CLASS__, 'register_child_action' ) );
+		add_filter( 'mainwp_child_extra_execution', array( __CLASS__, 'handle_extra_execution' ), 10, 2 );
 	}
 
 	/**
-	 * @param array<string, string> $actions Actions MainWP Child.
-	 * @return array<string, string>
+	 * Répond aux appels dashboard via extra_execution + gi_toolkit_request.
+	 *
+	 * @param array<string, mixed> $information Réponse en cours.
+	 * @param array<string, mixed> $post        Données POST MainWP.
+	 * @return array<string, mixed>
 	 */
-	public static function register_child_action( $actions ) {
-		if ( ! is_array( $actions ) ) {
-			$actions = array();
+	public static function handle_extra_execution( $information, $post ) {
+		if ( ! is_array( $post ) || empty( $post['gi_toolkit_request'] ) ) {
+			return is_array( $information ) ? $information : array();
 		}
-		$actions['gi_toolkit'] = 'gi_toolkit';
-		return $actions;
+
+		if ( ! class_exists( 'Gi_Toolkit_MainWP_API' ) ) {
+			return array(
+				'success' => false,
+				'data'    => array(),
+				'errors'  => array( __( 'GI-Toolkit API MainWP indisponible.', 'gi-toolkit' ) ),
+			);
+		}
+
+		return Gi_Toolkit_MainWP_API::handle_request( $post );
 	}
 
 	/**

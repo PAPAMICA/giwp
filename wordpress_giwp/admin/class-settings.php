@@ -279,7 +279,8 @@ class Gi_Toolkit_Settings {
 			header('Content-Type: application/json');
 			header('Content-Disposition: attachment; filename="' . $upload_file_name . '"');
 			header('Content-Length: ' . strlen($upload_file_content));
-			echo wp_kses_post( $upload_file_content );
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON brut en téléchargement.
+			echo $upload_file_content;
 			exit;
 
 		} else {
@@ -415,6 +416,71 @@ class Gi_Toolkit_Settings {
 	}
 
 	/**
+	 * Lit les réglages d’un module (méthode publique ou privée get_settings).
+	 *
+	 * @since 2.20.3
+	 * @param object|string $class_or_instance Instance ou nom de classe.
+	 * @return array<string, mixed>|null Null si aucun réglage exportable.
+	 */
+	public static function invoke_module_get_settings( $class_or_instance ) {
+		$class = is_object( $class_or_instance ) ? get_class( $class_or_instance ) : $class_or_instance;
+		if ( ! is_string( $class ) || ! class_exists( $class ) || ! method_exists( $class, 'get_settings' ) ) {
+			return null;
+		}
+
+		$instance = is_object( $class_or_instance ) ? $class_or_instance : new $class();
+
+		if ( is_callable( array( $instance, 'get_settings' ) ) ) {
+			$settings = $instance->get_settings();
+			return is_array( $settings ) ? $settings : array();
+		}
+
+		try {
+			$method = new ReflectionMethod( $class, 'get_settings' );
+			$method->setAccessible( true );
+			$settings = $method->invoke( $instance );
+			return is_array( $settings ) ? $settings : array();
+		} catch ( ReflectionException $e ) {
+			return null;
+		}
+	}
+
+	/**
+	 * Enregistre les réglages d’un module (méthode publique ou privée save_settings).
+	 *
+	 * @since 2.20.3
+	 * @param object|string        $class_or_instance Instance ou nom de classe.
+	 * @param array<string, mixed> $settings          Réglages.
+	 * @return bool
+	 */
+	public static function invoke_module_save_settings( $class_or_instance, $settings ) {
+		if ( ! is_array( $settings ) ) {
+			return false;
+		}
+
+		$class = is_object( $class_or_instance ) ? get_class( $class_or_instance ) : $class_or_instance;
+		if ( ! is_string( $class ) || ! class_exists( $class ) || ! method_exists( $class, 'save_settings' ) ) {
+			return false;
+		}
+
+		$instance = is_object( $class_or_instance ) ? $class_or_instance : new $class();
+
+		if ( is_callable( array( $instance, 'save_settings' ) ) ) {
+			$instance->save_settings( $settings );
+			return true;
+		}
+
+		try {
+			$method = new ReflectionMethod( $class, 'save_settings' );
+			$method->setAccessible( true );
+			$method->invoke( $instance, $settings );
+			return true;
+		} catch ( ReflectionException $e ) {
+			return false;
+		}
+	}
+
+	/**
 	 * Exporte la configuration complète (modules + globaux).
 	 *
 	 * @since 2.20.0
@@ -430,9 +496,9 @@ class Gi_Toolkit_Settings {
 		foreach ( $default_settings as $item ) {
 			$status = sanitize_text_field( $old_settings[ $item ] ?? '0' );
 			$modules_data[ $item ] = array( 'active' => $status );
-			if ( class_exists( $item ) && method_exists( $item, 'get_settings' ) ) {
-				$item_class = new $item();
-				$modules_data[ $item ]['options'] = $item_class->get_settings();
+			$options               = self::invoke_module_get_settings( $item );
+			if ( null !== $options ) {
+				$modules_data[ $item ]['options'] = $options;
 			}
 		}
 
@@ -488,10 +554,7 @@ class Gi_Toolkit_Settings {
 		}
 
 		foreach ( $sanitized_items_data as $item_key => $item_value ) {
-			if ( class_exists( $item_key ) && method_exists( $item_key, 'save_settings' ) ) {
-				$item_class = new $item_key();
-				$item_class->save_settings( $item_value );
-			}
+			self::invoke_module_save_settings( $item_key, $item_value );
 		}
 
 		self::save_main_settings( $sanitized_main_data );
