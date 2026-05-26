@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 /**
  * The class responsible for handling the options of the plugin.
  *
- * @link       https://genevois-informatique.ch
+ * @link       https://genevois-informatique.com
  * @since      1.0.0
  *
  * @package           Gi_Toolkit

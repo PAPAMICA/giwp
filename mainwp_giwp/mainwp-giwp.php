@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: MainWP GI-Toolkit Manager
- * Plugin URI: https://genevois-informatique.ch/
+ * Plugin URI: https://genevois-informatique.com/
  * Description: Gérez et déployez la configuration GI-Toolkit sur tous vos sites MainWP.
  * Version: 1.1.5
  * Author: Genevois Informatique
- * Author URI: https://genevois-informatique.ch
+ * Author URI: https://genevois-informatique.com
  * License: GPL-2.0+
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: mainwp-giweb

@@ -1,5 +1,13 @@
 == Changelog ==
 
+= 2.20.5 =
+Add: Mail catcher — sélection multiple, suppression et renvoi en masse, colonnes statut/renvois, statistiques et graphiques (7 jours).
+
+= 2.20.4 =
+Update: domaine genevois-informatique.com (remplace .ch).
+Update: options « Sécurité globale » déplacées dans l’onglet Paramètres.
+Remove: onglet Crédits, gestion de licence SureCart et modale promotionnelle.
+
 = 2.20.3 =
 Fix: export/import JSON et MainWP — lecture/écriture des réglages modules via get_settings/save_settings privés (Reflection).
 

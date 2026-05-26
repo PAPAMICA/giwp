@@ -5,11 +5,11 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: GI-Toolkit\n"
-"Report-Msgid-Bugs-To: Genevois Informatique <contact@genevois-informatique.ch>\n"
+"Report-Msgid-Bugs-To: Genevois Informatique <contact@genevois-informatique.com>\n"
 "POT-Creation-Date: 2026-03-07 15:53+0200\n"
 "PO-Revision-Date: \n"
-"Last-Translator: Genevois Informatique <contact@genevois-informatique.ch>\n"
-"Language-Team: Genevois Informatique <contact@genevois-informatique.ch>\n"
+"Last-Translator: Genevois Informatique <contact@genevois-informatique.com>\n"
+"Language-Team: Genevois Informatique <contact@genevois-informatique.com>\n"
 "Language: en_US\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -10369,7 +10369,7 @@ msgid "This sharing allows us to make the most relevant improvements to the plug
 msgstr ""
 
 #: admin/templates/core/page-settings.php:270
-msgid "I agree to share my configuration with genevois-informatique.ch."
+msgid "I agree to share my configuration with genevois-informatique.com."
 msgstr ""
 
 #: admin/templates/core/page-settings.php:275
@@ -10430,7 +10430,7 @@ msgid "What's new in v%s"
 msgstr ""
 
 #: admin/templates/core/page-settings.php:382
-msgid "https://genevois-informatique.ch/en/changelog/"
+msgid "https://genevois-informatique.com/en/changelog/"
 msgstr ""
 
 #: admin/templates/core/page-settings.php:382
@@ -11300,7 +11300,7 @@ msgid "This license key is not valid. Please double check it and try again."
 msgstr ""
 
 #: licensing/src/Settings.php:226
-msgid "https://genevois-informatique.ch/en/how-to-upgrade-to-gi_toolkit-pro-complete-guide/"
+msgid "https://genevois-informatique.com/en/how-to-upgrade-to-gi_toolkit-pro-complete-guide/"
 msgstr ""
 
 #: licensing/src/Settings.php:230
@@ -11337,7 +11337,7 @@ msgid "Deactivate License"
 msgstr ""
 
 #: licensing/src/Settings.php:298
-msgid "https://genevois-informatique.ch/en/customer-dashboard/"
+msgid "https://genevois-informatique.com/en/customer-dashboard/"
 msgstr ""
 
 #: licensing/src/Settings.php:300
@@ -11380,7 +11380,7 @@ msgid ""
 msgstr ""
 
 #: licensing/src/Settings.php:369
-msgid "https://genevois-informatique.ch/en/products-2/gi_toolkit-pro/"
+msgid "https://genevois-informatique.com/en/products-2/gi_toolkit-pro/"
 msgstr ""
 
 #: licensing/src/Settings.php:371
@@ -11396,7 +11396,7 @@ msgid "Find all the essential information to configure and use GI-Toolkit module
 msgstr ""
 
 #: licensing/src/Settings.php:384
-msgid "https://genevois-informatique.ch/en/modules/"
+msgid "https://genevois-informatique.com/en/modules/"
 msgstr ""
 
 #: licensing/src/Settings.php:386

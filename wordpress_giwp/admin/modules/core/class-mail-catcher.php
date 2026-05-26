@@ -9,6 +9,13 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
  */
 class Gi_Toolkit_Mail_Catcher {
 
+	/**
+	 * Instance unique (évite une double instanciation depuis la list table).
+	 *
+	 * @var self|null
+	 */
+	private static $instance = null;
+
 	private $option_id;
     private $nonce;
     private $nonce_name;
@@ -21,6 +28,11 @@ class Gi_Toolkit_Mail_Catcher {
      * @since   2.14.0
      */
     public function __construct() {
+		if ( null !== self::$instance ) {
+			return;
+		}
+		self::$instance = $this;
+
 		$this->option_id  = GI_TOOLKIT_PLUGIN_SETTINGS . '_mail_catcher';
         $this->nonce      = $this->option_id . '_action';
         $this->nonce_name = $this->option_id . '_name';
@@ -43,7 +55,17 @@ class Gi_Toolkit_Mail_Catcher {
      */
     public function class_init() {
 		$this->header_title	= esc_html__( 'Mail catcher', 'gi-toolkit' );
+		$this->maybe_upgrade_table();
     }
+
+	/**
+	 * Retourne l’instance du module.
+	 *
+	 * @return self
+	 */
+	public static function instance() {
+		return self::$instance;
+	}
 
 	/**
 	 * Add admin body class
@@ -317,11 +339,34 @@ class Gi_Toolkit_Mail_Catcher {
 
 		$replace_assets = include( GI_TOOLKIT_PLUGIN_PATH . 'admin/assets/build/core/mail-catcher.asset.php' );
 		wp_enqueue_style( 'Gi_Toolkit_submenu', GI_TOOLKIT_PLUGIN_URL . 'admin/assets/build/core/mail-catcher.css', array(), $replace_assets['version'], 'all' );
-		wp_enqueue_script( 'Gi_Toolkit_submenu', GI_TOOLKIT_PLUGIN_URL . 'admin/assets/build/core/mail-catcher.js', $replace_assets['dependencies'], $replace_assets['version'], true );
-		wp_localize_script( 'Gi_Toolkit_submenu', 'Gi_ToolkitSubmenu', array(
-			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-			'nonce'   => wp_create_nonce( $this->nonce ),
-		));
+		wp_enqueue_script( 'Gi_Toolkit_submenu', GI_TOOLKIT_PLUGIN_URL . 'admin/assets/build/core/mail-catcher.js', array_merge( $replace_assets['dependencies'], array( 'chartjs' ) ), $replace_assets['version'], true );
+		wp_enqueue_script(
+			'chartjs',
+			'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+			array(),
+			'4.4.1',
+			true
+		);
+
+		wp_localize_script(
+			'Gi_Toolkit_submenu',
+			'Gi_ToolkitSubmenu',
+			array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( $this->nonce ),
+				'stats'   => $this->get_mail_statistics(),
+				'i18n'    => array(
+					'confirmBulkDelete' => __( 'Supprimer les e-mails sélectionnés ?', 'gi-toolkit' ),
+					'confirmBulkResend' => __( 'Renvoyer les e-mails sélectionnés ?', 'gi-toolkit' ),
+					'confirmDelete'     => __( 'Supprimer cet e-mail ?', 'gi-toolkit' ),
+					'confirmResend'     => __( 'Renvoyer cet e-mail ?', 'gi-toolkit' ),
+					'chartSent'         => __( 'Envoyés', 'gi-toolkit' ),
+					'chartFailed'       => __( 'Échoués', 'gi-toolkit' ),
+					'chartVolume'       => __( 'Volume (7 jours)', 'gi-toolkit' ),
+					'chartSuccessRate'  => __( 'Taux de succès', 'gi-toolkit' ),
+				),
+			)
+		);
 
 		include GI_TOOLKIT_PLUGIN_PATH . 'admin/templates/core/submenu/header.php';
 		$this->submenu_content();
@@ -334,10 +379,36 @@ class Gi_Toolkit_Mail_Catcher {
 	 * @since   2.14.0
 	 */
 	public function save_submenu() {
-		$nonce = sanitize_text_field( wp_unslash( $_POST[ $this->nonce_name ] ?? '' ) );
-		if ( wp_verify_nonce( $nonce, $this->nonce ) ) {
-			if ( isset( $_POST['delete'] ) ) {
-				$this->delete_log( $_POST );
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( empty( $_POST[ $this->nonce_name ] ) ) {
+			return;
+		}
+
+		$nonce = sanitize_text_field( wp_unslash( $_POST[ $this->nonce_name ] ) );
+		if ( ! wp_verify_nonce( $nonce, $this->nonce ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( isset( $_POST['delete'] ) && '' !== $_POST['delete'] ) {
+			$id = absint( $_POST['delete'] );
+			if ( $id > 0 ) {
+				$this->delete_logs( array( $id ) );
+				$this->redirect_with_notice( 'deleted', 1 );
+			}
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( isset( $_POST['resend'] ) && '' !== $_POST['resend'] ) {
+			$id = absint( $_POST['resend'] );
+			if ( $id > 0 ) {
+				$result = $this->resend_log( $id );
+				if ( is_wp_error( $result ) ) {
+					$this->redirect_with_notice( 'resend_error', 0, $result->get_error_message() );
+				} else {
+					$this->redirect_with_notice( 'resent', 1 );
+				}
 			}
 		}
 	}
@@ -542,20 +613,309 @@ class Gi_Toolkit_Mail_Catcher {
 	 * 
 	 * @since 2.14.0
 	 */
-	private function delete_log( $data ) {
+	/**
+	 * Supprime un ou plusieurs journaux d’e-mails.
+	 *
+	 * @param int[] $ids Identifiants des lignes.
+	 * @return int Nombre de lignes supprimées.
+	 */
+	public function delete_logs( array $ids ) {
 		global $wpdb;
 
-		$table_name   = $this->get_table_name();
-		$log_id       = (int) $data['delete'] ?? '';
-		$where        = array( 'id' => $log_id );
-        $where_format = array( '%d' );
+		$ids = array_filter( array_map( 'absint', $ids ) );
+		if ( empty( $ids ) || ! $this->is_table_exist() ) {
+			return 0;
+		}
 
-		//phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->delete(
-            $table_name,
-            $where,
-            $where_format
-        );
+		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return (int) $wpdb->query( $wpdb->prepare( "DELETE FROM {$this->get_table_name()} WHERE id IN ($placeholders)", $ids ) );
+	}
+
+	/**
+	 * Renvoie un e-mail capturé via wp_mail().
+	 *
+	 * @param int $id ID du journal.
+	 * @return true|WP_Error
+	 */
+	public function resend_log( $id ) {
+		$item = $this->get_log_by_id( $id );
+		if ( empty( $item ) ) {
+			return new WP_Error( 'gi_toolkit_mail_not_found', __( 'Cet e-mail n’existe pas.', 'gi-toolkit' ) );
+		}
+
+		$to          = $this->parse_list_field( $item['receiver'] ?? '' );
+		$headers     = $this->parse_list_field( $item['headers'] ?? '' );
+		$subject     = $item['subject'] ?? '';
+		$message     = $item['message'] ?? '';
+		$attachments = $this->parse_attachment_paths( $item['attachments'] ?? '' );
+
+		if ( empty( $to ) ) {
+			return new WP_Error( 'gi_toolkit_mail_no_receiver', __( 'Destinataire manquant.', 'gi-toolkit' ) );
+		}
+
+		$sent = wp_mail( $to, $subject, $message, $headers, $attachments );
+
+		if ( $sent ) {
+			$this->mark_log_resent( $id, '' );
+			return true;
+		}
+
+		global $phpmailer;
+		$error_message = __( 'Échec de l’envoi.', 'gi-toolkit' );
+		if ( isset( $phpmailer ) && is_object( $phpmailer ) && ! empty( $phpmailer->ErrorInfo ) ) {
+			$error_message = sanitize_text_field( $phpmailer->ErrorInfo );
+		}
+
+		$this->mark_log_resent( $id, $error_message );
+
+		return new WP_Error( 'gi_toolkit_mail_resend_failed', $error_message );
+	}
+
+	/**
+	 * Statistiques pour le tableau de bord.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function get_mail_statistics() {
+		global $wpdb;
+
+		$empty = array(
+			'total'        => 0,
+			'success'      => 0,
+			'failed'       => 0,
+			'today'        => 0,
+			'resent_total' => 0,
+			'chart_labels' => array(),
+			'chart_sent'   => array(),
+			'chart_failed' => array(),
+		);
+
+		if ( ! $this->is_table_exist() ) {
+			return $empty;
+		}
+
+		$table = $this->get_table_name();
+		$today = strtotime( 'today', (int) current_time( 'timestamp' ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$empty['total']   = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+		$empty['success'] = (int) $this->get_logs_count( 1 );
+		$empty['failed']  = (int) $this->get_logs_count( 2 );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$empty['today'] = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d", $today ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$empty['resent_total'] = (int) $wpdb->get_var( "SELECT COALESCE(SUM(resent_count), 0) FROM {$table}" );
+
+		for ( $i = 6; $i >= 0; $i-- ) {
+			$day_start = strtotime( '-' . $i . ' days', $today );
+			$day_end   = $day_start + DAY_IN_SECONDS;
+			$label     = wp_date( 'D d/m', $day_start );
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$sent = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d AND unixtime < %d AND (error IS NULL OR error = '')",
+					$day_start,
+					$day_end
+				)
+			);
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$failed = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d AND unixtime < %d AND error IS NOT NULL AND error != ''",
+					$day_start,
+					$day_end
+				)
+			);
+
+			$empty['chart_labels'][] = $label;
+			$empty['chart_sent'][]   = $sent;
+			$empty['chart_failed'][] = $failed;
+		}
+
+		return $empty;
+	}
+
+	/**
+	 * Récupère une entrée par ID.
+	 *
+	 * @param int $id ID.
+	 * @return array<string, mixed>|false
+	 */
+	public function get_log_by_id( $id ) {
+		return $this->get_one_item_by_id( $id );
+	}
+
+	/**
+	 * Redirection avec notice admin.
+	 *
+	 * @param string $code    Code notice.
+	 * @param int    $count   Nombre d’éléments concernés.
+	 * @param string $message Message optionnel.
+	 */
+	public function redirect_with_notice( $code, $count = 0, $message = '' ) {
+		$url = add_query_arg(
+			array(
+				'page'              => $this->page_id,
+				'gi_mc_notice'      => $code,
+				'gi_mc_notice_count'=> max( 0, (int) $count ),
+				'gi_mc_notice_msg'  => rawurlencode( $message ),
+			),
+			admin_url( 'admin.php' )
+		);
+
+		// Conserver filtres liste.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		foreach ( array( 'status', 'orderby', 'order', 'paged', 's' ) as $key ) {
+			if ( ! empty( $_GET[ $key ] ) ) {
+				$url = add_query_arg( $key, sanitize_text_field( wp_unslash( $_GET[ $key ] ) ), $url );
+			}
+		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! empty( $_REQUEST['search']['term'] ) ) {
+			$url = add_query_arg(
+				array(
+					'search[place]' => sanitize_key( wp_unslash( $_REQUEST['search']['place'] ?? 'receiver' ) ),
+					'search[term]'  => sanitize_text_field( wp_unslash( $_REQUEST['search']['term'] ) ),
+				),
+				$url
+			);
+		}
+
+		wp_safe_redirect( $url );
+		exit;
+	}
+
+	/**
+	 * Affiche les notices après action groupée ou unitaire.
+	 */
+	private function render_admin_notices() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$code = sanitize_key( wp_unslash( $_GET['gi_mc_notice'] ?? '' ) );
+		if ( '' === $code ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$count   = absint( $_GET['gi_mc_notice_count'] ?? 0 );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$message = sanitize_text_field( wp_unslash( $_GET['gi_mc_notice_msg'] ?? '' ) );
+
+		$type    = 'success';
+		$text    = '';
+
+		switch ( $code ) {
+			case 'deleted':
+				/* translators: %d: number of emails */
+				$text = sprintf( _n( '%d e-mail supprimé.', '%d e-mails supprimés.', $count, 'gi-toolkit' ), $count );
+				break;
+			case 'resent':
+				/* translators: %d: number of emails */
+				$text = sprintf( _n( '%d e-mail renvoyé.', '%d e-mails renvoyés.', $count, 'gi-toolkit' ), $count );
+				break;
+			case 'resend_error':
+				$type = 'error';
+				$text = $message ? $message : __( 'Échec du renvoi.', 'gi-toolkit' );
+				break;
+			case 'resend_partial':
+				$type = 'warning';
+				/* translators: 1: success count, 2: failed count */
+				$text = sprintf( __( '%1$d renvoyé(s), %2$d échec(s).', 'gi-toolkit' ), $count, absint( $message ) );
+				break;
+			default:
+				return;
+		}
+
+		printf(
+			'<div class="notice notice-%1$s is-dismissible gi-toolkit-mail-catcher-notice"><p>%2$s</p></div>',
+			esc_attr( $type ),
+			esc_html( $text )
+		);
+	}
+
+	/**
+	 * Met à jour les métadonnées de renvoi.
+	 *
+	 * @param int    $id    ID journal.
+	 * @param string $error Message d’erreur éventuel.
+	 */
+	private function mark_log_resent( $id, $error ) {
+		global $wpdb;
+
+		if ( ! $this->is_table_exist() ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$this->get_table_name()} SET resent_count = resent_count + 1, last_resent_at = %d, error = %s WHERE id = %d",
+				time(),
+				$error,
+				$id
+			)
+		);
+	}
+
+	/**
+	 * Découpe un champ multi-lignes stocké en base.
+	 *
+	 * @param string $value Valeur brute.
+	 * @return array<int, string>
+	 */
+	private function parse_list_field( $value ) {
+		$value = str_replace( '\n', "\n", (string) $value );
+		$parts = preg_split( '/,\s*|\n/', $value );
+		$parts = is_array( $parts ) ? $parts : array( $value );
+		return array_values( array_filter( array_map( 'trim', $parts ) ) );
+	}
+
+	/**
+	 * Chemins absolus des pièces jointes.
+	 *
+	 * @param string $value Valeur brute.
+	 * @return array<int, string>
+	 */
+	private function parse_attachment_paths( $value ) {
+		$paths = $this->parse_list_field( str_replace( ",\n", "\n", (string) $value ) );
+		$abs   = array();
+
+		foreach ( $paths as $rel ) {
+			$rel = ltrim( $rel, '/' );
+			$file = ABSPATH . $rel;
+			if ( is_file( $file ) ) {
+				$abs[] = $file;
+			}
+		}
+
+		return $abs;
+	}
+
+	/**
+	 * Ajoute les colonnes resent_count / last_resent_at si besoin.
+	 */
+	private function maybe_upgrade_table() {
+		global $wpdb;
+
+		if ( ! $this->is_table_exist() ) {
+			return;
+		}
+
+		$table = $this->get_table_name();
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$columns = $wpdb->get_col( "DESCRIBE {$table}", 0 );
+
+		if ( ! in_array( 'resent_count', $columns, true ) ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
+			$wpdb->query( "ALTER TABLE {$table} ADD COLUMN resent_count int(10) unsigned NOT NULL DEFAULT 0" );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$columns = $wpdb->get_col( "DESCRIBE {$table}", 0 );
+		}
+		if ( ! in_array( 'last_resent_at', $columns, true ) ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
+			$wpdb->query( "ALTER TABLE {$table} ADD COLUMN last_resent_at int(10) unsigned NOT NULL DEFAULT 0" );
+		}
 	}
 
 	/**
@@ -613,6 +973,8 @@ class Gi_Toolkit_Mail_Catcher {
             error varchar(400) NULL DEFAULT '',
             host varchar(200) NOT NULL DEFAULT '',
             unixtime int(10) NOT NULL DEFAULT '0',
+            resent_count int(10) unsigned NOT NULL DEFAULT '0',
+            last_resent_at int(10) unsigned NOT NULL DEFAULT '0',
             PRIMARY KEY (id),
 			FULLTEXT KEY idx_message (message)
         ) {$charset_collation_sql}";
@@ -845,81 +1207,82 @@ class Gi_Toolkit_Mail_Catcher {
 	 * @since   2.14.0
 	 */
 	private function submenu_content() {
-		// phpcs:disable
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended
 		$search = sanitize_text_field( wp_unslash( $_REQUEST['s'] ?? '' ) );
 		$page   = sanitize_text_field( wp_unslash( $_REQUEST['page'] ?? '' ) );
+		$status = sanitize_text_field( wp_unslash( $_GET['status'] ?? '0' ) );
+		$orderby = sanitize_text_field( wp_unslash( $_GET['orderby'] ?? '' ) );
+		$order   = sanitize_text_field( wp_unslash( $_GET['order'] ?? '' ) );
+		$paged   = absint( $_GET['paged'] ?? 0 );
+		$search_place = sanitize_key( wp_unslash( $_REQUEST['search']['place'] ?? '' ) );
+		$search_term  = sanitize_text_field( wp_unslash( $_REQUEST['search']['term'] ?? '' ) );
 		// phpcs:enable
+
 		$table  = $this->get_list_table();
 		$table->prepare_items( $search );
 		$table->display_notices();
 
-		$is_pro		    = gi_toolkit_is_pro();
-		$data           = get_option( $this->option_id, array() );
-		$counter        = $data['counter'] ?? 0;
-		$number         = $counter >= 5 ? 5 : $counter;
-		$is_reach_limit = $counter >= 5;
-		$counter        = str_pad( $number, 2, '0', STR_PAD_LEFT );
+		$stats         = $this->get_mail_statistics();
+		$success_rate  = $stats['total'] > 0 ? round( ( $stats['success'] / $stats['total'] ) * 100 ) : 0;
 		?>
-			<?php if ( ! $is_pro ): ?>
-			<div class="gi-toolkit-banner">
-				<div class="gi-toolkit-banner__content">
-					<div class="gi-toolkit-banner__content__message <?php echo $is_reach_limit ? 'limit-reached' : ''; ?>">
-						<div class="gi-toolkit-banner__content__message__text">
-							<?php if ( $is_reach_limit ): ?>
-								⚠️ <?php
-									echo wp_kses_post( sprintf( 
-										/* Translators: %s strong tag open and close */
-										__( 'You have reached the limit of %1$s 5 emails %2$s captured per day. To go further, upgrade to the next version.', 'gi-toolkit' ),
-										'<span class="strong">',
-										'</span>'
-									) );
-								?>
-							<?php else: ?>
-								<?php
-									echo wp_kses_post( sprintf(
-										/* Translators: %s strong tag open and close */
-										__( 'Sending is limited to %1$s 5 emails %2$s per day. For %3$s unlimited %4$s sending, upgrade to the next version.', 'gi-toolkit' ),
-										'<span class="strong">',
-										'</span>',
-										'<span class="strong">',
-										'</span>'
-									) );
-								?>
-							<?php endif; ?>
-							<span class="gi-toolkit-banner__content__message__text__pro"><?php esc_html_e( 'Pro', 'gi-toolkit' ); ?></span>
-						</div>
-						<div class="gi-toolkit-banner__content__message__counter">
-							<div class="gi-toolkit-banner__content__message__counter__title"><?php esc_html_e( 'Captured emails', 'gi-toolkit' ); ?></div>
-							<div class="gi-toolkit-banner__content__message__counter__number">
-								<span class="gi-toolkit-banner__content__message__counter__number__value <?php echo $is_reach_limit ? 'limit-reached' : ''; ?>"><?php echo esc_html( $counter ); ?></span>
-								<span class="gi-toolkit-banner__content__message__counter__number__base"><?php echo esc_html( '/05' ); ?></span>
-								<span class="gi-toolkit-banner__content__message__counter__number__symbol"><?php esc_html_e( 'Free', 'gi-toolkit' ); ?></span>
-							</div>
-						</div>
-					</div>
-					<div class="gi-toolkit-banner__content__cta" style="background-image: url(<?php echo esc_attr( GI_TOOLKIT_PLUGIN_URL . 'admin/images/button-bg.webp' ); ?>);">
-						<div class="gi-toolkit-banner__content__cta__text">
-							<?php
-								echo wp_kses_post( sprintf(
-									/* Translators: %s line break */
-									__( 'Unlock %s more emails', 'gi-toolkit' ),
-									'<br>'
-								) );
-							?>
-						</div>
-						<div class="gi-toolkit-banner__content__cta__btn gi-toolkit__button">
-							<a href="https://genevois-informatique.ch/" target="_blank" class="gi-toolkit-button">
-								<?php esc_html_e( 'Try for 15 days', 'gi-toolkit' ); ?>
-								<span class="gi-toolkit-button__pro"><?php esc_html_e( 'Pro', 'gi-toolkit' ); ?></span>
-							</a>
-						</div>
-					</div>
+			<?php $this->render_admin_notices(); ?>
+
+			<div class="gi-toolkit-mail-catcher-stats">
+				<div class="gi-toolkit-mail-catcher-stats__card">
+					<span class="gi-toolkit-mail-catcher-stats__label"><?php esc_html_e( 'Total capturés', 'gi-toolkit' ); ?></span>
+					<strong class="gi-toolkit-mail-catcher-stats__value"><?php echo esc_html( number_format_i18n( $stats['total'] ) ); ?></strong>
+				</div>
+				<div class="gi-toolkit-mail-catcher-stats__card gi-toolkit-mail-catcher-stats__card--success">
+					<span class="gi-toolkit-mail-catcher-stats__label"><?php esc_html_e( 'Réussis', 'gi-toolkit' ); ?></span>
+					<strong class="gi-toolkit-mail-catcher-stats__value"><?php echo esc_html( number_format_i18n( $stats['success'] ) ); ?></strong>
+				</div>
+				<div class="gi-toolkit-mail-catcher-stats__card gi-toolkit-mail-catcher-stats__card--failed">
+					<span class="gi-toolkit-mail-catcher-stats__label"><?php esc_html_e( 'Échoués', 'gi-toolkit' ); ?></span>
+					<strong class="gi-toolkit-mail-catcher-stats__value"><?php echo esc_html( number_format_i18n( $stats['failed'] ) ); ?></strong>
+				</div>
+				<div class="gi-toolkit-mail-catcher-stats__card">
+					<span class="gi-toolkit-mail-catcher-stats__label"><?php esc_html_e( 'Aujourd’hui', 'gi-toolkit' ); ?></span>
+					<strong class="gi-toolkit-mail-catcher-stats__value"><?php echo esc_html( number_format_i18n( $stats['today'] ) ); ?></strong>
+				</div>
+				<div class="gi-toolkit-mail-catcher-stats__card">
+					<span class="gi-toolkit-mail-catcher-stats__label"><?php esc_html_e( 'Renvois effectués', 'gi-toolkit' ); ?></span>
+					<strong class="gi-toolkit-mail-catcher-stats__value"><?php echo esc_html( number_format_i18n( $stats['resent_total'] ) ); ?></strong>
+				</div>
+				<div class="gi-toolkit-mail-catcher-stats__card gi-toolkit-mail-catcher-stats__card--rate">
+					<span class="gi-toolkit-mail-catcher-stats__label"><?php esc_html_e( 'Taux de succès', 'gi-toolkit' ); ?></span>
+					<strong class="gi-toolkit-mail-catcher-stats__value"><?php echo esc_html( $success_rate ); ?>%</strong>
 				</div>
 			</div>
-			<?php endif; ?>
 
-			<form id="email-list" method="get">
+			<div class="gi-toolkit-mail-catcher-charts">
+				<div class="gi-toolkit-mail-catcher-charts__panel">
+					<h3><?php esc_html_e( 'Volume sur 7 jours', 'gi-toolkit' ); ?></h3>
+					<canvas id="gi-toolkit-mail-chart-volume" height="120"></canvas>
+				</div>
+				<div class="gi-toolkit-mail-catcher-charts__panel gi-toolkit-mail-catcher-charts__panel--donut">
+					<h3><?php esc_html_e( 'Répartition succès / échecs', 'gi-toolkit' ); ?></h3>
+					<canvas id="gi-toolkit-mail-chart-status" height="120"></canvas>
+				</div>
+			</div>
+
+			<form id="email-list" method="post" action="">
 				<input type="hidden" name="page" value="<?php echo esc_attr( $page ); ?>" />
+				<?php if ( '' !== $status ) : ?>
+					<input type="hidden" name="status" value="<?php echo esc_attr( $status ); ?>" />
+				<?php endif; ?>
+				<?php if ( '' !== $orderby ) : ?>
+					<input type="hidden" name="orderby" value="<?php echo esc_attr( $orderby ); ?>" />
+				<?php endif; ?>
+				<?php if ( '' !== $order ) : ?>
+					<input type="hidden" name="order" value="<?php echo esc_attr( $order ); ?>" />
+				<?php endif; ?>
+				<?php if ( $paged > 0 ) : ?>
+					<input type="hidden" name="paged" value="<?php echo esc_attr( (string) $paged ); ?>" />
+				<?php endif; ?>
+				<?php if ( '' !== $search_place && '' !== $search_term ) : ?>
+					<input type="hidden" name="search[place]" value="<?php echo esc_attr( $search_place ); ?>" />
+					<input type="hidden" name="search[term]" value="<?php echo esc_attr( $search_term ); ?>" />
+				<?php endif; ?>
 				<?php
 					wp_nonce_field( $this->nonce, $this->nonce_name );
 					$table->search_box( __( 'Search', 'gi-toolkit' ), 's' );
@@ -964,7 +1327,7 @@ class Gi_Toolkit_Mail_Catcher {
 
 		if ( ! $table ) {
 			require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/mail-catcher/class-logs-list-table.php';
-			$table = new Gi_Toolkit_Mail_Catcher_Logs_List_Table();
+			$table = new Gi_Toolkit_Mail_Catcher_Logs_List_Table( $this );
 		}
 
 		return $table;

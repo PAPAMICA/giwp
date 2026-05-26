@@ -5,7 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
  * Send data to Gi_Toolkit if the user is allowed to do so.
  * No personal information is collected, only general Gi_Toolkit settings.
  *
- * @link       https://genevois-informatique.ch
+ * @link       https://genevois-informatique.com
  * @since      1.0.0
  *
  * @package           Gi_Toolkit
@@ -26,7 +26,7 @@ class Gi_Toolkit_Stats {
 	 * Initialize the class and set its properties.
 	 */
 	public function __construct() {
-		$this->update_url = 'https://genevois-informatique.ch/wp-json/gi_toolkit-opt-in/v1/update';
+		$this->update_url = 'https://genevois-informatique.com/wp-json/gi_toolkit-opt-in/v1/update';
 
 		if ( wp_get_environment_type() == 'local' || GI_TOOLKIT_DEV_MOD ) {
 			$this->update_url = false;

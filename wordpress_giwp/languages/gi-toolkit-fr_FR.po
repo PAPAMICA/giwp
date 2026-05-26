@@ -5191,32 +5191,32 @@ msgstr ""
 
 #: admin/templates/core/page-settings.php:382
 #, fuzzy
-msgid "https://genevois-informatique.ch/en/changelog/"
-msgstr "https://genevois-informatique.ch/en/changelog/"
+msgid "https://genevois-informatique.com/en/changelog/"
+msgstr "https://genevois-informatique.com/en/changelog/"
 
 #: licensing/src/Settings.php:298
-msgid "https://genevois-informatique.ch/en/customer-dashboard/"
-msgstr "https://genevois-informatique.ch/fr/customer-dashboard/"
+msgid "https://genevois-informatique.com/en/customer-dashboard/"
+msgstr "https://genevois-informatique.com/fr/customer-dashboard/"
 
 #: licensing/src/Settings.php:226
 msgid ""
-"https://genevois-informatique.ch/en/how-to-upgrade-to-gi_toolkit-pro-"
+"https://genevois-informatique.com/en/how-to-upgrade-to-gi_toolkit-pro-"
 "complete-guide/"
 msgstr ""
-"https://genevois-informatique.ch/fr/comment-passer-a-la-version-pro-de-"
+"https://genevois-informatique.com/fr/comment-passer-a-la-version-pro-de-"
 "gi_toolkit-guide-complet/"
 
 #: licensing/src/Settings.php:384
-msgid "https://genevois-informatique.ch/en/modules/"
-msgstr "https://genevois-informatique.ch/fr/modules/"
+msgid "https://genevois-informatique.com/en/modules/"
+msgstr "https://genevois-informatique.com/fr/modules/"
 
 #: licensing/src/Settings.php:369
-msgid "https://genevois-informatique.ch/en/products-2/gi_toolkit-pro/"
-msgstr "https://genevois-informatique.ch/fr/produits/gi_toolkit-pro/"
+msgid "https://genevois-informatique.com/en/products-2/gi_toolkit-pro/"
+msgstr "https://genevois-informatique.com/fr/produits/gi_toolkit-pro/"
 
 #: admin/templates/core/page-settings.php:270
-msgid "I agree to share my configuration with genevois-informatique.ch."
-msgstr "J'accepte de partager ma configuration avec genevois-informatique.ch."
+msgid "I agree to share my configuration with genevois-informatique.com."
+msgstr "J'accepte de partager ma configuration avec genevois-informatique.com."
 
 #: admin/templates/core/page-settings.php:352
 #, fuzzy

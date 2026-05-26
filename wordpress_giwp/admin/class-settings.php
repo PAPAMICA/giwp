@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 /**
  * The admin-specific functionality of the plugin.
  *
- * @link       https://genevois-informatique.ch
+ * @link       https://genevois-informatique.com
  * @since      1.0.0
  *
  * @package           Gi_Toolkit
@@ -105,7 +105,7 @@ class Gi_Toolkit_Settings {
 				'highRiskModules'    => Gi_Toolkit_Security::high_risk_modules(),
 				'i18n'               => array(
 					'confirmActivate'  => __( 'Activer le module « %s » ?', 'gi-toolkit' ),
-					'highRiskBlocked'  => __( 'Ce module est à haut risque. Activez d’abord l’option correspondante dans l’onglet Sécurité.', 'gi-toolkit' ),
+					'highRiskBlocked'  => __( 'Ce module est à haut risque. Activez d’abord l’option correspondante dans l’onglet Paramètres.', 'gi-toolkit' ),
 				),
 			)
 		);
@@ -197,43 +197,12 @@ class Gi_Toolkit_Settings {
 			return;
 		}
 
-		$promot_modal_clicked   = isset($_POST['gi_toolkit_promot_modal']);
 		$settings_upload_json 	= isset($_POST['gi_toolkit_settings_tab_upload_json_submit']);
 		$settings_download_json	= isset($_POST['gi_toolkit_settings_tab_download_json_submit']);
 
 		Gi_Toolkit_Handle_options::require_once_all_options();
 
-		if ( $promot_modal_clicked ) {
-
-			$promot_modal       = sanitize_text_field( wp_unslash( $_POST['gi_toolkit_promot_modal'] ) );
-			$promot_option      = array();
-			$manage_license_url = false;
-
-			if ( 'no-longer' == $promot_modal ){
-				$promot_option = array(
-					'status' => 'no-longer'
-				);
-			} else if ( 'have-license' == $promot_modal ) {
-				$promot_option = array(
-					'status'    => '',
-					'last_show' => time(),
-				);
-				$manage_license_url = admin_url( 'admin.php?page=gi_toolkit-manage-license' );
-			} else if ( 'try-now' == $promot_modal ) {
-				$promot_option = array(
-					'status'    => '',
-					'last_show' => time(),
-				);
-				$manage_license_url = admin_url( 'admin.php?page=gi_toolkit-manage-license' );
-			}
-			
-			update_option( GI_TOOLKIT_PLUGIN_SETTINGS . '_promot', $promot_option, false );
-			if ( $manage_license_url ) {
-				wp_safe_redirect( $manage_license_url );
-				exit;
-			}
-
-		} else if ( $settings_upload_json ) {
+		if ( $settings_upload_json ) {
 
 			//phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			$upload_file = gi_toolkit_clean( wp_unslash( $_FILES['gi_toolkit_settings_tab_input'] ?? '' ) );

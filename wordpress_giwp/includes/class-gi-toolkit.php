@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
  * A class definition that includes attributes and functions used across both the
  * public-facing side of the site and the admin area.
  *
- * @link       https://genevois-informatique.ch
+ * @link       https://genevois-informatique.com
  * @since      1.0.0
  *
  * @package    	Gi_Toolkit
@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
  * @since      1.0.0
  * @package    	Gi_Toolkit
  * @subpackage	Gi_Toolkit/includes
- * @author     	Genevois Informatique <contact@genevois-informatique.ch>
+ * @author     	Genevois Informatique <contact@genevois-informatique.com>
  */
 class Gi_Toolkit {
 
@@ -164,11 +164,6 @@ class Gi_Toolkit {
 		 */
 		require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/class-stats.php';
 
-		/**
-		 * The class responsible for handling the surecart.
-		 */
-		require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/class-surecart.php';
-
 		$this->loader = new Gi_Toolkit_Loader();
 
 	}
@@ -208,13 +203,6 @@ class Gi_Toolkit {
 		$this->loader->add_action( 'gi_toolkit_daily_regenerate_assets', $gi_toolkit_settings, 'cron_regenerate_assets' );
 		$this->loader->add_action( 'wp_ajax_gi_toolkit_regenerate_assets', $gi_toolkit_settings, 'ajax_regenerate_assets' );
 		$this->loader->add_action( 'wp_ajax_gi_toolkit_get_system_info', $gi_toolkit_settings, 'ajax_get_system_info' );
-
-		$gi_toolkit_surecart = new Gi_Toolkit_Surecart();
-		$this->loader->add_action( 'init', $gi_toolkit_surecart, 'init_surecart' );
-		$this->loader->add_action( 'admin_enqueue_scripts', $gi_toolkit_surecart, 'enqueue_scripts_styles' );
-		$this->loader->add_action( 'gi_toolkit_licensing/after_submit_section', $gi_toolkit_surecart, 'show_warning_if_new_version' );
-		$this->loader->add_action( 'gi_toolkit_licensing/license_activated', $gi_toolkit_surecart, 'after_activated' );
-		$this->loader->add_action( 'gi_toolkit_licensing/license_deactivated', $gi_toolkit_surecart, 'after_deactivated' );
 	}
 
 	/**

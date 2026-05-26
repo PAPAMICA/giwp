@@ -150,7 +150,7 @@ array_multisort( $gi_toolkit_order, SORT_ASC, $gi_toolkit_modules );
                                         <span class="comming-soon"><?php esc_html_e('coming soon', 'gi-toolkit'); ?></span>
                                     <?php endif; ?>
 									<?php if ( !$gi_toolkit_is_addon_module && !$gi_toolkit_coming_soon ): ?>
-										<a class="documentation" href="https://genevois-informatique.ch/?module_documentation=<?php echo esc_attr( $gi_toolkit_option_key ); ?>" target="_blank"><?php echo wp_kses( file_get_contents( GI_TOOLKIT_PLUGIN_PATH . 'admin/images/documentation-icon.svg' ), gi_toolkit_allowed_tags_for_svg_files() ); ?><?php esc_html_e('DOC', 'gi-toolkit'); ?></a>
+										<a class="documentation" href="https://genevois-informatique.com/?module_documentation=<?php echo esc_attr( $gi_toolkit_option_key ); ?>" target="_blank"><?php echo wp_kses( file_get_contents( GI_TOOLKIT_PLUGIN_PATH . 'admin/images/documentation-icon.svg' ), gi_toolkit_allowed_tags_for_svg_files() ); ?><?php esc_html_e('DOC', 'gi-toolkit'); ?></a>
 									<?php endif; ?>
 									<?php if ( is_array($gi_toolkit_module_settings_submenu_pages) && isset($gi_toolkit_module_settings_submenu_pages[$gi_toolkit_option_key]) ): ?>
 										<a class="module-settings" href="<?php echo esc_url( admin_url( 'admin.php?page=' . $gi_toolkit_module_settings_submenu_pages[$gi_toolkit_option_key] ) ); ?>"><?php echo wp_kses( file_get_contents( GI_TOOLKIT_PLUGIN_PATH . 'admin/svg/gear.svg' ), gi_toolkit_allowed_tags_for_svg_files() ); ?><?php esc_html_e('SETTINGS', 'gi-toolkit'); ?></a>
@@ -172,11 +172,7 @@ array_multisort( $gi_toolkit_order, SORT_ASC, $gi_toolkit_modules );
 
                 <?php endforeach; ?>
 
-                <?php include GI_TOOLKIT_PLUGIN_PATH . 'admin/templates/core/page-settings-tabs/security.php'; ?>
-
                 <?php include GI_TOOLKIT_PLUGIN_PATH . 'admin/templates/core/page-settings-tabs/settings.php'; ?>
-
-                <?php include GI_TOOLKIT_PLUGIN_PATH . 'admin/templates/core/page-settings-tabs/credits.php'; ?>
 
                 <?php include GI_TOOLKIT_PLUGIN_PATH . 'admin/templates/core/page-settings-tabs/credentials.php'; ?>
 
@@ -209,7 +205,7 @@ array_multisort( $gi_toolkit_order, SORT_ASC, $gi_toolkit_modules );
 				<?php echo do_shortcode( '[gi_toolkit_changelog limit="3"]' ); ?>
 
 				<div class="gi-toolkit__changelog-modal__content__body__link">
-					<a href="<?php echo esc_url( __( 'https://genevois-informatique.ch/en/changelog/', 'gi-toolkit' ) ); ?>" target="_blank"><?php esc_html_e( 'View all changelogs', 'gi-toolkit' ); ?></a>
+					<a href="<?php echo esc_url( __( 'https://genevois-informatique.com/en/changelog/', 'gi-toolkit' ) ); ?>" target="_blank"><?php esc_html_e( 'View all changelogs', 'gi-toolkit' ); ?></a>
 				</div>
 			</div>
         </div>

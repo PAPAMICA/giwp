@@ -4,7 +4,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: GI-Toolkit\n"
-"Report-Msgid-Bugs-To: Genevois Informatique <contact@genevois-informatique.ch>\n"
+"Report-Msgid-Bugs-To: Genevois Informatique <contact@genevois-informatique.com>\n"
 "POT-Creation-Date: 2025-09-18 15:15+0100\n"
 "PO-Revision-Date: 2026-03-07 15:54+0000\n"
 "Last-Translator: \n"
@@ -5580,37 +5580,37 @@ msgstr ""
 
 #: admin/templates/core/page-settings.php:382
 #, fuzzy
-msgid "https://genevois-informatique.ch/en/changelog/"
-msgstr "https://genevois-informatique.ch/en/changelog/"
+msgid "https://genevois-informatique.com/en/changelog/"
+msgstr "https://genevois-informatique.com/en/changelog/"
 
 #: licensing/src/Settings.php:298
 #, fuzzy
-msgid "https://genevois-informatique.ch/en/customer-dashboard/"
-msgstr "https://genevois-informatique.ch/es/panel-de-cliente/"
+msgid "https://genevois-informatique.com/en/customer-dashboard/"
+msgstr "https://genevois-informatique.com/es/panel-de-cliente/"
 
 #: licensing/src/Settings.php:226
 #, fuzzy
 msgid ""
-"https://genevois-informatique.ch/en/how-to-upgrade-to-gi_toolkit-pro-"
+"https://genevois-informatique.com/en/how-to-upgrade-to-gi_toolkit-pro-"
 "complete-guide/"
 msgstr ""
-"https://genevois-informatique.ch/es/como-actualizar-a-gi_toolkit-pro-guia-"
+"https://genevois-informatique.com/es/como-actualizar-a-gi_toolkit-pro-guia-"
 "completa/"
 
 #: licensing/src/Settings.php:384
 #, fuzzy
-msgid "https://genevois-informatique.ch/en/modules/"
-msgstr "https://genevois-informatique.ch/es/modules/"
+msgid "https://genevois-informatique.com/en/modules/"
+msgstr "https://genevois-informatique.com/es/modules/"
 
 #: licensing/src/Settings.php:369
 #, fuzzy
-msgid "https://genevois-informatique.ch/en/products-2/gi_toolkit-pro/"
-msgstr "https://genevois-informatique.ch/es/productos-2/gi_toolkit-pro/"
+msgid "https://genevois-informatique.com/en/products-2/gi_toolkit-pro/"
+msgstr "https://genevois-informatique.com/es/productos-2/gi_toolkit-pro/"
 
 #: admin/templates/core/page-settings.php:270
 #, fuzzy
-msgid "I agree to share my configuration with genevois-informatique.ch."
-msgstr "Acepto compartir mi configuración con genevois-informatique.ch."
+msgid "I agree to share my configuration with genevois-informatique.com."
+msgstr "Acepto compartir mi configuración con genevois-informatique.com."
 
 #: admin/templates/core/page-settings.php:352
 #, fuzzy

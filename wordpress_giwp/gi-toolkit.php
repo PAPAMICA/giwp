@@ -2,11 +2,11 @@
 /**
  * @wordpress-plugin
  * Plugin Name:       GI-Toolkit
- * Plugin URI:        https://genevois-informatique.ch/
+ * Plugin URI:        https://genevois-informatique.com/
  * Description:       GI-Toolkit enhances your WordPress administration experience by providing a powerful suite of features designed to optimize and streamline your website management. From media enhancements to user experience improvements and security fortifications, this toolkit is essential for any WordPress site owner looking to elevate their admin interface. With easy-to-use settings and impactful tweaks, you can tailor your site's backend to your specific needs.
- * Version:           2.20.3
+ * Version:           2.20.5
  * Author:            Genevois Informatique
- * Author URI:        https://genevois-informatique.ch
+ * Author URI:        https://genevois-informatique.com
  * License:           GPL-2.0+
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain:       gi-toolkit

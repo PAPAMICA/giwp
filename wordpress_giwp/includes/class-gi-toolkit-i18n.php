@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
  * Loads and defines the internationalization files for this plugin
  * so that it is ready for translation.
  *
- * @link       https://genevois-informatique.ch
+ * @link       https://genevois-informatique.com
  * @since      1.0.0
  *
  * @package   	Gi_Toolkit
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
  * @since      1.0.0
  * @package    	Gi_Toolkit
  * @subpackage	Gi_Toolkit/includes
- * @author    	Genevois Informatique <contact@genevois-informatique.ch>
+ * @author    	Genevois Informatique <contact@genevois-informatique.com>
  */
 class Gi_Toolkit_i18n {
 

@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 /**
  * The class responsible for stocking the data of the modules.
  *
- * @link       https://genevois-informatique.ch
+ * @link       https://genevois-informatique.com
  * @since      1.0.0
  *
  * @package           Gi_Toolkit
@@ -1368,11 +1368,6 @@ class Gi_Toolkit_Modules_Data {
 				'logo'      => 'tools.svg',
 				'exception' => false,
 			),
-			'security' => array(
-				'name'      => esc_html__( 'Security', 'gi-toolkit' ),
-				'logo'      => 'shield.svg',
-				'exception' => true,
-			),
 			'settings' => array(
 				'name'      => esc_html__( 'Settings', 'gi-toolkit' ),
 				'logo'      => 'gear.svg',
@@ -1383,11 +1378,6 @@ class Gi_Toolkit_Modules_Data {
 				'logo'      => 'key.svg',
 				'exception' => true,
 			),
-			'credits' => array(
-				'name'      => esc_html__( 'Credits', 'gi-toolkit' ),
-				'logo'      => 'star.svg',
-				'exception' => true,
-			)
 		);
 
 		/**

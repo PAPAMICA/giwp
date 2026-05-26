@@ -110,7 +110,7 @@ GI-Toolkit est une boîte à outils tout-en-un pour optimiser WordPress : tablea
 * Wider Admin Menu
 
 == À propos ==
-Développé et distribué par [Genevois Informatique](https://genevois-informatique.ch).
+Développé et distribué par [Genevois Informatique](https://genevois-informatique.com).
 
 == Installation ==
 
@@ -145,7 +145,7 @@ Yes, GI-Toolkit includes many security features that can replace your existing s
 Yes, GI-Toolkit includes a media encoder that can convert images to WebP and, with PHP 8.1+ and imageavif support, to AVIF. Conversion is done locally on your server (no third-party image upload).
 
 = How can I report security bugs? =
-You can report security bugs through the Patchstack Vulnerability Disclosure Program. The Patchstack team help validate, triage and handle any security vulnerabilities. [Report a security vulnerability.](https://genevois-informatique.ch/)
+You can report security bugs through the Patchstack Vulnerability Disclosure Program. The Patchstack team help validate, triage and handle any security vulnerabilities. [Report a security vulnerability.](https://genevois-informatique.com/)
 
 = Does GI-Toolkit work with WooCommerce? =
 Yes, GI-Toolkit is fully compatible with WooCommerce. It includes specific features like disabling WooCommerce logout confirmation, customizing the My Account menu, and disabling cart fragments scripts to improve performance. Many WooCommerce store owners use GI-Toolkit to enhance their site security and optimize their admin dashboard.
@@ -209,4 +209,4 @@ Security: Module: Prevent User Enumeration: Prevent use of uppercase letters in 
 Fix: Preserve existing non-plugin .htaccess rules and resync WordPress rewrite block after plugin updates to prevent Apache 404 on /wp-json/ and broken permalinks.
 
 
-[See changelog for all versions.](https://genevois-informatique.ch/en/changelog/)
+[See changelog for all versions.](https://genevois-informatique.com/en/changelog/)

@@ -223,7 +223,7 @@ class Settings {
 		<div class="wrap gi_toolkit-license-wrap">
 			<div class="gi_toolkit-header-section">
 				<h1><?php echo esc_html( $this->menu_args['page_title'] ); ?></h1>
-				<a class="gi_toolkit-header-section__help" target="_blank" href="<?php echo esc_url( __( 'https://genevois-informatique.ch/', 'gi-toolkit' ) ); ?>">
+				<a class="gi_toolkit-header-section__help" target="_blank" href="<?php echo esc_url( __( 'https://genevois-informatique.com/', 'gi-toolkit' ) ); ?>">
 					<?php //phpcs:ignore PluginCheck.CodeAnalysis.ImageFunctions.NonEnqueuedImage ?>
 					<img src="<?php echo esc_url(GI_TOOLKIT_PLUGIN_URL . 'admin/svg/interrogation.svg'); ?>" alt="">
 					<span>
@@ -295,7 +295,7 @@ class Settings {
 							</button>
 						<?php endif; ?>
 						
-						<a href="<?php echo esc_url( __( 'https://genevois-informatique.ch/en/customer-dashboard/', 'gi-toolkit') ); ?>" target="_blank" class="gi_toolkit-my-account-button">
+						<a href="<?php echo esc_url( __( 'https://genevois-informatique.com/en/customer-dashboard/', 'gi-toolkit') ); ?>" target="_blank" class="gi_toolkit-my-account-button">
 							<?php echo wp_kses( file_get_contents(GI_TOOLKIT_PLUGIN_PATH . 'admin/svg/grey-my-account.svg'), gi_toolkit_allowed_tags_for_svg_files() ); ?>
 							<?php esc_html_e( 'My account', 'gi-toolkit' ); ?>
 						</a>
@@ -320,7 +320,7 @@ class Settings {
 						<?php esc_html_e( 'Cette distribution inclut l’ensemble des fonctionnalités. Utilisez cette page pour activer une clé de licence si votre organisation en exige une pour les mises à jour.', 'gi-toolkit' ); ?>
 					</p>
 					<p style="margin-top:16px;">
-						<a class="button button-secondary" href="<?php echo esc_url( __( 'https://genevois-informatique.ch/', 'gi-toolkit' ) ); ?>" target="_blank" rel="noopener noreferrer">
+						<a class="button button-secondary" href="<?php echo esc_url( __( 'https://genevois-informatique.com/', 'gi-toolkit' ) ); ?>" target="_blank" rel="noopener noreferrer">
 							<?php esc_html_e( 'Documentation & support', 'gi-toolkit' ); ?>
 						</a>
 					</p>
