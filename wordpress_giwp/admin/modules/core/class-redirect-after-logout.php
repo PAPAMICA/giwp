@@ -1,0 +1,254 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
+
+/**
+ * Module Name: Redirect After Logout
+ * Description: 
+ * @since 1.3.0
+ */
+class Gi_Toolkit_Redirect_After_Logout {
+
+    private $option_id;
+    private $header_title;
+    private $nonce_action;
+    private $settings;
+    private $default_settings;
+
+    /**
+     * Invoke the hooks
+     * 
+     */
+    public function __construct() {
+
+        $this->option_id        = GI_TOOLKIT_PLUGIN_SETTINGS . '_redirect_after_logout';
+        $this->nonce_action     = $this->option_id . '_action';
+
+        add_action( 'init', array( $this, 'class_init' ) );
+        add_action( 'admin_menu', array( $this, 'add_submenu' ), 999 );
+        add_action( 'admin_init', array( $this, 'save_submenu' ) );
+        add_action( 'wp_logout', array( $this, 'redirect_after_logout' ), 5, 1 );
+    }
+
+    /**
+     * Initialize the class
+     */
+    public function class_init() {
+        $this->header_title = esc_html__( 'Redirect After Logout', 'gi-toolkit' );
+    }
+
+    /**
+     * Redirect after logout
+     */
+    public function redirect_after_logout( $user_id ) {
+
+        $settings    = $this->get_settings();
+        $roles       = $settings['roles'];
+        $redirect_to = trim( trim( $settings['redirect_to'], '/' ) );
+        $user        = get_userdata( $user_id );
+
+        if ( empty( $redirect_to ) ) {
+            return;
+        }
+
+        if ( ! isset( $user->roles ) || ! is_array( $user->roles ) ) {
+            return;
+        }
+
+        $user_roles = array_flip( $user->roles );
+        $intersect  = array_intersect_key( $roles, $user_roles );
+
+        foreach ( $intersect as $role => $value ) {
+
+            if ( '1' === $value ) {
+                wp_safe_redirect( home_url( $redirect_to ) );
+                exit();
+            }
+        }
+    }
+
+    /**
+     * get_settings
+     *
+     * @return void
+     */
+    public function get_settings(){
+        $this->default_settings = $this->get_default_settings();
+        return get_option( $this->option_id, $this->default_settings );
+    }
+
+    /**
+     * Save settings
+     */
+    public function save_settings( $new_settings ) {
+
+		update_option( $this->option_id, $new_settings );
+    }
+
+    /**
+     * Add a submenu
+     *
+     */
+    public function add_submenu(){
+
+        Gi_Toolkit_Settings::add_submenu_page(
+            'gi-toolkit-settings',
+            $this->header_title,
+            $this->header_title,
+            'manage_options',
+            'gi-toolkit-settings-redirect-after-logout', 
+            array( $this, 'render_submenu'),
+            null
+        );
+    }
+
+    /**
+     * Render the submenu
+     * 
+     */
+    public function render_submenu() {
+
+        $submenu_assets = include( GI_TOOLKIT_PLUGIN_PATH . 'admin/assets/build/core/redirect-after-logout.asset.php' );
+        wp_enqueue_style( 'Gi_Toolkit_submenu', GI_TOOLKIT_PLUGIN_URL . 'admin/assets/build/core/redirect-after-logout.css', array(), $submenu_assets['version'], 'all' );
+        wp_enqueue_script( 'Gi_Toolkit_submenu', GI_TOOLKIT_PLUGIN_URL . 'admin/assets/build/core/redirect-after-logout.js', $submenu_assets['dependencies'], $submenu_assets['version'], true );
+
+        include GI_TOOLKIT_PLUGIN_PATH . 'admin/templates/core/submenu/header.php';
+        $this->submenu_content();
+        include GI_TOOLKIT_PLUGIN_PATH . 'admin/templates/core/submenu/footer.php';
+    }
+
+    /**
+     * Save the submenu option
+     *
+     */
+    public function save_submenu() {
+
+		$nonce = sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ?? '' ) );
+		
+		if ( wp_verify_nonce($nonce, $this->nonce_action) ) {
+
+			//phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+            $new_settings = $this->sanitize_settings( wp_unslash( $_POST[$this->option_id] ?? array() ) );
+            
+            $this->save_settings( $new_settings );
+            wp_safe_redirect( sanitize_url( wp_unslash( $_SERVER['REQUEST_URI'] ?? '' ) ) );
+			exit;
+		}
+    }
+
+    /**
+     * sanitize_settings
+     * 
+     * @return array
+     */
+    public function sanitize_settings($new_settings){
+
+        $this->default_settings = $this->get_default_settings();
+        $sanitized_settings = array();
+
+        foreach ( $this->default_settings as $settings_key => $settings_value ) {
+            
+            switch ($settings_key) {
+                case 'roles':
+                    foreach ( $settings_value as $role => $value ) {
+                        $sanitized_settings[$settings_key][$role] = sanitize_text_field($new_settings[$settings_key][$role] ?? '0');
+                    }
+                break;
+                case 'redirect_to':
+                    $sanitized_settings[$settings_key] = sanitize_text_field( $new_settings[$settings_key] ?? '' );
+                break;
+            }
+        }
+
+        return $sanitized_settings;
+    }
+
+    /**
+     * get_default_settings
+     *
+     * @return array
+     */
+    private function get_default_settings(){
+        if( $this->default_settings !== null ) return $this->default_settings;
+
+        return array(
+            'roles'       => $this->get_roles_settings(),
+            'redirect_to' => '',
+        );
+    }
+
+    /**
+     * Add the submenu content
+     *
+     */
+    private function submenu_content() {
+        $this->settings = $this->get_settings();
+        $redirect_to    = $this->settings['redirect_to'] ?? '';
+        $roles          = $this->get_roles();
+
+        ?>
+            <div class="gi-toolkit__section">
+                <div class="gi-toolkit__section__desc"><?php esc_html_e('Set custom redirect URL for all or some user roles after logout.', 'gi-toolkit'); ?></div>
+                <div class="gi-toolkit__section__body">
+
+                    <div class="gi-toolkit__section__body__item">
+                        <div class="gi-toolkit__section__body__item__title"><?php esc_html_e( 'Redirect to', 'gi-toolkit' ); ?></div>
+                        <div class="gi-toolkit__section__body__item__content">
+                            <div class="gi-toolkit__input-text slug-url">
+                                <div>
+                                    <code>
+                                        <?php echo esc_html( get_site_url() . '/' ); ?>
+                                    </code>
+                                </div>
+                                <div>
+                                    <input type="text" name="<?php echo esc_attr( $this->option_id . '[redirect_to]' ); ?>" value="<?php echo esc_attr( $redirect_to ); ?>">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="gi-toolkit__section__body__item">
+                        <div class="gi-toolkit__section__body__item__title"><?php esc_html_e('Redirected roles', 'gi-toolkit'); ?></div>
+                        <div class="gi-toolkit__section__body__item__content">
+                            <?php foreach ( $roles as $role_slug => $role_name ): ?>
+                                <div class="gi-toolkit__checkbox">
+                                    <label class="gi-toolkit__checkbox__label">
+                                        <input type="hidden" name="<?php echo esc_attr( $this->option_id . '[roles]['. $role_slug .']' ); ?>" value="0">
+                                        <input type="checkbox" name="<?php echo esc_attr( $this->option_id . '[roles]['. $role_slug .']' ); ?>" value="1"<?php checked( $this->settings['roles'][$role_slug]??'', '1' ); ?>>
+                                        <span class="mark"></span>
+                                        <span class="gi-toolkit__checkbox__label__text"><?php echo esc_html($role_name); ?></span>
+                                    </label>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php
+    }
+
+    /**
+     * Get the wp roles
+     * 
+     */
+    private function get_roles() {
+        global $wp_roles;
+
+        $roles = $wp_roles->get_names();
+
+        return $roles;
+    }
+
+    /**
+     * Get the roles settings
+     */
+    private function get_roles_settings() {
+
+        $result = array();
+
+        foreach ( $this->get_roles() as $role_slug => $role_name ) {
+
+            $result[$role_slug] = '0';
+        }
+
+        return $result;
+    }
+}

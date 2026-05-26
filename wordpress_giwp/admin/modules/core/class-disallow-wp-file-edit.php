@@ -1,0 +1,50 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
+
+/**
+ * Module Name: Disallow WP File Edit
+ * Description: Disallow access to the wp file editor in the admin area
+ * @since 1.0.0
+ */
+class Gi_Toolkit_Disallow_WP_File_Edit {
+
+    /**
+     * Invoke the hooks
+     * 
+     * @since    1.0.0
+     */
+    public function __construct() {
+        add_action( 'admin_init', array( $this, 'disable_wp_file_edit' ) );
+    }
+    
+    /**
+     * activate
+     *
+     * @return void
+     */
+    public static function activate(){
+        require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/class-wp-config.php';
+        if( !defined('DISALLOW_FILE_EDIT') )    Gi_Toolkit_WP_Config::replace_or_add_constant('DISALLOW_FILE_EDIT', true );
+    }
+    
+    /**
+     * deactivate
+     *
+     * @return void
+     */
+    public static function deactivate(){
+        require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/class-wp-config.php';
+        Gi_Toolkit_WP_Config::remove_constant('DISALLOW_FILE_EDIT');
+    }
+
+    /**
+     * Disable the wp file edit
+     *
+     * @return void
+     */
+    public function disable_wp_file_edit() {
+		//phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound
+        if( !defined('DISALLOW_FILE_EDIT') ) define( 'DISALLOW_FILE_EDIT', true );
+    }
+
+}

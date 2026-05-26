@@ -1,0 +1,89 @@
+/**
+ * MainWP GI-Web Extension — admin styles
+ */
+.mainwp-giweb-wrap {
+	--giweb-accent: #316bff;
+	--giweb-accent-dark: #0027f3;
+	--giweb-surface: #fff;
+	--giweb-border: #e5e7eb;
+	margin-top: 16px;
+}
+
+.mainwp-giweb-tabs {
+	margin: 16px 0;
+}
+
+.mainwp-giweb-panel {
+	background: var(--giweb-surface);
+	border: 1px solid var(--giweb-border);
+	border-radius: 12px;
+	padding: 24px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.mainwp-giweb-table {
+	margin-top: 16px;
+}
+
+.mainwp-giweb-badge {
+	display: inline-block;
+	padding: 2px 10px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.mainwp-giweb-badge.ok {
+	background: #e8f5e9;
+	color: #1b5e20;
+}
+
+.mainwp-giweb-badge.err {
+	background: #ffebee;
+	color: #b71c1c;
+}
+
+.mainwp-giweb-notice-warn {
+	background: #fff8e6;
+	border: 1px solid #f0c040;
+	border-radius: 8px;
+	padding: 12px 16px;
+	margin: 12px 0;
+}
+
+.mainwp-giweb-inline-form {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	margin-bottom: 20px;
+}
+
+.mainwp-giweb-inline-form input[type="text"] {
+	min-width: 280px;
+}
+
+.mainwp-giweb-risk {
+	background: #fff5f5;
+}
+
+.mainwp-giweb-risk-tag {
+	color: #c62828;
+	margin-left: 6px;
+}
+
+.mainwp-giweb-sites-box {
+	margin: 16px 0;
+	padding: 16px;
+	border: 1px dashed var(--giweb-border);
+	border-radius: 8px;
+}
+
+.mainwp-giweb-wrap .button-primary {
+	background: var(--giweb-accent);
+	border-color: var(--giweb-accent);
+}
+
+.mainwp-giweb-wrap .button-primary:hover {
+	background: var(--giweb-accent-dark);
+	border-color: var(--giweb-accent-dark);
+}

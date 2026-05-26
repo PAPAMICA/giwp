@@ -1,0 +1,16 @@
+@media (max-width: 1024px) {
+	.gi-toolkit-cld__aside {
+		width: 30% !important;
+	}
+	.gi-toolkit-cld__form {
+		width: 70% !important;
+	}
+}
+@media (max-width: 767px) {
+	.gi-toolkit-cld__aside {
+		display: none !important;
+	}
+	.gi-toolkit-cld__form {
+		width: 100% !important;
+	}
+}

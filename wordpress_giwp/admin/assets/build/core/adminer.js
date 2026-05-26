@@ -1,0 +1,1 @@
+!function(){"use strict";document.addEventListener("DOMContentLoaded",(()=>{const t=document.querySelector("#gi_toolkit_adminer_form"),e=document.querySelector('#gi_toolkit_adminer_form button[type="submit"]');e&&e.addEventListener("click",(e=>{e.preventDefault(),t.submit(),window.location.href=gi_toolkit_adminer.page_url}))}))}();

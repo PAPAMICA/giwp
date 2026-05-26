@@ -1,0 +1,1 @@
+!function(){"use strict";document.addEventListener("DOMContentLoaded",(()=>{Gi_Toolkit_surecart_license.activated||document.querySelectorAll('a[href="admin.php?page=gi_toolkit-manage-license"]').forEach((e=>{e.textContent=Gi_Toolkit_surecart_license.i18n.upgrade,e.classList.add("gi_toolkit-surecart-upgrade")}))}))}();

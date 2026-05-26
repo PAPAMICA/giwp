@@ -1,0 +1,148 @@
+<?php
+
+if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
+
+/**
+ * Module Name: Multiple User Roles
+ * Description: Enable assignment of multiple roles during user account creation and editing. This maybe useful for working with roles not defined in WordPress core, e.g. from e-commerce or LMS plugins.
+ * @since 1.10.0
+ */
+class Gi_Toolkit_Multiple_User_Roles {
+	private $option_id;
+    private $user_nonce;
+
+	/**
+     * Invoke the hooks.
+     * 
+     * @since   1.10.0
+     */
+    public function __construct() {
+		$this->option_id  = GI_TOOLKIT_PLUGIN_SETTINGS . '_multiple_user_roles';
+        $this->user_nonce = $this->option_id . '_action';
+
+        add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts_styles' ) );
+		add_action( 'show_user_profile', array( $this, 'render_user_meta_box' ) );
+		add_action( 'edit_user_profile', array( $this, 'render_user_meta_box' ) );
+		add_action( 'user_new_form', array( $this, 'render_user_meta_box' ) );
+		add_action( 'personal_options_update', array( $this, 'save_user_meta_box' ) );
+		add_action( 'edit_user_profile_update', array( $this, 'save_user_meta_box' ) );
+		add_action( 'user_register', array( $this, 'save_user_meta_box' ) );
+    }
+
+	/**
+	 * Enqueue scripts and styles
+	 * 
+	 * @since   1.10.0
+	 */
+	public function enqueue_scripts_styles( $hook_suffix ) {
+		if ( 'user-edit.php' == $hook_suffix || 'user-new.php' == $hook_suffix ) {
+            if ( current_user_can( 'promote_users', get_current_user_id() ) ) {
+				$user_assets = include( GI_TOOLKIT_PLUGIN_PATH . 'admin/assets/build/core/multiple_user_roles_user.asset.php' );
+        		wp_enqueue_script( 'Gi_Toolkit_multiple_user_roles_user', GI_TOOLKIT_PLUGIN_URL . 'admin/assets/build/core/multiple_user_roles_user.js', $user_assets['dependencies'], $user_assets['version'], true );
+            }
+        }
+	}
+
+	/**
+	 * Render user meta box
+	 * 
+	 * @since   1.10.0
+	 */
+	public function render_user_meta_box( $user ) {
+		$roles      	 	   = get_editable_roles();
+		$user_roles 	 	   = array();
+		$is_current_user_admin = false;
+
+		if ( $user instanceof WP_User ) {
+			if ( ! empty( $user->roles ) ) {
+				$user_roles = array_intersect( array_values( $user->roles ), array_keys( $roles ) );
+			}
+
+			$is_current_user_admin = get_current_user_id() == $user->ID && in_array( 'administrator', $user->roles, true );
+		}
+
+		if ( current_user_can( 'promote_users', get_current_user_id() ) ) : ?>
+			<div class="gi_toolkit-multiple-roles">
+				<table class="form-table">
+					<tr>
+						<th><label><?php esc_html_e( 'Roles', 'gi-toolkit' ); ?></label></th>
+						<td>
+							<?php foreach ( $roles as $role_slug => $role_info ) : ?>
+								<label>
+								<?php
+									$after_role_text = '';
+									if ( $is_current_user_admin && 'administrator' == $role_slug ) {
+										?>
+										<input type="hidden" name="gi_toolkit_assigned_roles[]" value="<?php echo esc_attr( $role_slug ); ?>"/>
+										<input type="checkbox" name="gi_toolkit_assigned_roles[]" value="<?php echo esc_attr( $role_slug ); ?>" <?php checked( in_array( $role_slug, $user_roles ) ); ?> style="width: 1rem;" disabled/>
+										<?php
+										$after_role_text = ' <small><em>' . esc_html__( '(You cannot remove this role)', 'gi-toolkit' ) . '</em></small>';
+									} else {
+										?>
+										<input type="checkbox" name="gi_toolkit_assigned_roles[]" value="<?php echo esc_attr( $role_slug ); ?>" <?php checked( in_array( $role_slug, $user_roles ) ); ?> style="width: 1rem;"/>
+										<?php
+									}
+									?>
+									<?php echo wp_kses_post( translate_user_role( $role_info['name'] ) . $after_role_text ); ?>
+								</label>
+								<br/>
+							<?php endforeach; ?>
+							<?php wp_nonce_field( $this->user_nonce, $this->option_id ); ?>
+						</td>
+					</tr>
+				</table>
+			</div>
+		<?php endif;
+	}
+
+	/**
+	 * Save user meta box
+	 * 
+	 * @since   1.10.0
+	 */
+	public function save_user_meta_box( $user_id ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[$this->option_id] ?? '' ) ), $this->user_nonce ) ) {
+			return;
+		}
+		
+		if ( ! current_user_can( 'promote_users', get_current_user_id() ) ) {
+            return;
+        }
+
+		$roles          = get_editable_roles();
+        $user           = get_user_by( 'id', (int) $user_id );
+        $user_roles     = array_intersect( array_values( $user->roles ), array_keys( $roles ) );
+		//phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$assigned_roles = gi_toolkit_clean( wp_unslash( $_POST['gi_toolkit_assigned_roles'] ?? '' ) );
+		$is_current_user_admin = get_current_user_id() == $user_id && in_array( 'administrator', $user_roles );
+
+        if ( ! empty( $assigned_roles ) ) {
+			$roles_to_remove = array();
+            $roles_to_add    = array();
+            $assigned_roles  = array_intersect( $assigned_roles, array_keys( $roles ) );
+
+			if( $is_current_user_admin ) {
+				$assigned_roles[] = 'administrator';
+			}
+
+			if ( empty( $assigned_roles ) ) {
+                $roles_to_remove = $user_roles;
+            } else {
+                $roles_to_remove = array_diff( $user_roles, $assigned_roles );
+				$roles_to_add    = array_diff( $assigned_roles, $user_roles );
+
+				if ( ! empty( $roles_to_remove ) ) {
+                    foreach ( $roles_to_remove as $role_to_remove ) {
+                        $user->remove_role( $role_to_remove );
+                    }
+                }
+
+				if ( ! empty( $roles_to_add ) ) {
+                    foreach ( $roles_to_add as $role_to_add ) {
+                        $user->add_role( $role_to_add );
+                    }
+                }
+			}
+		}
+	}
+}

@@ -1,0 +1,105 @@
+/**
+ * GI-Toolkit — améliorations UI (réglages admin).
+ * @since 2.19.0
+ */
+
+.gi-toolkit.gi-toolkit--dark {
+	--gi-bg: #0f1419;
+	--gi-surface: #1a2332;
+	--gi-border: #2d3a4f;
+	--gi-text: #e8edf4;
+	--gi-muted: #94a3b8;
+	--gi-accent: #5b8cff;
+	--gi-accent-hover: #3d6ef5;
+}
+
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__header,
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__body {
+	background: var(--gi-surface);
+	color: var(--gi-text);
+}
+
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__header__left__title,
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__body__groups__item,
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__body__sections__item__title {
+	color: var(--gi-text);
+}
+
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__body__groups__item.active,
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__body__groups__item:hover {
+	color: var(--gi-accent);
+}
+
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__body {
+	border: 1px solid var(--gi-border);
+}
+
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__body__groups {
+	border-right-color: var(--gi-border);
+}
+
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__header__right__search input,
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__body__sections__item input {
+	background: var(--gi-bg);
+	border-color: var(--gi-border);
+	color: var(--gi-text);
+}
+
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__body__sections__item__description {
+	color: var(--gi-muted);
+}
+
+.gi-toolkit .module-item[data-high-risk="1"] .gi-toolkit__body__sections__item__title__text::after {
+	content: "⚠";
+	margin-left: 6px;
+	font-size: 12px;
+	opacity: 0.85;
+}
+
+.gi-toolkit-security-panel {
+	border-left: 3px solid #316bff;
+	padding-left: 12px;
+}
+
+.gi-toolkit-security-audit-meta {
+	font-size: 12px;
+	margin-top: 8px;
+}
+
+.gi-toolkit__body__sections__item.module-item {
+	transition: box-shadow 0.2s ease, transform 0.15s ease;
+	border-radius: 8px;
+	padding: 4px 0;
+}
+
+.gi-toolkit__body__sections__item.module-item:hover {
+	box-shadow: 0 2px 12px rgba(49, 107, 255, 0.08);
+}
+
+.gi-toolkit-notice-inline {
+	background: #fff8e6;
+	border: 1px solid #f0c040;
+	border-radius: 8px;
+	padding: 12px 16px;
+	margin: 12px 0;
+	font-size: 13px;
+}
+
+.gi-toolkit.gi-toolkit--dark .gi-toolkit-notice-inline {
+	background: #2a2410;
+	border-color: #6b5a20;
+	color: var(--gi-text);
+}
+
+.gi-toolkit-temp-credentials {
+	background: linear-gradient(135deg, #f0f6ff 0%, #e8f0fe 100%);
+	border: 1px solid #c5d9ff;
+	border-radius: 12px;
+	padding: 20px;
+	margin-bottom: 20px;
+}
+
+.gi-toolkit.gi-toolkit--dark .gi-toolkit-temp-credentials {
+	background: linear-gradient(135deg, #1a2744 0%, #152238 100%);
+	border-color: var(--gi-border);
+}

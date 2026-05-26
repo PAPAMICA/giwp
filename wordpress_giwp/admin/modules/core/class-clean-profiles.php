@@ -1,0 +1,234 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
+
+/**
+ * Module Name: Clean Profiles
+ * Description: 
+ * @since 1.3.0
+ */
+class Gi_Toolkit_Clean_Profiles {
+
+    private $option_id;
+    private $header_title;
+    private $nonce_action;
+    private $settings;
+    private $default_settings;
+
+    /**
+     * Invoke the hooks
+     * 
+     */
+    public function __construct() {
+
+        $this->option_id    = GI_TOOLKIT_PLUGIN_SETTINGS . '_clean_profiles';
+        $this->nonce_action = $this->option_id . '_action';
+
+        add_action( 'init', array( $this, 'class_init' ) );
+        add_action( 'admin_menu', array( $this, 'add_submenu' ), 999 );
+        add_action( 'admin_init', array( $this, 'save_submenu' ) );
+        add_action( 'admin_head', array( $this, 'hide_fields' ), 999 );
+    }
+
+    /**
+     * Initialize the class
+     */
+    public function class_init() {
+        $this->header_title = esc_html__( 'Clean Profiles', 'gi-toolkit' );
+    }
+
+    /**
+     * Hide the fields
+     */
+    public function hide_fields() {
+
+        $settings = $this->get_settings();
+        $fields   = $settings['fields'];
+        $styles   = '';
+        
+        foreach ( $fields as $field => $value ) {
+            
+            if ( $value['enabled'] === '1' ) {
+                $styles .= ".{$field} { display: none; }";
+            }
+        }
+
+        ?>
+            <style>
+                <?php echo esc_html( $styles ); ?>
+            </style>
+        <?php
+    }
+
+    /**
+     * get_settings
+     */
+    public function get_settings(){
+        $this->default_settings = $this->get_default_settings();
+        return get_option( $this->option_id, $this->default_settings );
+    }
+
+    /**
+     * Save settings
+     */
+    public function save_settings( $new_settings ) {
+
+		update_option( $this->option_id, $new_settings );
+    }
+
+    /**
+     * Add a submenu
+     */
+    public function add_submenu(){
+
+        Gi_Toolkit_Settings::add_submenu_page(
+            'gi-toolkit-settings',
+            $this->header_title,
+            $this->header_title,
+            'manage_options',
+            'gi-toolkit-settings-clean-profiles', 
+            array( $this, 'render_submenu'),
+            null
+        );
+    }
+
+    /**
+     * Render the submenu
+     */
+    public function render_submenu() {
+
+        $submenu_assets = include( GI_TOOLKIT_PLUGIN_PATH . 'admin/assets/build/core/clean-profiles.asset.php' );
+        wp_enqueue_style( 'Gi_Toolkit_submenu', GI_TOOLKIT_PLUGIN_URL . 'admin/assets/build/core/clean-profiles.css', array(), $submenu_assets['version'], 'all' );
+        wp_enqueue_script( 'Gi_Toolkit_submenu', GI_TOOLKIT_PLUGIN_URL . 'admin/assets/build/core/clean-profiles.js', $submenu_assets['dependencies'], $submenu_assets['version'], true );
+
+        include GI_TOOLKIT_PLUGIN_PATH . 'admin/templates/core/submenu/header.php';
+        $this->submenu_content();
+        include GI_TOOLKIT_PLUGIN_PATH . 'admin/templates/core/submenu/footer.php';
+    }
+
+    /**
+     * Save the submenu option
+     */
+    public function save_submenu() {
+
+		$nonce = sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ?? '' ) );
+		
+		if ( wp_verify_nonce($nonce, $this->nonce_action) ) {
+
+			//phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+            $new_settings = $this->sanitize_settings( wp_unslash( $_POST[$this->option_id] ?? array() ) );
+            
+            $this->save_settings( $new_settings );
+            wp_safe_redirect( sanitize_url( wp_unslash( $_SERVER['REQUEST_URI'] ?? '' ) ) );
+			exit;
+		}
+    }
+
+    /**
+     * sanitize_settings
+     */
+    public function sanitize_settings($new_settings){
+
+        $this->default_settings = $this->get_default_settings();
+        $sanitized_settings = array();
+
+        foreach ( $this->default_settings as $settings_key => $settings_value ) {
+            
+            switch ($settings_key) {
+                case 'fields':
+                    foreach ( $settings_value as $field => $value ) {
+                        $sanitized_settings[$settings_key][$field]            = $value;
+                        $sanitized_settings[$settings_key][$field]['enabled'] = sanitize_text_field($new_settings[$settings_key][$field]['enabled'] ?? $value['enabled'] );
+                    }
+                break;
+            }
+        }
+
+        return $sanitized_settings;
+    }
+
+    /**
+     * get_default_settings
+     *
+     * @return array
+     */
+    private function get_default_settings(){
+        if( $this->default_settings !== null ) return $this->default_settings;
+
+        return array(
+            'fields' => $this->get_user_profile_fields(),
+        );
+    }
+
+    /**
+     * Add the submenu content
+     *
+     */
+    private function submenu_content() {
+        $this->settings = $this->get_settings();
+        $fields = $this->settings['fields'];
+
+        ?>
+            <div class="gi-toolkit__section">
+                <div class="gi-toolkit__section__desc"><?php esc_html_e('Tidy up user profiles by removing sections you do not utilise.', 'gi-toolkit'); ?></div>
+                <div class="gi-toolkit__section__body">
+
+                    <div class="gi-toolkit__section__body__item">
+                        <div class="gi-toolkit__section__body__item__title"><?php esc_html_e('Sections to hide', 'gi-toolkit'); ?></div>
+                        <div class="gi-toolkit__section__body__item__content">
+                            <?php foreach ( $fields as $field_id => $field_value ): ?>
+                                <div class="gi-toolkit__checkbox">
+                                    <label class="gi-toolkit__checkbox__label">
+                                        <input type="hidden" name="<?php echo esc_attr( $this->option_id . '[fields]['. $field_id .'][enabled]' ); ?>" value="0">
+                                        <input type="checkbox" name="<?php echo esc_attr( $this->option_id . '[fields]['. $field_id .'][enabled]' ); ?>" value="1"<?php checked( $this->settings['fields'][$field_id]['enabled'] ?? '', '1' ); ?>>
+                                        <span class="mark"></span>
+                                        <span class="gi-toolkit__checkbox__label__text"><?php echo esc_html($field_value['name']); ?></span>
+                                    </label>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        <?php
+    }
+
+    /**
+     * Get the user profile fields
+     */
+    private function get_user_profile_fields() {
+
+        $user_profile_fields = array(
+            'user-admin-color-wrap' => array(
+                'enabled' => '1',
+                'name'    => __('Admin Color Scheme', 'gi-toolkit'),
+            ),
+            'user-admin-bar-front-wrap' => array(
+                'enabled' => '1',
+                'name'    => __('Toolbar', 'gi-toolkit'),
+            ),
+            'user-description-wrap' => array(
+                'enabled' => '1',
+                'name'    => __('Biographical Info', 'gi-toolkit'),
+            ),
+            'user-role-wrap' => array(
+                'enabled' => '1',
+                'name'    => __('Role', 'gi-toolkit'),
+            ),
+            'user-email-wrap' => array(
+                'enabled' => '1',
+                'name'    => __('Email', 'gi-toolkit'),
+            ),
+            'user-pass1-wrap' => array(
+                'enabled' => '1',
+                'name'    => __('New Password', 'gi-toolkit'),
+            ),
+            'user-generate-reset-link-wrap' => array(
+                'enabled' => '1',
+                'name'    => __('Reset Password', 'gi-toolkit'),
+            ),
+        );
+
+        return $user_profile_fields;
+    }
+}
