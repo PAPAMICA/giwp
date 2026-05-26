@@ -1,13 +1,6 @@
 <?php
 /**
- * Plugin Name: MainWP GI-Web Extension
- * Plugin URI: https://genevois-informatique.ch/
- * Description: Gérez et déployez la configuration GI-Toolkit sur tous vos sites MainWP.
- * Version: 1.0.0
- * Author: Genevois Informatique
- * Author URI: https://genevois-informatique.ch
- * License: GPL-2.0+
- * Text Domain: mainwp-giweb
+ * Bootstrap interne — chargé par mainwp-giwp.php (ne pas activer ce fichier seul).
  *
  * @package MainWP_GIWeb
  */
@@ -16,11 +9,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MAINWP_GIWEB_VERSION', '1.0.0' );
-define( 'MAINWP_GIWEB_PLUGIN_FILE', __FILE__ );
-define( 'MAINWP_GIWEB_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
-define( 'MAINWP_GIWEB_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'MAINWP_GIWEB_GI_TOOLKIT_PATH', MAINWP_GIWEB_PLUGIN_PATH . '../wordpress_giwp/' );
+if ( ! defined( 'MAINWP_GIWEB_VERSION' ) ) {
+	define( 'MAINWP_GIWEB_VERSION', '1.0.0' );
+}
+if ( ! defined( 'MAINWP_GIWEB_PLUGIN_FILE' ) ) {
+	define( 'MAINWP_GIWEB_PLUGIN_FILE', __DIR__ . '/mainwp-giwp.php' );
+}
+if ( ! defined( 'MAINWP_GIWEB_PLUGIN_PATH' ) ) {
+	define( 'MAINWP_GIWEB_PLUGIN_PATH', plugin_dir_path( MAINWP_GIWEB_PLUGIN_FILE ) );
+}
+if ( ! defined( 'MAINWP_GIWEB_PLUGIN_URL' ) ) {
+	define( 'MAINWP_GIWEB_PLUGIN_URL', plugin_dir_url( MAINWP_GIWEB_PLUGIN_FILE ) );
+}
+if ( ! defined( 'MAINWP_GIWEB_GI_TOOLKIT_PATH' ) ) {
+	define( 'MAINWP_GIWEB_GI_TOOLKIT_PATH', MAINWP_GIWEB_PLUGIN_PATH . '../wordpress_giwp/' );
+}
 
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-catalog.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-overrides.php';
@@ -54,7 +57,7 @@ class MainWP_GIWeb_Extension_Activator {
 	 * @return void
 	 */
 	public function __construct() {
-		$this->childFile = __FILE__;
+		$this->childFile = MAINWP_GIWEB_PLUGIN_FILE;
 
 		add_filter( 'mainwp_getextensions', array( $this, 'get_this_extension' ) );
 
@@ -68,7 +71,7 @@ class MainWP_GIWeb_Extension_Activator {
 
 		add_action( 'admin_notices', array( $this, 'admin_notice_mainwp_required' ) );
 
-		register_activation_hook( __FILE__, array( 'MainWP_GIWeb_History', 'install_tables' ) );
+		register_activation_hook( MAINWP_GIWEB_PLUGIN_FILE, array( 'MainWP_GIWeb_History', 'install_tables' ) );
 	}
 
 	/**
@@ -77,7 +80,7 @@ class MainWP_GIWeb_Extension_Activator {
 	 */
 	public function get_this_extension( $extensions ) {
 		$extensions[] = array(
-			'plugin'   => __FILE__,
+			'plugin'   => MAINWP_GIWEB_PLUGIN_FILE,
 			'api'      => $this->plugin_handle,
 			'mainwp'   => true,
 			'callback' => array( $this, 'settings_page' ),
@@ -90,7 +93,7 @@ class MainWP_GIWeb_Extension_Activator {
 	 */
 	public function activate_extension() {
 		$this->mainwpActivated = true;
-		$this->childEnabled    = apply_filters( 'mainwp_extension_enabled_check', __FILE__ );
+		$this->childEnabled    = apply_filters( 'mainwp_extension_enabled_check', MAINWP_GIWEB_PLUGIN_FILE );
 		if ( is_array( $this->childEnabled ) && ! empty( $this->childEnabled['key'] ) ) {
 			$this->childKey = $this->childEnabled['key'];
 		}
@@ -116,7 +119,7 @@ class MainWP_GIWeb_Extension_Activator {
 	 * @return void
 	 */
 	public function settings_page() {
-		do_action( 'mainwp_pageheader_extensions', __FILE__ );
+		do_action( 'mainwp_pageheader_extensions', MAINWP_GIWEB_PLUGIN_FILE );
 		if ( $this->childEnabled ) {
 			MainWP_GIWeb::render_page();
 		} else {
@@ -124,7 +127,7 @@ class MainWP_GIWeb_Extension_Activator {
 			esc_html_e( 'Extension non activée dans MainWP. Activez-la dans Extensions > Settings.', 'mainwp-giweb' );
 			echo '</p></div>';
 		}
-		do_action( 'mainwp_pagefooter_extensions', __FILE__ );
+		do_action( 'mainwp_pagefooter_extensions', MAINWP_GIWEB_PLUGIN_FILE );
 	}
 
 	/**

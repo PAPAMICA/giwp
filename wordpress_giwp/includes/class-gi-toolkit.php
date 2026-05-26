@@ -96,6 +96,18 @@ class Gi_Toolkit {
 	 * @since    1.0.0
 	 * @access   private
 	 */
+	/**
+	 * Site géré par MainWP Child (bridge GI-Toolkit chargé si vrai).
+	 *
+	 * @return bool
+	 */
+	private static function is_mainwp_child_site() {
+		return defined( 'MAINWP_CHILD_PLUGIN_URL' )
+			|| defined( 'MAINWP_CHILD_FILE' )
+			|| class_exists( 'MainWP\Child\MainWP_Child' )
+			|| class_exists( 'MainWP_Child' );
+	}
+
 	private function load_dependencies() {
 
 		/**
@@ -116,8 +128,9 @@ class Gi_Toolkit {
 
 		require_once GI_TOOLKIT_PLUGIN_PATH . 'includes/class-gi-toolkit-security.php';
 
-		if ( class_exists( 'MainWP\Child\MainWP_Child' ) || defined( 'MAINWP_CHILD_PLUGIN_URL' ) || class_exists( 'MainWP_Child' ) ) {
+		if ( self::is_mainwp_child_site() ) {
 			require_once GI_TOOLKIT_PLUGIN_PATH . 'includes/class-gi-toolkit-mainwp-api.php';
+			require_once GI_TOOLKIT_PLUGIN_PATH . 'includes/class-gi-toolkit-mainwp-bridge.php';
 		}
 
 		/**

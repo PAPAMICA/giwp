@@ -23,12 +23,11 @@ Cette extension MainWP permet de :
 == Installation ==
 
 1. Installez et activez **MainWP Dashboard** sur ce site.
-2. Installez cette extension dans `wp-content/plugins/mainwp_giweb/`.
-3. Activez l’extension dans **MainWP > Extensions**.
+2. Copiez le dossier `mainwp_giwp/` dans `wp-content/plugins/`.
+3. Activez le plugin **MainWP GI-Toolkit Manager** (`mainwp-giwp.php`) dans Extensions WordPress, puis dans **MainWP > Extensions**.
 4. Sur **chaque site enfant** :
    - MainWP Child actif
-   - GI-Toolkit >= 2.20.0
-   - Plugin **MainWP GI-Web Child Bridge** (`mainwp_giweb/child/mainwp-giweb-child.php`) copié dans `wp-content/plugins/mainwp-giweb-child/` et activé
+   - GI-Toolkit >= 2.20.0 (le bridge MainWP est inclus dans GI-Toolkit, aucun plugin supplémentaire)
 
 == Utilisation ==
 
