@@ -134,6 +134,40 @@ class Gi_Toolkit_Matomo_API {
 	}
 
 	/**
+	 * URL du tableau de bord Matomo pour un site donné.
+	 *
+	 * @param array<string, mixed> $settings   Réglages (matomo_url, site_id).
+	 * @param string               $period_key Clé période UI (today, last7, …).
+	 * @return string
+	 */
+	public static function get_site_dashboard_url( array $settings, $period_key = 'last7' ) {
+		$base    = self::normalize_matomo_url( $settings['matomo_url'] ?? '' );
+		$site_id = absint( $settings['site_id'] ?? 0 );
+
+		if ( '' === $base || $site_id < 1 ) {
+			return $base;
+		}
+
+		$period = class_exists( 'Gi_Toolkit_Matomo_Dashboard_Data' )
+			? Gi_Toolkit_Matomo_Dashboard_Data::resolve_period( $period_key )
+			: array(
+				'period' => 'range',
+				'date'   => 'last7',
+			);
+
+		return add_query_arg(
+			array(
+				'module' => 'CoreHome',
+				'action' => 'index',
+				'idSite' => $site_id,
+				'period' => $period['period'],
+				'date'   => $period['date'],
+			),
+			$base . '/index.php'
+		);
+	}
+
+	/**
 	 * @return array{success:bool, version?:string, message?:string}
 	 */
 	public function test_connection() {

@@ -2,81 +2,279 @@
 	'use strict';
 
 	var cfg = window.giToolkitMatomoDashboard || {};
+	var chartInstances = [];
+	var worldMapInstance = null;
 
-	function drawChart( chartData ) {
-		var canvas = document.getElementById( 'gi-matomo-visits-chart' );
-		if ( ! canvas || ! chartData ) {
+	var palette = {
+		primary: '#2271b1',
+		secondary: '#72aee6',
+		tertiary: '#00a32a',
+		donut: [
+			'#2271b1',
+			'#72aee6',
+			'#00a32a',
+			'#dba617',
+			'#d63638',
+			'#8c8f94',
+			'#9b51e0',
+			'#2ec4b6',
+		],
+	};
+
+	function destroyCharts() {
+		chartInstances.forEach( function ( chart ) {
+			chart.destroy();
+		} );
+		chartInstances = [];
+	}
+
+	function readChartsData() {
+		var $json = $( '#gi-matomo-charts-data' );
+		if ( ! $json.length ) {
+			return null;
+		}
+		try {
+			return JSON.parse( $json.text() );
+		} catch ( e ) {
+			return null;
+		}
+	}
+
+	function hasChartData( series ) {
+		if ( ! series ) {
+			return false;
+		}
+		if ( Array.isArray( series.values ) && series.values.some( function ( v ) {
+			return v > 0;
+		} ) ) {
+			return true;
+		}
+		if ( Array.isArray( series.visits ) && series.visits.some( function ( v ) {
+			return v > 0;
+		} ) ) {
+			return true;
+		}
+		return false;
+	}
+
+	function initTimelineChart( data ) {
+		var canvas = document.getElementById( 'gi-matomo-chart-timeline' );
+		if ( ! canvas || typeof window.Chart === 'undefined' || ! data ) {
 			return;
 		}
 
-		var labels = chartData.labels || [];
-		var values = chartData.values || [];
+		var labels = data.labels || [];
 		if ( ! labels.length ) {
 			return;
 		}
 
-		var ctx = canvas.getContext( '2d' );
-		var dpr = window.devicePixelRatio || 1;
-		var width = canvas.parentElement ? canvas.parentElement.clientWidth : 800;
-		var height = 280;
+		var chart = new window.Chart( canvas, {
+			type: 'line',
+			data: {
+				labels: labels,
+				datasets: [
+					{
+						label: cfg.i18n.visits || 'Visites',
+						data: data.visits || [],
+						borderColor: palette.primary,
+						backgroundColor: 'rgba(34, 113, 177, 0.12)',
+						fill: true,
+						tension: 0.35,
+						pointRadius: 3,
+						pointHoverRadius: 5,
+					},
+					{
+						label: cfg.i18n.unique || 'Visiteurs uniques',
+						data: data.unique || [],
+						borderColor: palette.tertiary,
+						backgroundColor: 'transparent',
+						tension: 0.35,
+						pointRadius: 2,
+						pointHoverRadius: 4,
+					},
+					{
+						label: cfg.i18n.actions || 'Pages vues',
+						data: data.actions || [],
+						borderColor: palette.secondary,
+						backgroundColor: 'transparent',
+						borderDash: [ 4, 4 ],
+						tension: 0.35,
+						pointRadius: 2,
+						pointHoverRadius: 4,
+					},
+				],
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				interaction: { mode: 'index', intersect: false },
+				plugins: {
+					legend: { position: 'bottom' },
+				},
+				scales: {
+					x: {
+						grid: { display: false },
+						ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+					},
+					y: {
+						beginAtZero: true,
+						ticks: { precision: 0 },
+					},
+				},
+			},
+		} );
+		chartInstances.push( chart );
+	}
 
-		canvas.width = width * dpr;
-		canvas.height = height * dpr;
-		canvas.style.width = width + 'px';
-		canvas.style.height = height + 'px';
-		ctx.scale( dpr, dpr );
+	function destroyWorldMap() {
+		if ( worldMapInstance && typeof worldMapInstance.destroy === 'function' ) {
+			worldMapInstance.destroy();
+		}
+		worldMapInstance = null;
+		var el = document.getElementById( 'gi-matomo-world-map' );
+		if ( el ) {
+			el.innerHTML = '';
+		}
+	}
 
-		var pad = { top: 20, right: 16, bottom: 40, left: 48 };
-		var plotW = width - pad.left - pad.right;
-		var plotH = height - pad.top - pad.bottom;
-		var max = Math.max.apply( null, values.concat( [ 1 ] ) );
-
-		ctx.clearRect( 0, 0, width, height );
-		ctx.fillStyle = '#f6f7f7';
-		ctx.fillRect( pad.left, pad.top, plotW, plotH );
-
-		ctx.strokeStyle = '#dcdcde';
-		ctx.lineWidth = 1;
-		for ( var g = 0; g <= 4; g++ ) {
-			var y = pad.top + ( plotH * g ) / 4;
-			ctx.beginPath();
-			ctx.moveTo( pad.left, y );
-			ctx.lineTo( pad.left + plotW, y );
-			ctx.stroke();
+	function initWorldMap( mapData ) {
+		var el = document.getElementById( 'gi-matomo-world-map' );
+		if ( ! el || typeof window.jsVectorMap === 'undefined' || ! mapData ) {
+			return;
 		}
 
-		var barW = plotW / values.length;
-		var gap = Math.min( 8, barW * 0.2 );
+		var values = mapData.values || {};
+		if ( ! Object.keys( values ).length ) {
+			el.innerHTML = '<p class="description gi-matomo-map-empty">' + ( cfg.i18n.mapEmpty || '' ) + '</p>';
+			return;
+		}
 
-		ctx.fillStyle = '#2271b1';
-		values.forEach( function ( val, i ) {
-			var bh = ( val / max ) * plotH;
-			var x = pad.left + i * barW + gap / 2;
-			var y = pad.top + plotH - bh;
-			ctx.fillRect( x, y, barW - gap, bh );
-		} );
+		destroyWorldMap();
 
-		ctx.fillStyle = '#646970';
-		ctx.font = '11px sans-serif';
-		ctx.textAlign = 'center';
-		labels.forEach( function ( label, i ) {
-			if ( labels.length > 14 && i % 2 !== 0 ) {
-				return;
-			}
-			var x = pad.left + i * barW + barW / 2;
-			ctx.fillText( label, x, height - 12 );
+		worldMapInstance = new window.jsVectorMap( {
+			selector: '#gi-matomo-world-map',
+			map: 'world',
+			zoomButtons: false,
+			regionStyle: {
+				initial: {
+					fill: '#e9ecef',
+					stroke: '#fff',
+					'stroke-width': 0.5,
+				},
+				hover: {
+					fill: '#72aee6',
+					cursor: 'pointer',
+				},
+			},
+			series: {
+				regions: [
+					{
+						attribute: 'fill',
+						values: values,
+						scale: [ '#e8f1fa', '#2271b1' ],
+						normalizeFunction: 'linear',
+					},
+				],
+			},
+			onRegionTooltipShow: function ( event, tooltip, code ) {
+				var count = values[ code ] || 0;
+				tooltip.text(
+					tooltip.text() + ( count ? ' — ' + count + ' ' + ( cfg.i18n.visits || 'visites' ) : '' ),
+					true
+				);
+			},
 		} );
 	}
 
-	function renderDashboard( html ) {
+	function initDonutChart( canvasId, data ) {
+		var canvas = document.getElementById( canvasId );
+		if ( ! canvas || typeof window.Chart === 'undefined' ) {
+			return;
+		}
+
+		var labels = ( data && data.labels ) ? data.labels : [];
+		var values = ( data && data.values ) ? data.values : [];
+
+		if ( ! hasChartData( { values: values } ) ) {
+			return;
+		}
+
+		var chart = new window.Chart( canvas, {
+			type: 'doughnut',
+			data: {
+				labels: labels,
+				datasets: [
+					{
+						data: values,
+						backgroundColor: palette.donut,
+						borderWidth: 2,
+						borderColor: '#fff',
+						hoverOffset: 6,
+					},
+				],
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				cutout: '62%',
+				plugins: {
+					legend: {
+						position: 'bottom',
+						labels: { boxWidth: 12, padding: 10 },
+					},
+					tooltip: {
+						callbacks: {
+							label: function ( context ) {
+								var total = context.dataset.data.reduce( function ( a, b ) {
+									return a + b;
+								}, 0 );
+								var pct = total > 0 ? Math.round( ( context.parsed / total ) * 1000 ) / 10 : 0;
+								return context.label + ': ' + context.parsed + ' (' + pct + '%)';
+							},
+						},
+					},
+				},
+			},
+		} );
+		chartInstances.push( chart );
+	}
+
+	function initCharts() {
+		destroyCharts();
+		destroyWorldMap();
+		var charts = readChartsData();
+		if ( ! charts ) {
+			return;
+		}
+		initTimelineChart( charts.timeline );
+		initDonutChart( 'gi-matomo-chart-referrers', charts.referrers );
+		initDonutChart( 'gi-matomo-chart-countries', charts.countries );
+		initDonutChart( 'gi-matomo-chart-devices', charts.devices );
+		initWorldMap( charts.world_map );
+	}
+
+	function setLoading( isLoading ) {
+		var $wrap = $( '#gi-matomo-dashboard-wrap' );
+		var $loader = $( '#gi-matomo-loader' );
+		if ( ! $wrap.length ) {
+			return;
+		}
+		if ( isLoading ) {
+			$wrap.addClass( 'is-loading' );
+			$loader.removeAttr( 'hidden' ).attr( 'aria-busy', 'true' );
+			$( '.gi-matomo-period-btn' ).addClass( 'is-disabled' ).attr( 'aria-disabled', 'true' );
+		} else {
+			$wrap.removeClass( 'is-loading' );
+			$loader.attr( 'hidden', 'hidden' ).attr( 'aria-busy', 'false' );
+			$( '.gi-matomo-period-btn' ).removeClass( 'is-disabled' ).removeAttr( 'aria-disabled' );
+		}
+	}
+
+	function renderDashboard( html, matomoUrl ) {
 		$( '#gi-matomo-dashboard' ).html( html );
-		var $json = $( '#gi-matomo-chart-data' );
-		if ( $json.length ) {
-			try {
-				drawChart( JSON.parse( $json.text() ) );
-			} catch ( e ) {
-				// ignore
-			}
+		initCharts();
+		if ( matomoUrl ) {
+			$( '#gi-matomo-external-link' ).attr( 'href', matomoUrl );
 		}
 	}
 
@@ -85,7 +283,7 @@
 		if ( ! $root.length ) {
 			return;
 		}
-		$root.addClass( 'is-loading' );
+		setLoading( true );
 
 		$.post( cfg.ajaxUrl, {
 			action: 'gi_toolkit_matomo_dashboard',
@@ -97,7 +295,7 @@
 					window.alert( ( res.data && res.data.message ) || cfg.i18n.error );
 					return;
 				}
-				renderDashboard( res.data.html );
+				renderDashboard( res.data.html, res.data.matomoUrl );
 				$( '.gi-matomo-period-btn' ).removeClass( 'is-active' );
 				$( '.gi-matomo-period-btn[data-period="' + period + '"]' ).addClass( 'is-active' );
 				if ( window.history && window.history.replaceState ) {
@@ -110,19 +308,12 @@
 				window.alert( cfg.i18n.error );
 			} )
 			.always( function () {
-				$root.removeClass( 'is-loading' );
+				setLoading( false );
 			} );
 	}
 
 	$( function () {
-		var $json = $( '#gi-matomo-chart-data' );
-		if ( $json.length ) {
-			try {
-				drawChart( JSON.parse( $json.text() ) );
-			} catch ( e ) {
-				// ignore
-			}
-		}
+		initCharts();
 
 		$( document ).on( 'click', '.gi-matomo-period-btn[data-period]', function ( e ) {
 			var period = $( this ).data( 'period' );
@@ -131,17 +322,6 @@
 			}
 			e.preventDefault();
 			loadPeriod( period );
-		} );
-
-		$( window ).on( 'resize', function () {
-			var $json = $( '#gi-matomo-chart-data' );
-			if ( $json.length ) {
-				try {
-					drawChart( JSON.parse( $json.text() ) );
-				} catch ( err ) {
-					// ignore
-				}
-			}
 		} );
 	} );
 } )( jQuery );

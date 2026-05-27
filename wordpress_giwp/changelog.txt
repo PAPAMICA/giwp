@@ -1,5 +1,14 @@
 == Changelog ==
 
+= 2.20.31 =
+Add: Graphique visites (7 j) dans la barre d’administration WordPress (style wp-piwik).
+Add: Carte mondiale des origines des visiteurs sur le tableau de bord Statistiques.
+Add: Périodes « 3 derniers mois » et « Dernière année » ; comparaison vs période précédente sur tous les KPIs.
+
+= 2.20.30 =
+Update: Tableau de bord Statistiques — refonte complète (KPIs avec tendances, graphiques Chart.js, rapports enrichis).
+Fix: Lien « Ouvrir dans Matomo » — ouverture du bon site (idSite) et de la période sélectionnée.
+
 = 2.20.29 =
 Fix: Connect Matomo — sauvegarde du formulaire (champ gi_toolkit_pro_save manquant).
 Add: Après test de connexion réussi, synchronisation / création automatique du site Matomo et enregistrement (MainWP / import JSON inclus).

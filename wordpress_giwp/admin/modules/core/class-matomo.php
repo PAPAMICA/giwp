@@ -58,6 +58,10 @@ class Gi_Toolkit_Matomo {
 		add_action( 'wp_ajax_gi_toolkit_matomo_sync_site', array( $this, 'ajax_sync_site' ) );
 		add_action( 'wp_ajax_gi_toolkit_matomo_dashboard', array( $this, 'ajax_dashboard' ) );
 
+		add_action( 'admin_bar_menu', array( $this, 'register_admin_bar_stats' ), 100 );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_bar_assets' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_admin_bar_assets' ) );
+
 		Gi_Toolkit_Matomo_Tracking::init();
 	}
 
@@ -108,6 +112,12 @@ class Gi_Toolkit_Matomo {
 	 */
 	public function save_settings( array $settings, $sync_site = true ) {
 		$result = $this->persist_settings( $settings, $sync_site );
+		if ( ! empty( $result['success'] ) ) {
+			$site_id = absint( $settings['site_id'] ?? 0 );
+			if ( $site_id > 0 ) {
+				delete_transient( 'gi_matomo_toolbar_' . $site_id );
+			}
+		}
 		return ! empty( $result['success'] );
 	}
 
@@ -400,6 +410,7 @@ class Gi_Toolkit_Matomo {
 			array(
 				'html'       => $html,
 				'period_key' => $period_key,
+				'matomoUrl'  => Gi_Toolkit_Matomo_API::get_site_dashboard_url( $settings, $period_key ),
 			)
 		);
 	}
@@ -610,6 +621,109 @@ class Gi_Toolkit_Matomo {
 	/**
 	 * @return void
 	 */
+	/**
+	 * Graphique visites dans la barre d’administration (style wp-piwik).
+	 *
+	 * @param WP_Admin_Bar $wp_admin_bar Barre admin.
+	 * @return void
+	 */
+	public function register_admin_bar_stats( $wp_admin_bar ) {
+		if ( ! is_admin_bar_showing() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$settings = $this->get_settings();
+		if ( ! self::is_dashboard_ready( $settings ) ) {
+			return;
+		}
+
+		$data = Gi_Toolkit_Matomo_Dashboard_Data::fetch_toolbar_sparkline( $settings );
+		if ( empty( $data['success'] ) ) {
+			return;
+		}
+
+		$visits = number_format_i18n( (int) ( $data['visits'] ?? 0 ) );
+		$title  = sprintf(
+			'<span class="gi-matomo-ab-stats"><span class="gi-matomo-ab-count"><strong>%1$s</strong> <small>%2$s</small></span><canvas id="gi-matomo-ab-chart" width="140" height="32" aria-hidden="true"></canvas></span>',
+			esc_html( $visits ),
+			esc_html__( '7 j', 'gi-toolkit' )
+		);
+
+		$wp_admin_bar->add_node(
+			array(
+				'id'     => 'gi-matomo-toolbar-stats',
+				'title'  => $title,
+				'href'   => admin_url( 'admin.php?page=' . self::STATS_PAGE_SLUG ),
+				'meta'   => array(
+					'class' => 'gi-matomo-ab-stats-menu',
+					'html'  => true,
+					'title' => __( 'Statistiques Matomo — 7 derniers jours', 'gi-toolkit' ),
+				),
+			)
+		);
+	}
+
+	/**
+	 * Scripts / styles barre admin (sparkline).
+	 *
+	 * @param string $hook_suffix Page courante.
+	 * @return void
+	 */
+	public function enqueue_admin_bar_assets( $hook_suffix ) {
+		unset( $hook_suffix );
+
+		if ( ! is_admin_bar_showing() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$settings = $this->get_settings();
+		if ( ! self::is_dashboard_ready( $settings ) ) {
+			return;
+		}
+
+		$data = Gi_Toolkit_Matomo_Dashboard_Data::fetch_toolbar_sparkline( $settings );
+		if ( empty( $data['success'] ) ) {
+			return;
+		}
+
+		$version = defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '1.0.0';
+
+		wp_enqueue_style(
+			'gi-toolkit-matomo',
+			GI_TOOLKIT_PLUGIN_URL . 'admin/assets/css/matomo.css',
+			array(),
+			$version
+		);
+		wp_enqueue_script(
+			'chartjs',
+			'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+			array(),
+			'4.4.1',
+			true
+		);
+		wp_enqueue_script(
+			'gi-toolkit-matomo-admin-bar',
+			GI_TOOLKIT_PLUGIN_URL . 'admin/assets/js/matomo-admin-bar.js',
+			array( 'chartjs' ),
+			$version,
+			true
+		);
+		wp_localize_script(
+			'gi-toolkit-matomo-admin-bar',
+			'giToolkitMatomoAdminBar',
+			array(
+				'sparkline' => array(
+					'labels' => $data['labels'] ?? array(),
+					'values' => $data['values'] ?? array(),
+				),
+				'statsUrl'  => admin_url( 'admin.php?page=' . self::STATS_PAGE_SLUG ),
+			)
+		);
+	}
+
+	/**
+	 * @return void
+	 */
 	public function render_statistics_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
@@ -625,10 +739,37 @@ class Gi_Toolkit_Matomo {
 			array(),
 			$version
 		);
+		wp_enqueue_style(
+			'jsvectormap',
+			'https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/css/jsvectormap.min.css',
+			array(),
+			'1.5.3'
+		);
+		wp_enqueue_script(
+			'chartjs',
+			'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+			array(),
+			'4.4.1',
+			true
+		);
+		wp_enqueue_script(
+			'jsvectormap',
+			'https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/js/jsvectormap.min.js',
+			array(),
+			'1.5.3',
+			true
+		);
+		wp_enqueue_script(
+			'jsvectormap-world',
+			'https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/maps/world.js',
+			array( 'jsvectormap' ),
+			'1.5.3',
+			true
+		);
 		wp_enqueue_script(
 			'gi-toolkit-matomo-dashboard',
 			GI_TOOLKIT_PLUGIN_URL . 'admin/assets/js/matomo-dashboard.js',
-			array( 'jquery' ),
+			array( 'jquery', 'chartjs', 'jsvectormap', 'jsvectormap-world' ),
 			$version,
 			true
 		);
@@ -639,11 +780,14 @@ class Gi_Toolkit_Matomo {
 				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
 				'nonce'         => wp_create_nonce( 'gi_toolkit_matomo_dashboard' ),
 				'settingsUrl'   => self::get_settings_admin_url(),
-				'matomoUrl'     => Gi_Toolkit_Matomo_API::normalize_matomo_url( $settings['matomo_url'] ?? '' ),
 				'defaultPeriod' => 'last7',
 				'i18n'          => array(
-					'loading' => __( 'Chargement…', 'gi-toolkit' ),
-					'error'   => __( 'Impossible de charger les statistiques.', 'gi-toolkit' ),
+					'loading'  => __( 'Chargement…', 'gi-toolkit' ),
+					'error'    => __( 'Impossible de charger les statistiques.', 'gi-toolkit' ),
+					'visits'   => __( 'Visites', 'gi-toolkit' ),
+					'unique'   => __( 'Visiteurs uniques', 'gi-toolkit' ),
+					'actions'  => __( 'Pages vues', 'gi-toolkit' ),
+					'mapEmpty' => __( 'Aucune donnée géographique pour cette période.', 'gi-toolkit' ),
 				),
 			)
 		);
@@ -668,7 +812,7 @@ class Gi_Toolkit_Matomo {
 						<?php esc_html_e( 'Réglages Matomo', 'gi-toolkit' ); ?>
 					</a>
 					<?php if ( $is_ready && ! empty( $settings['matomo_url'] ) ) : ?>
-						<a class="button button-secondary" href="<?php echo esc_url( $settings['matomo_url'] ); ?>" target="_blank" rel="noopener noreferrer">
+						<a id="gi-matomo-external-link" class="button button-secondary" href="<?php echo esc_url( Gi_Toolkit_Matomo_API::get_site_dashboard_url( $settings, $period_key ) ); ?>" target="_blank" rel="noopener noreferrer">
 							<?php esc_html_e( 'Ouvrir dans Matomo', 'gi-toolkit' ); ?>
 						</a>
 					<?php endif; ?>
@@ -680,7 +824,7 @@ class Gi_Toolkit_Matomo {
 			<?php else : ?>
 				<nav class="gi-matomo-period-nav" aria-label="<?php esc_attr_e( 'Période', 'gi-toolkit' ); ?>">
 					<?php
-					$periods = array( 'today', 'yesterday', 'last7', 'last30', 'month' );
+					$periods = Gi_Toolkit_Matomo_Dashboard_Data::period_keys();
 					foreach ( $periods as $key ) {
 						$p   = Gi_Toolkit_Matomo_Dashboard_Data::resolve_period( $key );
 						$url = add_query_arg( array( 'page' => self::STATS_PAGE_SLUG, 'period' => $key ), admin_url( 'admin.php' ) );
@@ -695,8 +839,14 @@ class Gi_Toolkit_Matomo {
 					?>
 				</nav>
 
-				<div id="gi-matomo-dashboard" data-period="<?php echo esc_attr( $period_key ); ?>">
-					<?php $this->render_dashboard_markup( $dashboard ); ?>
+				<div id="gi-matomo-dashboard-wrap" class="gi-matomo-dashboard-wrap" data-period="<?php echo esc_attr( $period_key ); ?>">
+					<div id="gi-matomo-loader" class="gi-matomo-loader" role="status" aria-live="polite" aria-busy="false" hidden>
+						<span class="gi-matomo-loader__ring" aria-hidden="true"></span>
+						<span class="gi-matomo-loader__label"><?php esc_html_e( 'Chargement des statistiques…', 'gi-toolkit' ); ?></span>
+					</div>
+					<div id="gi-matomo-dashboard">
+						<?php $this->render_dashboard_markup( $dashboard ); ?>
+					</div>
 				</div>
 			<?php endif; ?>
 		</div>
@@ -756,74 +906,182 @@ class Gi_Toolkit_Matomo {
 			return;
 		}
 
-		$kpis = $dashboard['kpis'] ?? array();
+		$kpis          = $dashboard['kpis'] ?? array();
+		$period        = $dashboard['period']['label'] ?? '';
+		$compare_label = $dashboard['compare_label'] ?? '';
 		?>
-		<div class="gi-matomo-kpis">
-			<div class="gi-matomo-kpi">
-				<span class="gi-matomo-kpi__value"><?php echo esc_html( $kpis['nb_visits'] ?? '0' ); ?></span>
-				<span class="gi-matomo-kpi__label"><?php esc_html_e( 'Visites', 'gi-toolkit' ); ?></span>
-			</div>
-			<div class="gi-matomo-kpi">
-				<span class="gi-matomo-kpi__value"><?php echo esc_html( $kpis['nb_uniq_visitors'] ?? '0' ); ?></span>
-				<span class="gi-matomo-kpi__label"><?php esc_html_e( 'Visiteurs uniques', 'gi-toolkit' ); ?></span>
-			</div>
-			<div class="gi-matomo-kpi">
-				<span class="gi-matomo-kpi__value"><?php echo esc_html( $kpis['nb_actions'] ?? '0' ); ?></span>
-				<span class="gi-matomo-kpi__label"><?php esc_html_e( 'Pages vues', 'gi-toolkit' ); ?></span>
-			</div>
-			<div class="gi-matomo-kpi">
-				<span class="gi-matomo-kpi__value"><?php echo esc_html( $kpis['bounce_rate'] ?? '0%' ); ?></span>
-				<span class="gi-matomo-kpi__label"><?php esc_html_e( 'Taux de rebond', 'gi-toolkit' ); ?></span>
-			</div>
-			<div class="gi-matomo-kpi">
-				<span class="gi-matomo-kpi__value"><?php echo esc_html( $kpis['avg_time'] ?? '0' ); ?></span>
-				<span class="gi-matomo-kpi__label"><?php esc_html_e( 'Durée moyenne', 'gi-toolkit' ); ?></span>
-			</div>
+		<div class="gi-matomo-dash-meta">
+			<p class="gi-matomo-dash-meta__period">
+				<span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
+				<?php echo esc_html( $period ); ?>
+				<?php if ( $compare_label ) : ?>
+					<span class="gi-matomo-dash-meta__compare"><?php echo esc_html( $compare_label ); ?></span>
+				<?php endif; ?>
+			</p>
+			<?php if ( ! empty( $dashboard['site_url'] ) ) : ?>
+				<p class="gi-matomo-dash-meta__site">
+					<span class="dashicons dashicons-admin-site-alt3" aria-hidden="true"></span>
+					<?php echo esc_html( $dashboard['site_url'] ); ?>
+					<?php if ( ! empty( $dashboard['site_id'] ) ) : ?>
+						<span class="gi-matomo-dash-meta__id">#<?php echo esc_html( (string) $dashboard['site_id'] ); ?></span>
+					<?php endif; ?>
+				</p>
+			<?php endif; ?>
 		</div>
 
-		<div class="gi-matomo-chart-panel">
-			<h2><?php esc_html_e( 'Évolution des visites', 'gi-toolkit' ); ?></h2>
-			<canvas id="gi-matomo-visits-chart" width="800" height="280" role="img" aria-label="<?php esc_attr_e( 'Graphique des visites', 'gi-toolkit' ); ?>"></canvas>
-			<script type="application/json" id="gi-matomo-chart-data"><?php echo wp_json_encode( $dashboard['chart'] ?? array() ); ?></script>
+		<div class="gi-matomo-kpis">
+			<?php
+			$this->render_kpi_card(
+				'dashicons-chart-line',
+				$kpis['nb_visits'] ?? '0',
+				__( 'Visites', 'gi-toolkit' ),
+				$kpis['trend_visits'] ?? array(),
+				'gi-matomo-kpi--primary'
+			);
+			$this->render_kpi_card(
+				'dashicons-groups',
+				$kpis['nb_uniq_visitors'] ?? '0',
+				__( 'Visiteurs uniques', 'gi-toolkit' ),
+				$kpis['trend_visitors'] ?? array()
+			);
+			$this->render_kpi_card(
+				'dashicons-media-document',
+				$kpis['nb_actions'] ?? '0',
+				__( 'Pages vues', 'gi-toolkit' ),
+				$kpis['trend_actions'] ?? array()
+			);
+			$this->render_kpi_card(
+				'dashicons-undo',
+				$kpis['bounce_rate'] ?? '0%',
+				__( 'Taux de rebond', 'gi-toolkit' ),
+				$kpis['trend_bounce'] ?? array()
+			);
+			$this->render_kpi_card(
+				'dashicons-clock',
+				$kpis['avg_time'] ?? '0',
+				__( 'Durée moyenne', 'gi-toolkit' ),
+				$kpis['trend_avg_time'] ?? array()
+			);
+			$this->render_kpi_card(
+				'dashicons-book',
+				$kpis['pages_per_visit'] ?? '0',
+				__( 'Pages / visite', 'gi-toolkit' ),
+				$kpis['trend_pages_visit'] ?? array()
+			);
+			?>
 		</div>
+
+		<div class="gi-matomo-charts">
+			<div class="gi-matomo-chart-panel gi-matomo-chart-panel--wide">
+				<h2><?php esc_html_e( 'Évolution du trafic', 'gi-toolkit' ); ?></h2>
+				<div class="gi-matomo-chart-canvas-wrap">
+					<canvas id="gi-matomo-chart-timeline" role="img" aria-label="<?php esc_attr_e( 'Évolution du trafic', 'gi-toolkit' ); ?>"></canvas>
+				</div>
+			</div>
+			<div class="gi-matomo-chart-panel">
+				<h2><?php esc_html_e( 'Sources', 'gi-toolkit' ); ?></h2>
+				<div class="gi-matomo-chart-canvas-wrap gi-matomo-chart-canvas-wrap--donut">
+					<canvas id="gi-matomo-chart-referrers" role="img" aria-label="<?php esc_attr_e( 'Sources de trafic', 'gi-toolkit' ); ?>"></canvas>
+				</div>
+			</div>
+			<div class="gi-matomo-chart-panel">
+				<h2><?php esc_html_e( 'Pays', 'gi-toolkit' ); ?></h2>
+				<div class="gi-matomo-chart-canvas-wrap gi-matomo-chart-canvas-wrap--donut">
+					<canvas id="gi-matomo-chart-countries" role="img" aria-label="<?php esc_attr_e( 'Répartition par pays', 'gi-toolkit' ); ?>"></canvas>
+				</div>
+			</div>
+			<div class="gi-matomo-chart-panel">
+				<h2><?php esc_html_e( 'Appareils', 'gi-toolkit' ); ?></h2>
+				<div class="gi-matomo-chart-canvas-wrap gi-matomo-chart-canvas-wrap--donut">
+					<canvas id="gi-matomo-chart-devices" role="img" aria-label="<?php esc_attr_e( 'Types d’appareils', 'gi-toolkit' ); ?>"></canvas>
+				</div>
+			</div>
+			<div class="gi-matomo-chart-panel gi-matomo-chart-panel--map">
+				<h2><?php esc_html_e( 'Origine des visiteurs', 'gi-toolkit' ); ?></h2>
+				<div id="gi-matomo-world-map" class="gi-matomo-world-map" role="img" aria-label="<?php esc_attr_e( 'Carte mondiale des visites', 'gi-toolkit' ); ?>"></div>
+				<p class="gi-matomo-map-legend description"><?php esc_html_e( 'Intensité de couleur = nombre de visites par pays.', 'gi-toolkit' ); ?></p>
+			</div>
+		</div>
+		<script type="application/json" id="gi-matomo-charts-data"><?php echo wp_json_encode( $dashboard['charts'] ?? array() ); ?></script>
 
 		<div class="gi-matomo-tables">
-			<?php $this->render_report_table( __( 'Pages les plus vues', 'gi-toolkit' ), $dashboard['pages'] ?? array() ); ?>
-			<?php $this->render_report_table( __( 'Sources de trafic', 'gi-toolkit' ), $dashboard['referrers'] ?? array() ); ?>
-			<?php $this->render_report_table( __( 'Pays', 'gi-toolkit' ), $dashboard['countries'] ?? array() ); ?>
-			<?php $this->render_report_table( __( 'Navigateurs', 'gi-toolkit' ), $dashboard['browsers'] ?? array() ); ?>
+			<?php $this->render_report_table( __( 'Pages les plus vues', 'gi-toolkit' ), $dashboard['pages'] ?? array(), 'dashicons-admin-page' ); ?>
+			<?php $this->render_report_table( __( 'Sources de trafic', 'gi-toolkit' ), $dashboard['referrers'] ?? array(), 'dashicons-randomize' ); ?>
+			<?php $this->render_report_table( __( 'Moteurs de recherche', 'gi-toolkit' ), $dashboard['search'] ?? array(), 'dashicons-search' ); ?>
+			<?php $this->render_report_table( __( 'Pays', 'gi-toolkit' ), $dashboard['countries'] ?? array(), 'dashicons-location-alt' ); ?>
+			<?php $this->render_report_table( __( 'Navigateurs', 'gi-toolkit' ), $dashboard['browsers'] ?? array(), 'dashicons-desktop' ); ?>
+			<?php $this->render_report_table( __( 'Appareils', 'gi-toolkit' ), $dashboard['devices'] ?? array(), 'dashicons-smartphone' ); ?>
 		</div>
 		<?php
 	}
 
 	/**
-	 * @param string                              $title Titre.
-	 * @param array<int, array{label:string,value:int}> $rows  Lignes.
+	 * @param string               $icon   Classe dashicons.
+	 * @param string               $value  Valeur affichée.
+	 * @param string               $label  Libellé.
+	 * @param array<string, mixed> $trend  Tendance (% vs période précédente).
+	 * @param string               $class  Classe CSS additionnelle.
 	 * @return void
 	 */
-	private function render_report_table( $title, array $rows ) {
+	private function render_kpi_card( $icon, $value, $label, array $trend, $class = '' ) {
+		$trend_value = $trend['value'] ?? '';
+		$trend_class = $trend['class'] ?? '';
+		$trend_dir   = $trend['direction'] ?? 'flat';
+		?>
+		<div class="gi-matomo-kpi <?php echo esc_attr( trim( $class ) ); ?>">
+			<div class="gi-matomo-kpi__icon">
+				<span class="dashicons <?php echo esc_attr( $icon ); ?>" aria-hidden="true"></span>
+			</div>
+			<div class="gi-matomo-kpi__body">
+				<span class="gi-matomo-kpi__value"><?php echo esc_html( $value ); ?></span>
+				<span class="gi-matomo-kpi__label"><?php echo esc_html( $label ); ?></span>
+				<?php if ( '' !== $trend_value ) : ?>
+					<span class="gi-matomo-trend <?php echo esc_attr( $trend_class ); ?>" data-direction="<?php echo esc_attr( $trend_dir ); ?>">
+						<?php echo esc_html( $trend_value ); ?>
+						<span class="screen-reader-text"><?php esc_html_e( 'vs période précédente', 'gi-toolkit' ); ?></span>
+					</span>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * @param string                                              $title Titre.
+	 * @param array<int, array{label:string,value:int,percent?:float,share?:float}> $rows  Lignes.
+	 * @param string                                              $icon  Dashicon.
+	 * @return void
+	 */
+	private function render_report_table( $title, array $rows, $icon = '' ) {
 		?>
 		<div class="gi-matomo-table-panel">
-			<h2><?php echo esc_html( $title ); ?></h2>
+			<h2>
+				<?php if ( $icon ) : ?>
+					<span class="dashicons <?php echo esc_attr( $icon ); ?>" aria-hidden="true"></span>
+				<?php endif; ?>
+				<?php echo esc_html( $title ); ?>
+			</h2>
 			<?php if ( empty( $rows ) ) : ?>
 				<p class="description"><?php esc_html_e( 'Aucune donnée pour cette période.', 'gi-toolkit' ); ?></p>
 			<?php else : ?>
-				<table class="widefat striped gi-matomo-table">
-					<thead>
-						<tr>
-							<th><?php esc_html_e( 'Libellé', 'gi-toolkit' ); ?></th>
-							<th class="gi-matomo-num"><?php esc_html_e( 'Valeur', 'gi-toolkit' ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php foreach ( $rows as $row ) : ?>
-							<tr>
-								<td><?php echo esc_html( $row['label'] ); ?></td>
-								<td class="gi-matomo-num"><?php echo esc_html( number_format_i18n( (int) $row['value'] ) ); ?></td>
-							</tr>
-						<?php endforeach; ?>
-					</tbody>
-				</table>
+				<ul class="gi-matomo-bar-list">
+					<?php foreach ( $rows as $row ) : ?>
+						<li class="gi-matomo-bar-row">
+							<span class="gi-matomo-bar-row__label" title="<?php echo esc_attr( $row['label'] ); ?>">
+								<?php echo esc_html( $row['label'] ); ?>
+							</span>
+							<span class="gi-matomo-bar-row__track" aria-hidden="true">
+								<span class="gi-matomo-bar-row__fill" style="width: <?php echo esc_attr( (string) ( $row['percent'] ?? 0 ) ); ?>%"></span>
+							</span>
+							<span class="gi-matomo-bar-row__value">
+								<?php echo esc_html( number_format_i18n( (int) $row['value'] ) ); ?>
+								<?php if ( isset( $row['share'] ) ) : ?>
+									<small><?php echo esc_html( number_format_i18n( $row['share'], 1 ) ); ?>%</small>
+								<?php endif; ?>
+							</span>
+						</li>
+					<?php endforeach; ?>
+				</ul>
 			<?php endif; ?>
 		</div>
 		<?php
