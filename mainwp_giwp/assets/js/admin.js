@@ -298,7 +298,7 @@
 		$btn.prop( 'disabled', true );
 		modal.open();
 		modal.appendLog( i18n( 'pluginDeployStarting', 'Préparation…' ) );
-		modal.$el.find( '.mainwp-giweb-plugin-deploy-url-hint' ).prop( 'hidden', true );
+		modal.$modal.find( '.mainwp-giweb-plugin-deploy-url-hint' ).prop( 'hidden', true );
 
 		postAjax( 'mainwp_giweb_plugin_deploy_init', {} )
 			.done( function ( response ) {
@@ -314,7 +314,7 @@
 
 				var data = response.data;
 				if ( data.zip_url ) {
-					modal.$el
+					modal.$modal
 						.find( '.mainwp-giweb-plugin-deploy-url-hint' )
 						.prop( 'hidden', false )
 						.text( i18n( 'pluginDeployZip', 'URL ZIP : %s' ).replace( '%s', data.zip_url ) );
