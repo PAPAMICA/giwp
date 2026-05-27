@@ -122,11 +122,10 @@ class MainWP_GIWeb {
 	 */
 	public static function render_page() {
 		if ( ! MainWP_GIWeb_Capabilities::can_access() ) {
-			wp_die(
-				esc_html__( 'Accès refusé.', 'mainwp-giweb' ),
-				esc_html__( 'GI-Toolkit Manager', 'mainwp-giweb' ),
-				array( 'response' => 403 )
-			);
+			echo '<div class="wrap mainwp-giweb-wrap"><div class="notice notice-error"><p>';
+			esc_html_e( 'Vous n’avez pas les droits MainWP pour accéder au GI-Toolkit Manager.', 'mainwp-giweb' );
+			echo '</p></div></div>';
+			return;
 		}
 
 		self::handle_post();

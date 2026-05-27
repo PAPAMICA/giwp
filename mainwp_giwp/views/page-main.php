@@ -36,7 +36,7 @@ $giweb_cfg = isset( $giweb_script_config ) && is_array( $giweb_script_config ) ?
 
 	<nav class="nav-tab-wrapper mainwp-giweb-tabs">
 		<?php foreach ( $tabs as $key => $label ) : ?>
-			<a href="<?php echo esc_url( MainWP_GIWeb_UI::admin_page_url( array( 'tab' => $key ) ) ); ?>" class="nav-tab <?php echo $tab === $key ? 'nav-tab-active' : ''; ?>"><?php echo esc_html( $label ); ?></a>
+		<a href="<?php echo esc_url( MainWP_GIWeb_UI::admin_page_url( array( 'tab' => $key ) ) ); ?>" class="nav-tab mainwp-giweb-tab<?php echo $tab === $key ? ' nav-tab-active' : ''; ?>" data-mainwp-giweb-tab="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></a>
 		<?php endforeach; ?>
 	</nav>
 

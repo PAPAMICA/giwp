@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'MAINWP_GIWEB_VERSION' ) ) {
-	define( 'MAINWP_GIWEB_VERSION', '1.3.4' );
+	define( 'MAINWP_GIWEB_VERSION', '1.3.5' );
 }
 if ( ! defined( 'MAINWP_GIWEB_PLUGIN_FILE' ) ) {
 	define( 'MAINWP_GIWEB_PLUGIN_FILE', __DIR__ . '/mainwp-giwp.php' );
@@ -146,10 +146,6 @@ class MainWP_GIWeb_Extension_Activator {
 			$this->childKey = $this->childEnabled['key'];
 		}
 
-		if ( function_exists( 'mainwp_current_user_can' ) && ! MainWP_GIWeb_Capabilities::can_access() ) {
-			return;
-		}
-
 		add_filter( 'mainwp_getsubpages_extensions', array( $this, 'add_submenu' ), 10, 1 );
 		add_filter( 'mainwp_getmetaboxes', array( 'MainWP_GIWeb_Dashboard_Widget', 'register_metabox' ), 20, 1 );
 		add_filter( 'mainwp_widgets_screen_options', array( 'MainWP_GIWeb_Dashboard_Widget', 'widgets_screen_options' ), 10, 1 );
@@ -224,4 +220,5 @@ global $mainwp_giweb_activator;
 $mainwp_giweb_activator = new MainWP_GIWeb_Extension_Activator();
 
 MainWP_GIWeb_Onboarding::init();
+MainWP_GIWeb_Capabilities::init();
 add_action( 'admin_notices', array( 'MainWP_GIWeb_Onboarding', 'maybe_render_notice' ) );

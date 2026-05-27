@@ -542,6 +542,24 @@
 			} );
 		}
 
+		$( document ).on( 'click', '.mainwp-giweb-tab', function ( e ) {
+			var href = this.getAttribute( 'href' );
+			if ( ! href ) {
+				return;
+			}
+			try {
+				var target = new URL( href, window.location.href );
+				if ( target.href === window.location.href ) {
+					return;
+				}
+			} catch ( err ) {
+				return;
+			}
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			window.location.assign( href );
+		} );
+
 		$( document ).on( 'click', '.mainwp-giweb-pull-config', function ( e ) {
 			log( 'jQuery click pull', this.dataset );
 			if ( ! hasAjax() ) {
