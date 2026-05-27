@@ -74,6 +74,14 @@ class MainWP_GIWeb_Dashboard_Widget {
 			array(),
 			MAINWP_GIWEB_VERSION
 		);
+
+		wp_enqueue_script(
+			'mainwp-giweb-dashboard-widget',
+			MAINWP_GIWEB_PLUGIN_URL . 'assets/js/dashboard-widget.js',
+			array(),
+			MAINWP_GIWEB_VERSION,
+			true
+		);
 	}
 
 	/**
@@ -219,10 +227,10 @@ class MainWP_GIWeb_Dashboard_Widget {
 		$agg        = MainWP_GIWeb_Mail_Stats::get_aggregate();
 		$network    = $agg['network'] ?? array();
 		$sites      = is_array( $agg['sites'] ?? null ) ? $agg['sites'] : array();
-		$updated_at = ! empty( $agg['updated_at'] ) ? (int) $agg['updated_at'] : 0;
-		$is_dark    = MainWP_GIWeb_UI::is_dark_theme();
-		$sync_ago   = self::format_sync_ago( $updated_at );
+		$updated_at    = ! empty( $agg['updated_at'] ) ? (int) $agg['updated_at'] : 0;
+		$is_dark       = MainWP_GIWeb_UI::is_dark_theme();
 		$sites_tracked = (int) ( $network['sites_module_active'] ?? 0 );
+		$has_failures  = (int) ( $network['failed'] ?? 0 ) > 0;
 
 		$failed_sites = array();
 		foreach ( $sites as $site_id => $row ) {
@@ -247,58 +255,67 @@ class MainWP_GIWeb_Dashboard_Widget {
 			$max = max( $max, (int) ( $sent[ $i ] ?? 0 ) + (int) ( $failed[ $i ] ?? 0 ) );
 		}
 		?>
-		<div class="mainwp-giweb-mail-widget<?php echo $is_dark ? ' mainwp-giweb-mail-widget--dark' : ' mainwp-giweb-mail-widget--light'; ?>">
+		<div class="mainwp-giweb-mail-widget<?php echo $is_dark ? ' mainwp-giweb-mail-widget--dark' : ' mainwp-giweb-mail-widget--light'; ?><?php echo $has_failures ? ' mainwp-giweb-mail-widget--has-errors' : ''; ?>">
 			<div class="mainwp-giweb-mail-widget__header">
-				<?php if ( $sites_tracked > 0 ) : ?>
-					<span class="mainwp-giweb-mail-widget__pill">
-						<?php
-						printf(
-							/* translators: %d: number of tracked sites */
-							esc_html( _n( '%d site suivi', '%d sites suivis', $sites_tracked, 'mainwp-giweb' ) ),
-							$sites_tracked
-						);
-						?>
-					</span>
-				<?php endif; ?>
-				<?php if ( $sync_ago ) : ?>
-					<span class="mainwp-giweb-mail-widget__sync" title="<?php echo esc_attr( wp_date( 'Y-m-d H:i', $updated_at ) ); ?>">
-						<?php echo esc_html( $sync_ago ); ?>
-					</span>
-				<?php elseif ( ! $sites_tracked ) : ?>
-					<span class="mainwp-giweb-mail-widget__sync mainwp-giweb-mail-widget__sync--empty">
-						<?php esc_html_e( 'Aucune donnée — lancez une synchronisation', 'mainwp-giweb' ); ?>
-					</span>
-				<?php endif; ?>
+				<div class="mainwp-giweb-mail-widget__header-main">
+					<?php if ( $sites_tracked > 0 ) : ?>
+						<span class="mainwp-giweb-mail-widget__pill">
+							<span class="mainwp-giweb-mail-widget__pill-dot" aria-hidden="true"></span>
+							<?php
+							printf(
+								/* translators: %d: number of tracked sites */
+								esc_html( _n( '%d site suivi', '%d sites suivis', $sites_tracked, 'mainwp-giweb' ) ),
+								$sites_tracked
+							);
+							?>
+						</span>
+					<?php endif; ?>
+					<?php if ( $updated_at > 0 ) : ?>
+						<time
+							class="mainwp-giweb-mail-widget__sync"
+							datetime="<?php echo esc_attr( gmdate( 'c', $updated_at ) ); ?>"
+							data-sync-ts="<?php echo esc_attr( (string) $updated_at ); ?>"
+						>
+							<?php echo esc_html( self::format_sync_ago( $updated_at ) ); ?>
+						</time>
+					<?php elseif ( ! $sites_tracked ) : ?>
+						<span class="mainwp-giweb-mail-widget__sync mainwp-giweb-mail-widget__sync--empty">
+							<?php esc_html_e( 'Synchronisez vos sites MainWP pour alimenter ce widget', 'mainwp-giweb' ); ?>
+						</span>
+					<?php endif; ?>
+				</div>
+			</div>
+
+			<div class="mainwp-giweb-mail-widget__kpis">
+				<div class="mainwp-giweb-mail-widget__kpi">
+					<span class="mainwp-giweb-mail-widget__kpi-value"><?php echo esc_html( number_format_i18n( (int) ( $network['total'] ?? 0 ) ) ); ?></span>
+					<span class="mainwp-giweb-mail-widget__kpi-label"><?php esc_html_e( 'Total', 'mainwp-giweb' ); ?></span>
+				</div>
+				<div class="mainwp-giweb-mail-widget__kpi mainwp-giweb-mail-widget__kpi--ok">
+					<span class="mainwp-giweb-mail-widget__kpi-value"><?php echo esc_html( number_format_i18n( (int) ( $network['success'] ?? 0 ) ) ); ?></span>
+					<span class="mainwp-giweb-mail-widget__kpi-label"><?php esc_html_e( 'OK', 'mainwp-giweb' ); ?></span>
+				</div>
+				<div class="mainwp-giweb-mail-widget__kpi <?php echo $has_failures ? 'mainwp-giweb-mail-widget__kpi--alert' : 'mainwp-giweb-mail-widget__kpi--neutral'; ?>">
+					<span class="mainwp-giweb-mail-widget__kpi-value"><?php echo esc_html( number_format_i18n( (int) ( $network['failed'] ?? 0 ) ) ); ?></span>
+					<span class="mainwp-giweb-mail-widget__kpi-label"><?php esc_html_e( 'Échecs', 'mainwp-giweb' ); ?></span>
+				</div>
+				<div class="mainwp-giweb-mail-widget__kpi">
+					<span class="mainwp-giweb-mail-widget__kpi-value"><?php echo esc_html( number_format_i18n( (int) ( $network['today'] ?? 0 ) ) ); ?></span>
+					<span class="mainwp-giweb-mail-widget__kpi-label"><?php esc_html_e( 'Aujourd’hui', 'mainwp-giweb' ); ?></span>
+				</div>
 			</div>
 
 			<div class="mainwp-giweb-mail-widget__layout">
-				<div class="mainwp-giweb-mail-widget__grid">
-					<div class="mainwp-giweb-mail-widget__kpi">
-						<span class="mainwp-giweb-mail-widget__kpi-value"><?php echo esc_html( number_format_i18n( (int) ( $network['total'] ?? 0 ) ) ); ?></span>
-						<span class="mainwp-giweb-mail-widget__kpi-label"><?php esc_html_e( 'Total', 'mainwp-giweb' ); ?></span>
-					</div>
-					<div class="mainwp-giweb-mail-widget__kpi mainwp-giweb-mail-widget__kpi--ok">
-						<span class="mainwp-giweb-mail-widget__kpi-value"><?php echo esc_html( number_format_i18n( (int) ( $network['success'] ?? 0 ) ) ); ?></span>
-						<span class="mainwp-giweb-mail-widget__kpi-label"><?php esc_html_e( 'OK', 'mainwp-giweb' ); ?></span>
-					</div>
-					<div class="mainwp-giweb-mail-widget__kpi <?php echo (int) ( $network['failed'] ?? 0 ) > 0 ? 'mainwp-giweb-mail-widget__kpi--alert' : ''; ?>">
-						<span class="mainwp-giweb-mail-widget__kpi-value"><?php echo esc_html( number_format_i18n( (int) ( $network['failed'] ?? 0 ) ) ); ?></span>
-						<span class="mainwp-giweb-mail-widget__kpi-label"><?php esc_html_e( 'Échecs', 'mainwp-giweb' ); ?></span>
-					</div>
-					<div class="mainwp-giweb-mail-widget__kpi">
-						<span class="mainwp-giweb-mail-widget__kpi-value"><?php echo esc_html( number_format_i18n( (int) ( $network['today'] ?? 0 ) ) ); ?></span>
-						<span class="mainwp-giweb-mail-widget__kpi-label"><?php esc_html_e( 'Auj.', 'mainwp-giweb' ); ?></span>
-					</div>
-				</div>
-
 				<?php if ( ! empty( $donut_segments ) && ! empty( $donut['style'] ) ) : ?>
 					<div class="mainwp-giweb-mail-widget__donut-block">
-						<p class="mainwp-giweb-mail-widget__donut-title"><?php esc_html_e( 'Répartition par site', 'mainwp-giweb' ); ?></p>
+						<h4 class="mainwp-giweb-mail-widget__section-title"><?php esc_html_e( 'Répartition par site', 'mainwp-giweb' ); ?></h4>
 						<div class="mainwp-giweb-mail-widget__donut-row">
-							<div class="mainwp-giweb-mail-widget__donut" style="<?php echo esc_attr( $donut['style'] ); ?>" role="img" aria-label="<?php esc_attr_e( 'Répartition des mails par site', 'mainwp-giweb' ); ?>">
-								<div class="mainwp-giweb-mail-widget__donut-hole">
-									<span class="mainwp-giweb-mail-widget__donut-sum"><?php echo esc_html( number_format_i18n( (int) $donut['sum'] ) ); ?></span>
-									<span class="mainwp-giweb-mail-widget__donut-sum-label"><?php esc_html_e( 'mails', 'mainwp-giweb' ); ?></span>
+							<div class="mainwp-giweb-mail-widget__donut-wrap">
+								<div class="mainwp-giweb-mail-widget__donut" style="<?php echo esc_attr( $donut['style'] ); ?>" role="img" aria-label="<?php esc_attr_e( 'Répartition des mails par site', 'mainwp-giweb' ); ?>">
+									<div class="mainwp-giweb-mail-widget__donut-hole">
+										<span class="mainwp-giweb-mail-widget__donut-sum"><?php echo esc_html( number_format_i18n( (int) $donut['sum'] ) ); ?></span>
+										<span class="mainwp-giweb-mail-widget__donut-sum-label"><?php esc_html_e( 'mails', 'mainwp-giweb' ); ?></span>
+									</div>
 								</div>
 							</div>
 							<ul class="mainwp-giweb-mail-widget__donut-legend">
@@ -309,26 +326,24 @@ class MainWP_GIWeb_Dashboard_Widget {
 									?>
 									<li class="mainwp-giweb-mail-widget__donut-legend-item">
 										<span class="mainwp-giweb-mail-widget__donut-swatch" style="background:<?php echo esc_attr( $color ); ?>"></span>
-										<span class="mainwp-giweb-mail-widget__donut-legend-text">
-											<span class="mainwp-giweb-mail-widget__donut-legend-name" title="<?php echo esc_attr( $segment['label'] ); ?>">
-												<?php echo esc_html( $segment['label'] ); ?>
-											</span>
+										<div class="mainwp-giweb-mail-widget__donut-legend-body">
+											<div class="mainwp-giweb-mail-widget__donut-legend-top">
+												<span class="mainwp-giweb-mail-widget__donut-legend-name" title="<?php echo esc_attr( $segment['label'] ); ?>">
+													<?php echo esc_html( $segment['label'] ); ?>
+												</span>
+												<span class="mainwp-giweb-mail-widget__donut-legend-pct"><?php echo esc_html( (string) $share ); ?>%</span>
+											</div>
+											<div class="mainwp-giweb-mail-widget__donut-bar" aria-hidden="true">
+												<span class="mainwp-giweb-mail-widget__donut-bar-fill" style="width:<?php echo esc_attr( (string) $share ); ?>%;background:<?php echo esc_attr( $color ); ?>"></span>
+											</div>
 											<span class="mainwp-giweb-mail-widget__donut-legend-meta">
-												<?php
-												echo esc_html(
-													sprintf(
-														/* translators: 1: mail count, 2: percentage */
-														__( '%1$s (%2$s%%)', 'mainwp-giweb' ),
-														number_format_i18n( (int) $segment['total'] ),
-														(string) $share
-													)
-												);
-												?>
+												<?php echo esc_html( number_format_i18n( (int) $segment['total'] ) ); ?>
+												<?php esc_html_e( 'mails', 'mainwp-giweb' ); ?>
 												<?php if ( (int) $segment['failed'] > 0 ) : ?>
 													<span class="mainwp-giweb-mail-widget__donut-fail">· <?php echo esc_html( (string) (int) $segment['failed'] ); ?> <?php esc_html_e( 'échec(s)', 'mainwp-giweb' ); ?></span>
 												<?php endif; ?>
 											</span>
-										</span>
+										</div>
 									</li>
 								<?php endforeach; ?>
 							</ul>
@@ -338,7 +353,7 @@ class MainWP_GIWeb_Dashboard_Widget {
 
 				<?php if ( ! empty( $labels ) ) : ?>
 					<div class="mainwp-giweb-mail-widget__chart">
-						<p class="mainwp-giweb-mail-widget__chart-title"><?php esc_html_e( '7 derniers jours (réseau)', 'mainwp-giweb' ); ?></p>
+						<h4 class="mainwp-giweb-mail-widget__section-title"><?php esc_html_e( '7 derniers jours', 'mainwp-giweb' ); ?></h4>
 						<div class="mainwp-giweb-mail-widget__chart-bars" aria-hidden="true">
 							<?php foreach ( $labels as $i => $label ) : ?>
 								<?php
@@ -365,7 +380,7 @@ class MainWP_GIWeb_Dashboard_Widget {
 
 				<?php if ( ! empty( $failed_sites ) ) : ?>
 					<div class="mainwp-giweb-mail-widget__sites">
-						<strong><?php esc_html_e( 'Sites en alerte', 'mainwp-giweb' ); ?></strong>
+						<h4 class="mainwp-giweb-mail-widget__section-title mainwp-giweb-mail-widget__section-title--alert"><?php esc_html_e( 'Sites en alerte', 'mainwp-giweb' ); ?></h4>
 						<ul>
 							<?php foreach ( array_slice( $failed_sites, 0, 5, true ) as $site_id => $row ) : ?>
 								<li>
