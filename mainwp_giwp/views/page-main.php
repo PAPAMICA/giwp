@@ -78,6 +78,7 @@ $giweb_cfg = isset( $giweb_script_config ) && is_array( $giweb_script_config ) ?
 	include MAINWP_GIWEB_PLUGIN_PATH . 'views/modal-sync.php';
 	include MAINWP_GIWEB_PLUGIN_PATH . 'views/modal-module-options.php';
 	include MAINWP_GIWEB_PLUGIN_PATH . 'views/modal-deploy.php';
+	include MAINWP_GIWEB_PLUGIN_PATH . 'views/modal-plugin-deploy.php';
 	?>
 </div>
 <?php include MAINWP_GIWEB_PLUGIN_PATH . 'views/partials/inline-boot.php'; ?>

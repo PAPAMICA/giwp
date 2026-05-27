@@ -99,6 +99,28 @@ $logs            = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 				<?php else : ?>
 					<p class="description" style="color:#b45309;"><?php esc_html_e( 'Aucune URL ZIP disponible — définissez une URL personnalisée ou vérifiez ZipArchive et wordpress_giwp.', 'mainwp-giweb' ); ?></p>
 				<?php endif; ?>
+				<p style="margin-top:12px;">
+					<button
+						type="button"
+						class="button button-secondary"
+						id="mainwp-giweb-plugin-deploy-start"
+						<?php disabled( ! $install_zip_url ); ?>
+					>
+						<?php esc_html_e( 'Déployer la dernière version sur tous les sites', 'mainwp-giweb' ); ?>
+					</button>
+				</p>
+				<p class="description">
+					<?php
+					printf(
+						/* translators: %d: parallel site count from settings */
+						esc_html__(
+							'Installe ou met à jour GI-Toolkit sur chaque site enfant via l’URL ZIP ci-dessus. Les sites sont traités en parallèle (%d à la fois, réglage « Sites interrogés en parallèle »).',
+							'mainwp-giweb'
+						),
+						max( 1, min( 15, (int) ( $settings['sync_concurrency'] ?? 5 ) ) )
+					);
+					?>
+				</p>
 			</td>
 		</tr>
 		<tr>

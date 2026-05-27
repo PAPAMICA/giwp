@@ -11,12 +11,46 @@ class MainWP_GIWeb_Plugin_Installer {
 	const REMOTE_FUNCTION = 'install_plugin_theme';
 
 	/**
-	 * Installe et active GI-Toolkit depuis le ZIP du monorepo.
+	 * Vérifie que l’URL ZIP de déploiement est utilisable.
+	 *
+	 * @return array{ok: bool, url: string, message: string}
+	 */
+	public static function validate_deploy_url() {
+		MainWP_GIWeb_Zip::build_if_needed();
+		$url = MainWP_GIWeb_Zip::get_install_url();
+		if ( ! $url || ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
+			return array(
+				'ok'      => false,
+				'url'     => '',
+				'message' => __( 'URL ZIP GI-Toolkit indisponible. Définissez une URL dans Réglages ou vérifiez ZipArchive et wordpress_giwp.', 'mainwp-giweb' ),
+			);
+		}
+
+		return array(
+			'ok'      => true,
+			'url'     => $url,
+			'message' => '',
+		);
+	}
+
+	/**
+	 * Installe ou met à jour GI-Toolkit depuis l’URL ZIP configurée.
 	 *
 	 * @param int $website_id ID MainWP.
 	 * @return array{success:bool, message:string, data:array<string,mixed>}
 	 */
-	public static function install_gi_toolkit( $website_id ) {
+	public static function deploy_gi_toolkit( $website_id ) {
+		return self::install_gi_toolkit( $website_id, true );
+	}
+
+	/**
+	 * Installe et active GI-Toolkit depuis le ZIP du monorepo.
+	 *
+	 * @param int  $website_id ID MainWP.
+	 * @param bool $is_deploy  Libellé « mise à jour » si true.
+	 * @return array{success:bool, message:string, data:array<string,mixed>}
+	 */
+	public static function install_gi_toolkit( $website_id, $is_deploy = false ) {
 		$website_id = absint( $website_id );
 		if ( ! $website_id ) {
 			return self::result( false, __( 'ID site invalide.', 'mainwp-giweb' ) );
@@ -52,15 +86,19 @@ class MainWP_GIWeb_Plugin_Installer {
 
 		// Réponse MainWP classique (slug, Name, …).
 		if ( is_array( $raw ) && ( ! empty( $raw['slug'] ) || ! empty( $raw['Name'] ) ) ) {
-			return self::result(
-				true,
-				sprintf(
+			$label = (string) ( $raw['Name'] ?? 'GI-Toolkit' );
+			$msg   = $is_deploy
+				? sprintf(
+					/* translators: %s: plugin name */
+					__( 'GI-Toolkit déployé / mis à jour (%s).', 'mainwp-giweb' ),
+					$label
+				)
+				: sprintf(
 					/* translators: %s: plugin name */
 					__( 'GI-Toolkit installé (%s).', 'mainwp-giweb' ),
-					(string) ( $raw['Name'] ?? 'GI-Toolkit' )
-				),
-				$raw
-			);
+					$label
+				);
+			return self::result( true, $msg, $raw );
 		}
 
 		// Parfois la réponse est encapsulée.

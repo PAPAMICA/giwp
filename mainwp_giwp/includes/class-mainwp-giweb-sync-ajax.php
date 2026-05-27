@@ -24,6 +24,10 @@ class MainWP_GIWeb_Sync_Ajax {
 		add_action( 'wp_ajax_mainwp_giweb_save_working_modules', array( __CLASS__, 'ajax_save_working_modules' ) );
 		add_action( 'wp_ajax_mainwp_giweb_deploy_init', array( __CLASS__, 'ajax_deploy_init' ) );
 		add_action( 'wp_ajax_mainwp_giweb_deploy_site', array( __CLASS__, 'ajax_deploy_site' ) );
+		add_action( 'wp_ajax_mainwp_giweb_deploy_cleanup', array( __CLASS__, 'ajax_deploy_cleanup' ) );
+		add_action( 'wp_ajax_mainwp_giweb_plugin_deploy_init', array( __CLASS__, 'ajax_plugin_deploy_init' ) );
+		add_action( 'wp_ajax_mainwp_giweb_plugin_deploy_site', array( __CLASS__, 'ajax_plugin_deploy_site' ) );
+		add_action( 'wp_ajax_mainwp_giweb_plugin_deploy_cleanup', array( __CLASS__, 'ajax_plugin_deploy_cleanup' ) );
 	}
 
 	/**
@@ -51,6 +55,14 @@ class MainWP_GIWeb_Sync_Ajax {
 	 */
 	private static function deploy_transient_key( $deployment_id ) {
 		return 'mainwp_giweb_deploy_' . absint( $deployment_id );
+	}
+
+	/**
+	 * @param string $job_id ID tâche déploiement plugin.
+	 * @return string
+	 */
+	private static function plugin_deploy_transient_key( $job_id ) {
+		return 'mainwp_giweb_plugin_deploy_' . sanitize_key( $job_id );
 	}
 
 	/**
@@ -571,7 +583,6 @@ class MainWP_GIWeb_Sync_Ajax {
 
 			$deployment_id = isset( $_POST['deployment_id'] ) ? absint( $_POST['deployment_id'] ) : 0;
 			$site_id       = isset( $_POST['site_id'] ) ? absint( $_POST['site_id'] ) : 0;
-			$is_last       = ! empty( $_POST['is_last'] );
 
 			if ( ! $deployment_id || ! $site_id ) {
 				wp_send_json_error( array( 'message' => __( 'Paramètres de déploiement invalides.', 'mainwp-giweb' ) ) );
@@ -595,8 +606,142 @@ class MainWP_GIWeb_Sync_Ajax {
 
 			MainWP_GIWeb_History::log_site_result( $deployment_id, $site_id, $ok ? 'success' : 'error', $msg, $result );
 
-			if ( $is_last ) {
+			$log = sprintf(
+				'[%s] %s — %s',
+				$ok ? 'OK' : __( 'ERR', 'mainwp-giweb' ),
+				$label,
+				$msg
+			);
+
+			wp_send_json_success(
+				array(
+					'site_id' => $site_id,
+					'success' => $ok,
+					'log'     => $log,
+					'message' => $msg,
+				)
+			);
+		} catch ( Throwable $e ) {
+			self::send_exception( $e );
+		} catch ( Exception $e ) {
+			self::send_exception( $e );
+		}
+	}
+
+	/**
+	 * Libère le transient bundle après déploiement config parallèle.
+	 *
+	 * @return void
+	 */
+	public static function ajax_deploy_cleanup() {
+		self::bootstrap_ajax();
+		try {
+			self::verify_request();
+			$deployment_id = isset( $_POST['deployment_id'] ) ? absint( $_POST['deployment_id'] ) : 0;
+			if ( $deployment_id > 0 ) {
 				delete_transient( self::deploy_transient_key( $deployment_id ) );
+			}
+			wp_send_json_success();
+		} catch ( Throwable $e ) {
+			self::send_exception( $e );
+		} catch ( Exception $e ) {
+			self::send_exception( $e );
+		}
+	}
+
+	/**
+	 * Prépare le déploiement du plugin GI-Toolkit sur tous les sites enfants.
+	 *
+	 * @return void
+	 */
+	public static function ajax_plugin_deploy_init() {
+		self::bootstrap_ajax();
+		try {
+			self::verify_request();
+
+			$zip = MainWP_GIWeb_Plugin_Installer::validate_deploy_url();
+			if ( empty( $zip['ok'] ) ) {
+				wp_send_json_error( array( 'message' => $zip['message'] ) );
+			}
+
+			$act = self::activator();
+			if ( ! $act ) {
+				wp_send_json_error(
+					array( 'message' => __( 'Extension MainWP non initialisée.', 'mainwp-giweb' ) )
+				);
+			}
+
+			$sites_out = array();
+			foreach ( MainWP_GIWeb_Sites::fetch_all( $act ) as $site ) {
+				$row = MainWP_GIWeb_Sites::normalize_one( $site );
+				if ( $row['id'] <= 0 ) {
+					continue;
+				}
+				$sites_out[] = array(
+					'id'   => $row['id'],
+					'name' => $row['name'] ?: $row['url'] ?: ( '#' . $row['id'] ),
+					'url'  => $row['url'],
+				);
+			}
+
+			if ( empty( $sites_out ) ) {
+				wp_send_json_error( array( 'message' => __( 'Aucun site enfant MainWP trouvé.', 'mainwp-giweb' ) ) );
+			}
+
+			$job_id = wp_generate_password( 16, false, false );
+			set_transient(
+				self::plugin_deploy_transient_key( $job_id ),
+				array(
+					'zip_url'    => $zip['url'],
+					'started_at' => time(),
+				),
+				HOUR_IN_SECONDS
+			);
+
+			wp_send_json_success(
+				array(
+					'job_id'  => $job_id,
+					'zip_url' => $zip['url'],
+					'sites'   => $sites_out,
+					'total'   => count( $sites_out ),
+				)
+			);
+		} catch ( Throwable $e ) {
+			self::send_exception( $e );
+		} catch ( Exception $e ) {
+			self::send_exception( $e );
+		}
+	}
+
+	/**
+	 * Installe ou met à jour GI-Toolkit sur un site enfant.
+	 *
+	 * @return void
+	 */
+	public static function ajax_plugin_deploy_site() {
+		self::bootstrap_ajax();
+		try {
+			self::verify_request();
+
+			$job_id  = isset( $_POST['job_id'] ) ? sanitize_key( wp_unslash( $_POST['job_id'] ) ) : '';
+			$site_id = isset( $_POST['site_id'] ) ? absint( $_POST['site_id'] ) : 0;
+
+			if ( '' === $job_id || ! $site_id ) {
+				wp_send_json_error( array( 'message' => __( 'Paramètres invalides.', 'mainwp-giweb' ) ) );
+			}
+
+			$ctx = get_transient( self::plugin_deploy_transient_key( $job_id ) );
+			if ( ! is_array( $ctx ) || empty( $ctx['zip_url'] ) ) {
+				wp_send_json_error( array( 'message' => __( 'Session de déploiement expirée. Relancez l’opération.', 'mainwp-giweb' ) ) );
+			}
+
+			$label  = isset( $_POST['site_label'] ) ? sanitize_text_field( wp_unslash( $_POST['site_label'] ) ) : ( '#' . $site_id );
+			$result = MainWP_GIWeb_Plugin_Installer::deploy_gi_toolkit( $site_id );
+			$ok     = ! empty( $result['success'] );
+			$msg    = $result['message'] ?? ( $ok ? __( 'OK', 'mainwp-giweb' ) : __( 'Échec', 'mainwp-giweb' ) );
+
+			if ( ! $ok ) {
+				$msg = MainWP_GIWeb_API::format_site_error( $site_id, $label, $msg );
 			}
 
 			$log = sprintf(
@@ -614,6 +759,27 @@ class MainWP_GIWeb_Sync_Ajax {
 					'message' => $msg,
 				)
 			);
+		} catch ( Throwable $e ) {
+			self::send_exception( $e );
+		} catch ( Exception $e ) {
+			self::send_exception( $e );
+		}
+	}
+
+	/**
+	 * Termine une session de déploiement plugin (après le pool parallèle).
+	 *
+	 * @return void
+	 */
+	public static function ajax_plugin_deploy_cleanup() {
+		self::bootstrap_ajax();
+		try {
+			self::verify_request();
+			$job_id = isset( $_POST['job_id'] ) ? sanitize_key( wp_unslash( $_POST['job_id'] ) ) : '';
+			if ( '' !== $job_id ) {
+				delete_transient( self::plugin_deploy_transient_key( $job_id ) );
+			}
+			wp_send_json_success();
 		} catch ( Throwable $e ) {
 			self::send_exception( $e );
 		} catch ( Exception $e ) {

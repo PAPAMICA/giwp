@@ -290,6 +290,129 @@
 		return ids;
 	}
 
+	function runPluginDeploy( modal ) {
+		var $btn = $( '#mainwp-giweb-plugin-deploy-start' );
+		if ( ! window.confirm( i18n( 'pluginDeployConfirm', 'Déployer sur tous les sites ?' ) ) ) {
+			return;
+		}
+		$btn.prop( 'disabled', true );
+		modal.open();
+		modal.appendLog( i18n( 'pluginDeployStarting', 'Préparation…' ) );
+		modal.$el.find( '.mainwp-giweb-plugin-deploy-url-hint' ).prop( 'hidden', true );
+
+		postAjax( 'mainwp_giweb_plugin_deploy_init', {} )
+			.done( function ( response ) {
+				if ( ! response || ! response.success ) {
+					modal.appendLog(
+						( response && response.data && response.data.message ) || i18n( 'syncError', 'Erreur' ),
+						false
+					);
+					modal.enableClose();
+					$btn.prop( 'disabled', false );
+					return;
+				}
+
+				var data = response.data;
+				if ( data.zip_url ) {
+					modal.$el
+						.find( '.mainwp-giweb-plugin-deploy-url-hint' )
+						.prop( 'hidden', false )
+						.text( i18n( 'pluginDeployZip', 'URL ZIP : %s' ).replace( '%s', data.zip_url ) );
+				}
+
+				var sites = data.sites || [];
+				var total = data.total || sites.length;
+				var jobId = data.job_id;
+				var concurrency = Math.max( 1, parseInt( cfg.syncConcurrency, 10 ) || 5 );
+
+				if ( ! total || ! jobId ) {
+					modal.appendLog( i18n( 'pluginDeployNoSites', 'Aucun site' ), false );
+					modal.enableClose();
+					$btn.prop( 'disabled', false );
+					return;
+				}
+
+				modal.appendLog(
+					( i18n( 'pluginDeployParallel', 'Déploiement en parallèle (%d sites à la fois).' ) || '' ).replace(
+						'%d',
+						String( concurrency )
+					),
+					true
+				);
+
+				var completed = 0;
+				var okCount = 0;
+				var errCount = 0;
+
+				runSitesParallel(
+					sites,
+					function ( site, siteDone ) {
+						modal.appendLog(
+							i18n( 'pluginDeployConnecting', 'Déploiement vers %s…' ).replace( '%s', site.name )
+						);
+
+						postAjax( 'mainwp_giweb_plugin_deploy_site', {
+							job_id: jobId,
+							site_id: site.id,
+							site_label: site.name,
+						} )
+							.done( function ( siteResponse ) {
+								if ( siteResponse && siteResponse.success && siteResponse.data ) {
+									modal.appendLog( siteResponse.data.log, siteResponse.data.success );
+									if ( siteResponse.data.success ) {
+										okCount += 1;
+									} else {
+										errCount += 1;
+									}
+								} else {
+									errCount += 1;
+									modal.appendLog(
+										( siteResponse && siteResponse.data && siteResponse.data.message ) ||
+											i18n( 'syncError', 'Erreur' ),
+										false
+									);
+								}
+							} )
+							.fail( function () {
+								errCount += 1;
+								modal.appendLog( site.name + ' — ' + i18n( 'syncError', 'Erreur réseau' ), false );
+							} )
+							.always( function () {
+								completed += 1;
+								modal.setProgress( completed, total );
+								siteDone();
+							} );
+					},
+					concurrency,
+					function () {
+						modal.setProgress( total, total );
+						var summary;
+						if ( errCount === 0 ) {
+							summary = i18n( 'pluginDeployDoneOk', '%d OK' ).replace( '%d', String( okCount ) );
+							modal.appendLog( i18n( 'pluginDeployDone', 'Terminé.' ), true );
+						} else if ( okCount === 0 ) {
+							summary = i18n( 'pluginDeployDoneFailed', 'Échec' ).replace( '%d', String( errCount ) );
+							modal.appendLog( summary, false );
+						} else {
+							summary = i18n( 'pluginDeployDonePartial', 'Partiel' )
+								.replace( '%1$d', String( okCount ) )
+								.replace( '%2$d', String( errCount ) );
+							modal.appendLog( summary, false );
+						}
+						postAjax( 'mainwp_giweb_plugin_deploy_cleanup', { job_id: jobId } );
+						showInlineNotice( summary, errCount === 0 ? 'success' : 'warning' );
+						modal.enableClose();
+						$btn.prop( 'disabled', false );
+					}
+				);
+			} )
+			.fail( function () {
+				modal.appendLog( i18n( 'syncError', 'Erreur réseau' ), false );
+				modal.enableClose();
+				$btn.prop( 'disabled', false );
+			} );
+	}
+
 	function runDeploy( modal ) {
 		var $btn = $( '#mainwp-giweb-deploy-start' );
 		var siteIds = collectDeploySiteIds();
@@ -330,80 +453,81 @@
 					return;
 				}
 
-				var index = 0;
+				var concurrency = Math.max( 1, parseInt( cfg.syncConcurrency, 10 ) || 5 );
+				var completed = 0;
 				var okCount = 0;
 				var errCount = 0;
 
-				function finishDeploy() {
-					modal.setProgress( total, total );
-					var summary;
-					var noticeType = 'success';
-					if ( errCount === 0 ) {
-						summary = i18n( 'deployDoneOk', '%d OK' ).replace( '%d', String( okCount ) );
-						modal.appendLog( i18n( 'deployDone', 'Terminé.' ), true );
-					} else if ( okCount === 0 ) {
-						summary = i18n( 'deployDoneFailed', 'Tous en échec' ).replace( '%d', String( errCount ) );
-						noticeType = 'error';
-						modal.appendLog( summary, false );
-					} else {
-						summary = i18n( 'deployDonePartial', 'Partiel' )
-							.replace( '%1$d', String( okCount ) )
-							.replace( '%2$d', String( errCount ) );
-						noticeType = 'warning';
-						modal.appendLog( summary, false );
-					}
-					showInlineNotice( summary, noticeType );
-					modal.enableClose();
-					$btn.prop( 'disabled', false );
-				}
+				modal.appendLog(
+					( i18n( 'deployParallel', 'Déploiement en parallèle (%d sites à la fois).' ) || '' ).replace(
+						'%d',
+						String( concurrency )
+					),
+					true
+				);
 
-				function next() {
-					if ( index >= sites.length ) {
-						finishDeploy();
-						return;
-					}
+				runSitesParallel(
+					sites,
+					function ( site, siteDone ) {
+						modal.appendLog( i18n( 'deployConnecting', 'Déploiement vers %s…' ).replace( '%s', site.name ) );
 
-					var site = sites[ index ];
-					var isLast = index === sites.length - 1;
-					modal.appendLog( i18n( 'deployConnecting', 'Déploiement vers %s…' ).replace( '%s', site.name ) );
-					modal.setProgress( index, total );
-
-					postAjax( 'mainwp_giweb_deploy_site', {
-						deployment_id: deploymentId,
-						site_id: site.id,
-						site_label: site.name,
-						is_last: isLast ? 1 : 0,
-					} )
-						.done( function ( siteResponse ) {
-							var siteOk = false;
-							if ( siteResponse && siteResponse.success && siteResponse.data ) {
-								siteOk = !! siteResponse.data.success;
-								modal.appendLog( siteResponse.data.log, siteOk );
-							} else {
-								modal.appendLog(
-									( siteResponse && siteResponse.data && siteResponse.data.message ) ||
-										i18n( 'syncError', 'Erreur' ),
-									false
-								);
-							}
-							if ( siteOk ) {
-								okCount += 1;
-							} else {
-								errCount += 1;
-							}
-							index += 1;
-							modal.setProgress( index, total );
-							next();
+						postAjax( 'mainwp_giweb_deploy_site', {
+							deployment_id: deploymentId,
+							site_id: site.id,
+							site_label: site.name,
 						} )
-						.fail( function () {
-							modal.appendLog( site.name + ' — ' + i18n( 'syncError', 'Erreur réseau' ), false );
-							errCount += 1;
-							index += 1;
-							next();
-						} );
-				}
-
-				next();
+							.done( function ( siteResponse ) {
+								if ( siteResponse && siteResponse.success && siteResponse.data ) {
+									modal.appendLog( siteResponse.data.log, siteResponse.data.success );
+									if ( siteResponse.data.success ) {
+										okCount += 1;
+									} else {
+										errCount += 1;
+									}
+								} else {
+									errCount += 1;
+									modal.appendLog(
+										( siteResponse && siteResponse.data && siteResponse.data.message ) ||
+											i18n( 'syncError', 'Erreur' ),
+										false
+									);
+								}
+							} )
+							.fail( function () {
+								errCount += 1;
+								modal.appendLog( site.name + ' — ' + i18n( 'syncError', 'Erreur réseau' ), false );
+							} )
+							.always( function () {
+								completed += 1;
+								modal.setProgress( completed, total );
+								siteDone();
+							} );
+					},
+					concurrency,
+					function () {
+						modal.setProgress( total, total );
+						var summary;
+						var noticeType = 'success';
+						if ( errCount === 0 ) {
+							summary = i18n( 'deployDoneOk', '%d OK' ).replace( '%d', String( okCount ) );
+							modal.appendLog( i18n( 'deployDone', 'Terminé.' ), true );
+						} else if ( okCount === 0 ) {
+							summary = i18n( 'deployDoneFailed', 'Tous en échec' ).replace( '%d', String( errCount ) );
+							noticeType = 'error';
+							modal.appendLog( summary, false );
+						} else {
+							summary = i18n( 'deployDonePartial', 'Partiel' )
+								.replace( '%1$d', String( okCount ) )
+								.replace( '%2$d', String( errCount ) );
+							noticeType = 'warning';
+							modal.appendLog( summary, false );
+						}
+						postAjax( 'mainwp_giweb_deploy_cleanup', { deployment_id: deploymentId } );
+						showInlineNotice( summary, noticeType );
+						modal.enableClose();
+						$btn.prop( 'disabled', false );
+					}
+				);
 			} )
 			.fail( function () {
 				modal.appendLog( i18n( 'syncError', 'Erreur réseau' ), false );
@@ -583,6 +707,25 @@
 			$deployModalEl.find( '.mainwp-giweb-modal__backdrop' ).on( 'click', function () {
 				if ( ! deployModal.$close.prop( 'disabled' ) ) {
 					deployModal.close();
+				}
+			} );
+		}
+
+		var $pluginDeployModalEl = $( '#mainwp-giweb-plugin-deploy-modal' );
+		if ( $pluginDeployModalEl.length && hasAjax() ) {
+			var pluginDeployModal = new SyncModal( $pluginDeployModalEl );
+			$( '#mainwp-giweb-plugin-deploy-start' ).on( 'click', function () {
+				log( 'plugin deploy click' );
+				runPluginDeploy( pluginDeployModal );
+			} );
+			pluginDeployModal.$close.on( 'click', function () {
+				if ( ! $( this ).prop( 'disabled' ) ) {
+					pluginDeployModal.close();
+				}
+			} );
+			$pluginDeployModalEl.find( '.mainwp-giweb-modal__backdrop' ).on( 'click', function () {
+				if ( ! pluginDeployModal.$close.prop( 'disabled' ) ) {
+					pluginDeployModal.close();
 				}
 			} );
 		}
