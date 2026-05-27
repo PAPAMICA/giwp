@@ -313,6 +313,15 @@
 				}
 
 				var data = response.data;
+				if ( data.package_version ) {
+					modal.appendLog(
+						i18n( 'pluginDeployTargetVersion', 'Version cible (ZIP) : %s' ).replace(
+							'%s',
+							data.package_version
+						),
+						true
+					);
+				}
 				if ( data.zip_url ) {
 					modal.$modal
 						.find( '.mainwp-giweb-plugin-deploy-url-hint' )

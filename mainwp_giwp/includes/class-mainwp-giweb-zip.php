@@ -45,6 +45,23 @@ class MainWP_GIWeb_Zip {
 	}
 
 	/**
+	 * Version GI-Toolkit empaquetée dans le ZIP source (monorepo wordpress_giwp).
+	 *
+	 * @return string
+	 */
+	public static function get_package_version() {
+		$file = self::source_path() . 'gi-toolkit.php';
+		if ( ! is_file( $file ) ) {
+			return '';
+		}
+		if ( ! function_exists( 'get_file_data' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		$data = get_file_data( $file, array( 'Version' => 'Version' ), 'plugin' );
+		return isset( $data['Version'] ) ? trim( (string) $data['Version'] ) : '';
+	}
+
+	/**
 	 * URL utilisée pour installer GI-Toolkit sur les sites enfants (personnalisable).
 	 *
 	 * @return string|false

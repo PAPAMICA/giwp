@@ -55,6 +55,14 @@ MainWP > Extensions > GI-Toolkit Manager
 
 == Changelog ==
 
+= 1.4.2 =
+* Fix: déploiement plugin — mise à jour forcée (`overwrite`) pour installer la dernière version sans perdre la config.
+* Add: version cible (ZIP) en tête des logs ; version installée `[vX]` sur chaque site.
+
+= 1.4.1 =
+* Fix: déploiement plugin — appel MainWP Child `installplugintheme` (au lieu de `install_plugin_theme`).
+* Fix: succès reconnu via `installation: SUCCESS` (format réponse MainWP standard).
+
 = 1.2.0 =
 * Add: section GI-Toolkit sur le formulaire MainWP « Ajouter un site » (install ZIP + profil).
 * Add: génération ZIP depuis wordpress_giwp, installation distante via MainWP (install_plugin_theme).

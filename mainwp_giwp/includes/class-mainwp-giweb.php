@@ -140,6 +140,7 @@ class MainWP_GIWeb {
 					'pluginDeployNoSites'    => __( 'Aucun site enfant trouvé.', 'mainwp-giweb' ),
 					'pluginDeployConfirm'    => __( 'Déployer GI-Toolkit sur tous les sites enfants MainWP ?', 'mainwp-giweb' ),
 					'pluginDeployZip'        => __( 'URL ZIP : %s', 'mainwp-giweb' ),
+					'pluginDeployTargetVersion' => __( 'Version cible (ZIP) : %s', 'mainwp-giweb' ),
 					'pluginDeployParallel'   => __( 'Déploiement en parallèle (%d sites à la fois).', 'mainwp-giweb' ),
 					'deployParallel'         => __( 'Déploiement en parallèle (%d sites à la fois).', 'mainwp-giweb' ),
 					'mailAlertSync'    => __( '%d site(s) ont des emails en échec. Consultez l’onglet Vue d’ensemble ou le widget MainWP.', 'mainwp-giweb' ),

@@ -688,22 +688,26 @@ class MainWP_GIWeb_Sync_Ajax {
 				wp_send_json_error( array( 'message' => __( 'Aucun site enfant MainWP trouvé.', 'mainwp-giweb' ) ) );
 			}
 
+			$package_version = isset( $zip['package_version'] ) ? (string) $zip['package_version'] : MainWP_GIWeb_Zip::get_package_version();
+
 			$job_id = wp_generate_password( 16, false, false );
 			set_transient(
 				self::plugin_deploy_transient_key( $job_id ),
 				array(
-					'zip_url'    => $zip['url'],
-					'started_at' => time(),
+					'zip_url'          => $zip['url'],
+					'package_version'  => $package_version,
+					'started_at'       => time(),
 				),
 				HOUR_IN_SECONDS
 			);
 
 			wp_send_json_success(
 				array(
-					'job_id'  => $job_id,
-					'zip_url' => $zip['url'],
-					'sites'   => $sites_out,
-					'total'   => count( $sites_out ),
+					'job_id'           => $job_id,
+					'zip_url'          => $zip['url'],
+					'package_version'  => $package_version,
+					'sites'            => $sites_out,
+					'total'            => count( $sites_out ),
 				)
 			);
 		} catch ( Throwable $e ) {
@@ -735,28 +739,33 @@ class MainWP_GIWeb_Sync_Ajax {
 				wp_send_json_error( array( 'message' => __( 'Session de déploiement expirée. Relancez l’opération.', 'mainwp-giweb' ) ) );
 			}
 
-			$label  = isset( $_POST['site_label'] ) ? sanitize_text_field( wp_unslash( $_POST['site_label'] ) ) : ( '#' . $site_id );
-			$result = MainWP_GIWeb_Plugin_Installer::deploy_gi_toolkit( $site_id );
-			$ok     = ! empty( $result['success'] );
-			$msg    = $result['message'] ?? ( $ok ? __( 'OK', 'mainwp-giweb' ) : __( 'Échec', 'mainwp-giweb' ) );
+			$label           = isset( $_POST['site_label'] ) ? sanitize_text_field( wp_unslash( $_POST['site_label'] ) ) : ( '#' . $site_id );
+			$target_version  = isset( $ctx['package_version'] ) ? (string) $ctx['package_version'] : MainWP_GIWeb_Zip::get_package_version();
+			$result          = MainWP_GIWeb_Plugin_Installer::deploy_gi_toolkit( $site_id );
+			$ok              = ! empty( $result['success'] );
+			$msg             = $result['message'] ?? ( $ok ? __( 'OK', 'mainwp-giweb' ) : __( 'Échec', 'mainwp-giweb' ) );
+			$installed       = isset( $result['installed_version'] ) ? (string) $result['installed_version'] : '';
 
 			if ( ! $ok ) {
 				$msg = MainWP_GIWeb_API::format_site_error( $site_id, $label, $msg );
 			}
 
-			$log = sprintf(
-				'[%s] %s — %s',
-				$ok ? 'OK' : __( 'ERR', 'mainwp-giweb' ),
+			$log = MainWP_GIWeb_Plugin_Installer::format_deploy_log_line(
 				$label,
-				$msg
+				$msg,
+				$ok,
+				$installed,
+				$target_version
 			);
 
 			wp_send_json_success(
 				array(
-					'site_id' => $site_id,
-					'success' => $ok,
-					'log'     => $log,
-					'message' => $msg,
+					'site_id'           => $site_id,
+					'success'           => $ok,
+					'log'               => $log,
+					'message'           => $msg,
+					'installed_version' => $installed,
+					'target_version'    => $target_version,
 				)
 			);
 		} catch ( Throwable $e ) {
