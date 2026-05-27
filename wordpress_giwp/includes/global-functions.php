@@ -547,12 +547,20 @@ function gi_toolkit_normalize_settings_submenu() {
 	}
 
 	$footer_slugs = gi_toolkit_settings_submenu_footer_slugs();
+	if ( ! is_array( $footer_slugs ) ) {
+		$footer_slugs = array();
+	}
 	$main         = array();
 	$modules      = array();
 	$footer       = array();
 	$other        = array();
 
 	foreach ( $submenu[ $parent ] as $item ) {
+		if ( ! is_array( $item ) ) {
+			$other[] = $item;
+			continue;
+		}
+
 		if ( ! isset( $item[2] ) ) {
 			$other[] = $item;
 			continue;
@@ -575,10 +583,23 @@ function gi_toolkit_normalize_settings_submenu() {
 		$main[] = $submenu[ $parent ][0];
 	}
 
-	usort( $modules, 'gi_toolkit_compare_submenu_titles' );
-	usort( $footer, 'gi_toolkit_compare_submenu_titles' );
+	if ( count( $modules ) > 1 ) {
+		usort( $modules, 'gi_toolkit_compare_submenu_titles' );
+	}
+	if ( count( $footer ) > 1 ) {
+		usort( $footer, 'gi_toolkit_compare_submenu_titles' );
+	}
 
-	$submenu[ $parent ] = array_merge( $main, $modules, $footer, $other );
+	$merged   = array_merge( $main, $modules, $footer, $other );
+	$position = 0;
+	$ordered  = array();
+
+	foreach ( $merged as $item ) {
+		$ordered[ $position ] = $item;
+		$position++;
+	}
+
+	$submenu[ $parent ] = $ordered;
 }
 
 /**
