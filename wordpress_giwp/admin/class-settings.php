@@ -112,6 +112,17 @@ class Gi_Toolkit_Settings {
 	}
 		$settings_assets = include( GI_TOOLKIT_PLUGIN_PATH . 'admin/assets/build/core/global-admin.asset.php' );
 		wp_enqueue_style( GI_TOOLKIT_PLUGIN_SETTINGS . '.global-admin', GI_TOOLKIT_PLUGIN_URL . 'admin/assets/build/core/global-admin.css', array(), $settings_assets['version'], 'all' );
+
+		// En-tête / layout des pages modules (sous-menus).
+		if ( false !== strpos( $hook_suffix, 'gi-toolkit' ) ) {
+			wp_enqueue_style(
+				'gi-toolkit-submenu-layout',
+				GI_TOOLKIT_PLUGIN_URL . 'admin/assets/css/submenu-layout.css',
+				array(),
+				defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '1.0.0',
+				'all'
+			);
+		}
 		wp_enqueue_script( GI_TOOLKIT_PLUGIN_SETTINGS . '.global-admin', GI_TOOLKIT_PLUGIN_URL . 'admin/assets/build/core/global-admin.js', $settings_assets['dependencies'], $settings_assets['version'], true );
 		wp_localize_script(
 			GI_TOOLKIT_PLUGIN_SETTINGS . '.global-admin',

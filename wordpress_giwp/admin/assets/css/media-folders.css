@@ -107,20 +107,33 @@ body.upload-php.gi-media-folders-active .wrap {
 	margin-top: 8px;
 }
 
-.gi-media-folders-native-sidebar {
-	flex: 0 0 240px;
-	width: 240px;
+.gi-media-folders-native-sidebar,
+.gi-toolkit-media-folders-sidebar.gi-media-folders-view-explorer {
+	flex: 0 0 280px;
+	width: 280px;
+}
+
+.gi-media-folders-native-sidebar,
+.gi-toolkit-media-folders-sidebar {
 	background: #fff;
 	border: 1px solid #c3c4c7;
 	border-radius: 4px;
 	padding: 12px 8px;
+	box-sizing: border-box;
+}
+
+.gi-media-folders-native-sidebar {
 	margin-right: 16px;
 	position: sticky;
 	top: 32px;
 	max-height: calc(100vh - 80px);
 	overflow-x: hidden;
 	overflow-y: auto;
-	box-sizing: border-box;
+}
+
+.gi-toolkit-media-folders-sidebar {
+	max-height: 70vh;
+	overflow: auto;
 }
 
 .gi-media-folders-native-title {
@@ -129,6 +142,298 @@ body.upload-php.gi-media-folders-active .wrap {
 	font-size: 14px;
 	font-weight: 600;
 	color: #1d2327;
+}
+
+.gi-media-folders-search {
+	width: 100%;
+	max-width: 100%;
+	margin: 0 0 10px 0;
+	padding: 6px 10px;
+	box-sizing: border-box;
+	border: 1px solid #8c8f94;
+	border-radius: 4px;
+	font-size: 13px;
+}
+
+.gi-media-folders-search:focus {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+	outline: none;
+}
+
+.gi-media-folder-btn--all,
+.gi-explorer-item--all .gi-explorer-label {
+	font-weight: 600;
+}
+
+/* En-tête + bascule de vue */
+.gi-media-folders-sidebar-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 8px;
+	padding: 0 4px;
+}
+
+.gi-media-folders-sidebar-header .gi-media-folders-native-title,
+.gi-media-folders-sidebar-header h2 {
+	margin: 0;
+	flex: 1 1 auto;
+	min-width: 80px;
+}
+
+.gi-media-folders-view-toggle {
+	display: inline-flex;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	overflow: hidden;
+	flex-shrink: 0;
+}
+
+.gi-media-folders-view-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	margin: 0;
+	padding: 4px 8px;
+	border: none;
+	background: #f6f7f7;
+	color: #50575e;
+	font-size: 11px;
+	line-height: 1.3;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.gi-media-folders-view-btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+.gi-media-folders-view-btn:hover {
+	background: #f0f0f1;
+	color: #1d2327;
+}
+
+.gi-media-folders-view-btn.is-active {
+	background: #2271b1;
+	color: #fff;
+}
+
+.gi-media-folders-view-btn + .gi-media-folders-view-btn {
+	border-left: 1px solid #c3c4c7;
+}
+
+/* Fil d’Ariane (style Explorateur) */
+.gi-explorer-breadcrumb {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 2px 4px;
+	margin: 0 4px 10px;
+	padding: 6px 8px;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	font-size: 12px;
+	line-height: 1.35;
+	min-height: 32px;
+	box-sizing: border-box;
+}
+
+.gi-explorer-breadcrumb.is-empty .gi-explorer-crumb--home {
+	font-weight: 600;
+}
+
+.gi-explorer-crumb {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	margin: 0;
+	padding: 2px 4px;
+	border: none;
+	background: transparent;
+	color: #2271b1;
+	cursor: pointer;
+	border-radius: 2px;
+	font-size: inherit;
+	max-width: 140px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.gi-explorer-crumb:hover:not(:disabled) {
+	background: #e8f0fe;
+	text-decoration: underline;
+}
+
+.gi-explorer-crumb.is-current,
+.gi-explorer-crumb:disabled {
+	color: #1d2327;
+	cursor: default;
+	font-weight: 600;
+}
+
+.gi-explorer-crumb--home .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+}
+
+.gi-explorer-crumb-sep {
+	color: #787c82;
+	user-select: none;
+}
+
+/* Panneau arborescence explorateur */
+.gi-media-folders-tree-panel {
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	background: #fff;
+	padding: 4px 0;
+	max-height: min(420px, calc(100vh - 280px));
+	overflow: auto;
+}
+
+.gi-media-folders-view-tree .gi-media-folders-tree-panel {
+	border: none;
+	padding: 0;
+	max-height: none;
+	background: transparent;
+}
+
+.gi-explorer-row {
+	display: flex;
+	align-items: stretch;
+	min-height: 28px;
+	border-radius: 3px;
+}
+
+.gi-explorer-toggle {
+	flex: 0 0 22px;
+	width: 22px;
+	min-height: 28px;
+	margin: 0;
+	padding: 0;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	color: #50575e;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.gi-explorer-toggle--spacer {
+	flex: 0 0 22px;
+	width: 22px;
+	cursor: default;
+	visibility: hidden;
+}
+
+.gi-explorer-chevron {
+	display: block;
+	width: 0;
+	height: 0;
+	border-top: 4px solid transparent;
+	border-bottom: 4px solid transparent;
+	border-left: 5px solid currentColor;
+	transition: transform 0.15s ease;
+}
+
+.gi-explorer-toggle.is-expanded .gi-explorer-chevron {
+	transform: rotate(90deg);
+}
+
+.gi-explorer-item {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	margin: 0;
+	padding: 4px 8px 4px 0;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	text-align: left;
+	color: #1d2327;
+	font-size: 13px;
+	line-height: 1.35;
+	border-radius: 0 3px 3px 0;
+}
+
+.gi-explorer-item:hover {
+	background: #f0f6fc;
+}
+
+.gi-media-folder-node.is-active > .gi-explorer-row .gi-explorer-item,
+.gi-explorer-item.is-selected {
+	background: #cce4f7;
+}
+
+.gi-media-folder-node.is-active > .gi-explorer-row .gi-explorer-item:hover,
+.gi-explorer-item.is-selected:hover {
+	background: #b8d9f0;
+}
+
+.gi-explorer-icon {
+	flex-shrink: 0;
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+	color: #dba617;
+}
+
+.gi-explorer-item--all .gi-explorer-icon {
+	color: #2271b1;
+}
+
+.gi-explorer-label {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.gi-explorer-count {
+	flex-shrink: 0;
+	margin-left: auto;
+	padding: 1px 6px;
+	font-size: 11px;
+	line-height: 1.4;
+	color: #50575e;
+	background: #f0f0f1;
+	border-radius: 10px;
+}
+
+.gi-explorer-children {
+	list-style: none;
+	margin: 0;
+	padding: 0 0 0 12px;
+}
+
+.gi-media-folders-view-explorer .gi-media-folders-tree-root,
+.gi-media-folders-view-explorer .gi-explorer-children {
+	padding-left: 0;
+}
+
+.gi-media-folders-view-explorer .gi-explorer-children {
+	padding-left: 10px;
+	border-left: 1px solid #e8e8e8;
+	margin-left: 11px;
+}
+
+/* Vue liste classique dans le panneau */
+.gi-media-folders-view-tree .gi-media-folder-btn:hover,
+.gi-media-folders-view-tree .gi-media-folder-node.is-active > .gi-media-folder-btn {
+	background: #2271b1;
+	color: #fff;
 }
 
 .gi-media-folders-native-layout > .gi-media-folders-native-main {

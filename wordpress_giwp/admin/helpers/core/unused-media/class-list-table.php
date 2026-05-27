@@ -76,9 +76,9 @@ class Gi_Toolkit_Unused_Media_List_Table extends WP_List_Table {
 			$src = includes_url( 'images/media/document.png' );
 		}
 
-		$html  = '<div class="gi-unused-media-preview" data-preview="' . esc_url( $large ) . '">';
+		$html  = '<div class="gi-unused-media-preview" data-preview="' . esc_url( $large ) . '" title="' . esc_attr__( 'Survoler pour agrandir', 'gi-toolkit' ) . '">';
 		if ( $src ) {
-			$html .= '<img src="' . esc_url( $src ) . '" alt="" width="48" height="48" style="object-fit:cover;border-radius:4px;" />';
+			$html .= '<img src="' . esc_url( $src ) . '" alt="" width="56" height="56" loading="lazy" />';
 		} else {
 			$html .= '<span class="dashicons dashicons-media-default"></span>';
 		}
@@ -91,8 +91,33 @@ class Gi_Toolkit_Unused_Media_List_Table extends WP_List_Table {
 	 * @return string
 	 */
 	protected function column_name( $item ) {
-		$title = $item->post_title ? $item->post_title : basename( get_attached_file( $item->ID ) );
-		return '<strong>' . esc_html( $title ) . '</strong><br><code>#' . (int) $item->ID . '</code>';
+		$title   = $item->post_title ? $item->post_title : basename( get_attached_file( $item->ID ) );
+		$actions = array();
+
+		$edit = get_edit_post_link( $item->ID, 'raw' );
+		if ( $edit ) {
+			$actions['edit'] = sprintf(
+				'<a href="%s">%s</a>',
+				esc_url( $edit ),
+				esc_html__( 'Modifier', 'gi-toolkit' )
+			);
+		}
+
+		$view = wp_get_attachment_url( $item->ID );
+		if ( $view ) {
+			$actions['view'] = sprintf(
+				'<a href="%s" target="_blank" rel="noopener">%s</a>',
+				esc_url( $view ),
+				esc_html__( 'Voir le fichier', 'gi-toolkit' )
+			);
+		}
+
+		return sprintf(
+			'<strong class="gi-unused-media-title">%s</strong><br><span class="gi-unused-media-id">#%d</span>%s',
+			esc_html( $title ),
+			(int) $item->ID,
+			$this->row_actions( $actions )
+		);
 	}
 
 	/**
@@ -173,5 +198,17 @@ class Gi_Toolkit_Unused_Media_List_Table extends WP_List_Table {
 		);
 
 		$this->_column_headers = array( $this->get_columns(), array(), array() );
+	}
+
+	/**
+	 * @return void
+	 */
+	public function no_items() {
+		$scan = Gi_Toolkit_Unused_Media_Scanner::get_scan_results();
+		if ( ! $scan ) {
+			esc_html_e( 'Lancez une analyse pour lister les médias non utilisés.', 'gi-toolkit' );
+			return;
+		}
+		esc_html_e( 'Aucun média non utilisé détecté. Votre médiathèque est propre.', 'gi-toolkit' );
 	}
 }

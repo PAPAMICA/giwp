@@ -1,5 +1,18 @@
 == Changelog ==
 
+= 2.20.21 =
+Fix: En-tête des pages modules — styles communs (titre h1, logo, carte) pour tous les sous-menus GI-Toolkit.
+
+= 2.20.20 =
+Add: Dossiers média — vue Explorateur (fil d’Ariane, dossiers repliables, icônes) avec bascule Liste/Explorateur.
+
+= 2.20.19 =
+Fix: Dossiers média — « Tous les médias » retire correctement le filtre (wp.media unset).
+Add: Recherche dynamique dans la liste des dossiers de la médiathèque.
+
+= 2.20.18 =
+Update: Nettoyage médiathèque — interface revue (statistiques, barre de scan, tableau), aperçu au survol, actions par ligne.
+
 = 2.20.17 =
 Fix: Dossiers média — filtrage médiathèque via wp.media (sans rechargement), overwrite visuel.
 Fix: Liens cassés — correction erreur 500 (récursion interne), tables SQL, affichage admin.

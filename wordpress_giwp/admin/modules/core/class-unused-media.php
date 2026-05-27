@@ -133,12 +133,59 @@ class Gi_Toolkit_Unused_Media {
 			wp_send_json_error( array( 'message' => __( 'Permission refusée.', 'gi-toolkit' ) ) );
 		}
 
-		if ( isset( $_POST['reset'] ) && '1' === (string) wp_unslash( $_POST['reset'] ) ) {
-			Gi_Toolkit_Unused_Media_Scanner::reset_scan();
+		try {
+			if ( isset( $_POST['reset'] ) && '1' === (string) wp_unslash( $_POST['reset'] ) ) {
+				Gi_Toolkit_Unused_Media_Scanner::reset_scan();
+			}
+
+			wp_send_json_success( Gi_Toolkit_Unused_Media_Scanner::process_batch() );
+		} catch ( Throwable $e ) {
+			wp_send_json_error(
+				array(
+					'message' => sprintf(
+						/* translators: %s: error message */
+						__( 'Erreur lors de l’analyse : %s', 'gi-toolkit' ),
+						$e->getMessage()
+					),
+				)
+			);
+		}
+	}
+
+	/**
+	 * @param array<string, mixed>|null $scan Résultats scan.
+	 * @return array{unused: int, used: int, total: int, date: string, has_scan: bool}
+	 */
+	private function get_scan_summary( $scan ) {
+		if ( ! is_array( $scan ) ) {
+			return array(
+				'unused'    => 0,
+				'used'      => 0,
+				'total'     => 0,
+				'date'      => '',
+				'has_scan'  => false,
+			);
 		}
 
-		$result = Gi_Toolkit_Unused_Media_Scanner::process_batch();
-		wp_send_json_success( $result );
+		$unused = count( $scan['unused_ids'] ?? array() );
+		$total  = (int) ( $scan['total_attachments'] ?? 0 );
+		$used   = (int) ( $scan['used_count'] ?? max( 0, $total - $unused ) );
+		$date   = '';
+
+		if ( ! empty( $scan['scanned_at'] ) ) {
+			$date = date_i18n(
+				get_option( 'date_format' ) . ' ' . get_option( 'time_format' ),
+				strtotime( $scan['scanned_at'] )
+			);
+		}
+
+		return array(
+			'unused'   => $unused,
+			'used'     => $used,
+			'total'    => $total,
+			'date'     => $date,
+			'has_scan' => true,
+		);
 	}
 
 	/**
@@ -170,23 +217,25 @@ class Gi_Toolkit_Unused_Media {
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce'   => wp_create_nonce( 'gi_toolkit_unused_media' ),
 				'i18n'    => array(
-					'scanning'       => __( 'Analyse en cours…', 'gi-toolkit' ),
-					'error'          => __( 'Erreur lors de l’analyse.', 'gi-toolkit' ),
-					'confirmDelete'  => __( 'Supprimer définitivement les médias sélectionnés ?', 'gi-toolkit' ),
+					'scanning'      => __( 'Analyse en cours…', 'gi-toolkit' ),
+					'done'          => __( 'Analyse terminée.', 'gi-toolkit' ),
+					'error'         => __( 'Erreur lors de l’analyse.', 'gi-toolkit' ),
+					'confirmDelete' => __( 'Supprimer définitivement les médias sélectionnés ?', 'gi-toolkit' ),
 				),
 			)
 		);
 
-		$scan = Gi_Toolkit_Unused_Media_Scanner::get_scan_results();
+		$scan    = Gi_Toolkit_Unused_Media_Scanner::get_scan_results();
+		$summary = $this->get_scan_summary( $scan );
 
 		include GI_TOOLKIT_PLUGIN_PATH . 'admin/templates/core/submenu/header.php';
 		?>
-		<div class="gi-toolkit__body" style="padding:1rem 1.5rem 2rem;">
+		<div class="gi-toolkit__body gi-toolkit-unused-media-page">
 			<?php
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			if ( ! empty( $_GET['gi_unused_deleted'] ) ) {
 				printf(
-					'<div class="notice notice-success inline"><p>%s</p></div>',
+					'<div class="notice notice-success is-dismissible"><p>%s</p></div>',
 					esc_html(
 						sprintf(
 							/* translators: %d: number deleted */
@@ -197,46 +246,69 @@ class Gi_Toolkit_Unused_Media {
 				);
 			}
 			?>
-			<p><?php esc_html_e( 'Repérez les fichiers média qui ne sont référencés ni comme pièce jointe, ni comme image à la une, ni dans le contenu des publications.', 'gi-toolkit' ); ?></p>
 
-			<div class="gi-unused-media-scan-bar">
-				<button type="button" class="button button-primary" id="gi-unused-media-start-scan">
-					<?php esc_html_e( 'Analyser la médiathèque', 'gi-toolkit' ); ?>
-				</button>
-				<progress id="gi-unused-media-scan-progress" max="100" value="0"></progress>
-				<p id="gi-unused-media-scan-status" class="description"></p>
+			<p class="gi-unused-media-intro">
+				<?php esc_html_e( 'Repérez les fichiers média qui ne sont référencés ni comme pièce jointe, ni comme image à la une, ni dans le contenu des publications (publiées et brouillons).', 'gi-toolkit' ); ?>
+			</p>
+
+			<div class="gi-unused-media-toolbar">
+				<div class="gi-unused-media-scan-panel">
+					<button type="button" class="button button-primary button-hero" id="gi-unused-media-start-scan">
+						<?php esc_html_e( 'Analyser la médiathèque', 'gi-toolkit' ); ?>
+					</button>
+					<div class="gi-unused-media-scan-progress-wrap" hidden>
+						<progress id="gi-unused-media-scan-progress" max="100" value="0"></progress>
+						<span id="gi-unused-media-scan-percent" class="gi-unused-media-scan-percent">0%</span>
+					</div>
+					<p id="gi-unused-media-scan-status" class="gi-unused-media-scan-status description"></p>
+				</div>
 			</div>
 
-			<?php if ( $scan ) : ?>
-				<p class="gi-unused-media-stats">
-					<?php
-					printf(
-						esc_html__(
-							'Dernière analyse : %1$s — %2$d médias non utilisés sur %3$d.',
-							'gi-toolkit'
-						),
-						esc_html(
-							date_i18n(
-								get_option( 'date_format' ) . ' ' . get_option( 'time_format' ),
-								strtotime( $scan['scanned_at'] )
-							)
-						),
-						count( $scan['unused_ids'] ?? array() ),
-						(int) ( $scan['total_attachments'] ?? 0 )
-					);
-					?>
-				</p>
+			<?php if ( $summary['has_scan'] ) : ?>
+				<div class="gi-unused-media-stats">
+					<div class="gi-unused-media-stat gi-unused-media-stat--unused">
+						<span class="gi-unused-media-stat__value"><?php echo esc_html( (string) $summary['unused'] ); ?></span>
+						<span class="gi-unused-media-stat__label"><?php esc_html_e( 'Non utilisés', 'gi-toolkit' ); ?></span>
+					</div>
+					<div class="gi-unused-media-stat gi-unused-media-stat--ok">
+						<span class="gi-unused-media-stat__value"><?php echo esc_html( (string) $summary['used'] ); ?></span>
+						<span class="gi-unused-media-stat__label"><?php esc_html_e( 'Utilisés', 'gi-toolkit' ); ?></span>
+					</div>
+					<div class="gi-unused-media-stat">
+						<span class="gi-unused-media-stat__value"><?php echo esc_html( (string) $summary['total'] ); ?></span>
+						<span class="gi-unused-media-stat__label"><?php esc_html_e( 'Total médiathèque', 'gi-toolkit' ); ?></span>
+					</div>
+					<?php if ( $summary['date'] ) : ?>
+						<div class="gi-unused-media-stat">
+							<span class="gi-unused-media-stat__value gi-unused-media-stat__value--sm"><?php echo esc_html( $summary['date'] ); ?></span>
+							<span class="gi-unused-media-stat__label"><?php esc_html_e( 'Dernière analyse', 'gi-toolkit' ); ?></span>
+						</div>
+					<?php endif; ?>
+				</div>
 			<?php endif; ?>
 
-			<form method="post">
-				<?php wp_nonce_field( 'gi_toolkit_unused_media_bulk', 'gi_toolkit_unused_media_nonce' ); ?>
-				<?php
-				$table = new Gi_Toolkit_Unused_Media_List_Table( $this );
-				$table->prepare_items();
-				$table->search_box( __( 'Rechercher', 'gi-toolkit' ), 'gi-unused-media' );
-				$table->display();
-				?>
-			</form>
+			<div class="gi-unused-media-panel">
+				<div class="gi-unused-media-panel__head">
+					<h2 class="gi-unused-media-panel__title"><?php esc_html_e( 'Médias non utilisés', 'gi-toolkit' ); ?></h2>
+					<?php if ( $summary['has_scan'] && $summary['unused'] > 0 ) : ?>
+						<p class="gi-unused-media-panel__hint">
+							<?php esc_html_e( 'Sélectionnez des lignes puis « Supprimer ». Survolez l’aperçu pour agrandir.', 'gi-toolkit' ); ?>
+						</p>
+					<?php endif; ?>
+				</div>
+
+				<form method="post" class="gi-unused-media-form">
+					<?php wp_nonce_field( 'gi_toolkit_unused_media_bulk', 'gi_toolkit_unused_media_nonce' ); ?>
+					<div class="gi-unused-media-table-wrap">
+						<?php
+						$table = new Gi_Toolkit_Unused_Media_List_Table( $this );
+						$table->prepare_items();
+						$table->search_box( __( 'Rechercher', 'gi-toolkit' ), 'gi-unused-media' );
+						$table->display();
+						?>
+					</div>
+				</form>
+			</div>
 		</div>
 		<?php
 		echo '</div>';

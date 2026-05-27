@@ -1,10 +1,204 @@
+.gi-toolkit-unused-media-page {
+	padding: 1rem 1.5rem 2rem;
+	max-width: 1200px;
+}
+
+.gi-unused-media-intro {
+	margin: 0 0 20px;
+	max-width: 720px;
+	color: #646970;
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+.gi-unused-media-toolbar {
+	margin-bottom: 20px;
+}
+
+.gi-unused-media-scan-panel {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 16px;
+	padding: 16px 20px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 6px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.gi-unused-media-scan-progress-wrap {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex: 1;
+	min-width: 200px;
+	max-width: 420px;
+}
+
+.gi-unused-media-scan-progress-wrap[hidden] {
+	display: none !important;
+}
+
+#gi-unused-media-scan-progress {
+	flex: 1;
+	height: 10px;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.gi-unused-media-scan-percent {
+	font-size: 13px;
+	font-weight: 600;
+	color: #2271b1;
+	min-width: 36px;
+}
+
+.gi-unused-media-scan-status {
+	margin: 0;
+	flex: 1 1 100%;
+}
+
+.gi-unused-media-scan-status.is-error {
+	color: #b32d2e;
+	font-weight: 500;
+}
+
+.gi-unused-media-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+	gap: 12px;
+	margin-bottom: 20px;
+}
+
+.gi-unused-media-stat {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 6px;
+	padding: 14px 16px;
+	text-align: center;
+}
+
+.gi-unused-media-stat--unused {
+	border-color: #f0d58c;
+	background: #fffbeb;
+}
+
+.gi-unused-media-stat--unused .gi-unused-media-stat__value {
+	color: #9a6700;
+}
+
+.gi-unused-media-stat--ok {
+	border-color: #b8e6bf;
+	background: #f0fdf2;
+}
+
+.gi-unused-media-stat--ok .gi-unused-media-stat__value {
+	color: #1e7a2e;
+}
+
+.gi-unused-media-stat__value {
+	display: block;
+	font-size: 28px;
+	font-weight: 700;
+	line-height: 1.2;
+	color: #1d2327;
+}
+
+.gi-unused-media-stat__value--sm {
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.35;
+}
+
+.gi-unused-media-stat__label {
+	display: block;
+	margin-top: 4px;
+	font-size: 12px;
+	color: #646970;
+}
+
+.gi-unused-media-panel {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 6px;
+	padding: 16px 20px 8px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.gi-unused-media-panel__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+
+.gi-unused-media-panel__title {
+	margin: 0;
+	padding: 0;
+	font-size: 15px;
+	font-weight: 600;
+}
+
+.gi-unused-media-panel__hint {
+	margin: 0;
+	font-size: 12px;
+	color: #646970;
+}
+
+.gi-unused-media-table-wrap {
+	overflow-x: auto;
+}
+
+.gi-unused-media-table-wrap .wp-list-table {
+	border: 1px solid #c3c4c7;
+	border-spacing: 0;
+}
+
+.gi-unused-media-table-wrap .column-preview {
+	width: 72px;
+}
+
+.gi-unused-media-table-wrap .column-size {
+	width: 90px;
+}
+
+.gi-unused-media-table-wrap .column-date {
+	width: 120px;
+}
+
+.gi-unused-media-id {
+	font-size: 12px;
+	color: #646970;
+}
+
 .gi-unused-media-preview {
 	position: relative;
 	display: inline-block;
+	line-height: 0;
 }
 
 .gi-unused-media-preview img {
 	display: block;
+	width: 56px;
+	height: 56px;
+	object-fit: cover;
+	border-radius: 6px;
+	border: 1px solid #dcdcde;
+	background: #f6f7f7;
+}
+
+.gi-unused-media-preview .dashicons {
+	font-size: 40px;
+	width: 56px;
+	height: 56px;
+	line-height: 56px;
+	text-align: center;
+	color: #a7aaad;
+	background: #f6f7f7;
+	border-radius: 6px;
 }
 
 .gi-unused-media-preview::after {
@@ -28,17 +222,26 @@
 	opacity: 1;
 }
 
-.gi-unused-media-scan-bar {
-	margin: 12px 0;
-	max-width: 480px;
+.gi-unused-media-table-wrap .tablenav {
+	margin: 8px 0;
 }
 
-.gi-unused-media-scan-bar progress {
-	width: 100%;
-	height: 22px;
+.gi-unused-media-table-wrap .search-box {
+	margin-bottom: 8px;
 }
 
-.gi-unused-media-stats {
-	margin: 8px 0 16px;
-	font-size: 14px;
+@media screen and (max-width: 782px) {
+	.gi-unused-media-scan-panel {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.gi-unused-media-scan-progress-wrap {
+		max-width: none;
+	}
+
+	.gi-unused-media-panel__head {
+		flex-direction: column;
+		align-items: flex-start;
+	}
 }

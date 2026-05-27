@@ -20,9 +20,19 @@
 }
 
 .gi-toolkit.gi-toolkit--dark .gi-toolkit__header__left__title,
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__header__page-title,
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__header__brand,
 .gi-toolkit.gi-toolkit--dark .gi-toolkit__body__groups__item,
 .gi-toolkit.gi-toolkit--dark .gi-toolkit__body__sections__item__title {
 	color: var(--gi-text);
+}
+
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__header__brand {
+	color: var(--gi-muted);
+}
+
+.gi-toolkit.gi-toolkit--dark .gi-toolkit__header--submenu {
+	border-color: var(--gi-border);
 }
 
 .gi-toolkit.gi-toolkit--dark .gi-toolkit__body__groups__item.active,
