@@ -29,8 +29,6 @@ flowchart LR
 - **GI-Toolkit** : suite modulaire d’outils d’administration WordPress (sécurité, contenu, e-mail, WooCommerce, etc.).
 - **MainWP GI-Toolkit Manager** : interface centralisée pour synchroniser l’état des sites, importer/déployer des configurations, gérer des modèles et suivre les e-mails capturés (Mail Catcher).
 
-Le bridge MainWP est **intégré dans GI-Toolkit** depuis la 2.20.x : aucun plugin bridge séparé sur les enfants.
-
 ---
 
 ## Prérequis
@@ -169,6 +167,7 @@ Liste issue du catalogue officiel (`Gi_Toolkit_Modules_Data`).
 - Heartbeat Control
 - Hide Admin Bar
 - Hide Admin Notices
+- Hide Plugins
 - Log In/Out Menu
 - Maintenance Mode
 - Password Protection

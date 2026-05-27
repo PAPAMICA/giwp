@@ -36,6 +36,12 @@ class Gi_Toolkit_Modules_Data {
 				'pro'           => false,
 				'path'          => 'core/class-hide-admin-bar.php',
 			),
+			'Gi_Toolkit_Hide_Plugins' => array(
+				'original_name' => 'Hide Plugins',
+				'group'         => 'administration',
+				'pro'           => false,
+				'path'          => 'core/class-hide-plugins.php',
+			),
 			'Gi_Toolkit_Last_Login_Column' => array(
 				'original_name' =>'Last Login Column',
 				'group'         => 'users',
@@ -787,6 +793,10 @@ class Gi_Toolkit_Modules_Data {
 			'Gi_Toolkit_Hide_Admin_Bar' => array(
 				'name' => esc_html_x('Hide Admin Bar', "Module name", 'gi-toolkit'),
 				'desc' => esc_html_x('Hide the admin bar on the front end of your website for either specific user roles or all users.', "Module description", 'gi-toolkit'),
+			),
+			'Gi_Toolkit_Hide_Plugins' => array(
+				'name' => esc_html_x( 'Hide Plugins', 'Module name', 'gi-toolkit' ),
+				'desc' => esc_html_x( 'Hide selected plugins from the Extensions screen in wp-admin for users who are not on the exempt list. Plugins stay active on the site.', 'Module description', 'gi-toolkit' ),
 			),
 			'Gi_Toolkit_Last_Login_Column' => array(
 				'name' => esc_html_x('Last Login Column', "Module name", 'gi-toolkit'),

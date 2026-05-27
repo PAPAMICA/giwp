@@ -11,3 +11,5 @@ Thumbs.db
 # Logs & cache
 *.log
 .cache/
+
+login.css
