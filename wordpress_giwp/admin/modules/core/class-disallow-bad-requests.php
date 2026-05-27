@@ -43,6 +43,22 @@ class Gi_Toolkit_Disallow_Bad_Requests {
 
         // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
         $uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+
+        // Utilisateurs connectés dans l’admin : ne pas filtrer (faux positifs sur page=…).
+        if ( '' !== $uri && false !== strpos( $uri, '/wp-admin/' ) ) {
+            if ( function_exists( 'is_user_logged_in' ) && is_user_logged_in() ) {
+                return true;
+            }
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( isset( $_GET['page'] ) ) {
+            $page = sanitize_key( wp_unslash( $_GET['page'] ) );
+            if ( 0 === strpos( $page, 'gi-toolkit' ) || 'gi-statistics' === $page ) {
+                return true;
+            }
+        }
+
         if ( '' === $uri || false === strpos( $uri, '/wp-admin/' ) ) {
             return false;
         }

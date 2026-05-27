@@ -508,6 +508,80 @@ function gi_toolkit_resolve_module_path( $relative_path ) {
 }
 
 /**
+ * Slugs de sous-pages affichées en bas du menu GI-Toolkit (après le séparateur).
+ *
+ * @return string[]
+ */
+function gi_toolkit_settings_submenu_footer_slugs() {
+	return apply_filters(
+		'gi_toolkit_settings_submenu_footer_slugs',
+		array( 'gi-toolkit-settings-mail-catcher' )
+	);
+}
+
+/**
+ * Compare les titres de sous-menu GI-Toolkit (tri alphabétique).
+ *
+ * @param array<int, string> $a Entrée sous-menu.
+ * @param array<int, string> $b Entrée sous-menu.
+ * @return int
+ */
+function gi_toolkit_compare_submenu_titles( $a, $b ) {
+	$title_a = wp_strip_all_tags( $a[0] ?? '' );
+	$title_b = wp_strip_all_tags( $b[0] ?? '' );
+	return strcasecmp( $title_a, $title_b );
+}
+
+/**
+ * Réordonne le sous-menu GI-Toolkit : page principale, puis modules (↳), puis entrées de pied.
+ * Corrige les modules enregistrés trop tôt (ex. Connect Matomo au-dessus de « Modules »).
+ *
+ * @return void
+ */
+function gi_toolkit_normalize_settings_submenu() {
+	global $submenu;
+
+	$parent = 'gi-toolkit-settings';
+	if ( empty( $submenu[ $parent ] ) || ! is_array( $submenu[ $parent ] ) ) {
+		return;
+	}
+
+	$footer_slugs = gi_toolkit_settings_submenu_footer_slugs();
+	$main         = array();
+	$modules      = array();
+	$footer       = array();
+	$other        = array();
+
+	foreach ( $submenu[ $parent ] as $item ) {
+		if ( ! isset( $item[2] ) ) {
+			$other[] = $item;
+			continue;
+		}
+
+		$slug = (string) $item[2];
+
+		if ( $slug === $parent ) {
+			$main[] = $item;
+		} elseif ( in_array( $slug, $footer_slugs, true ) ) {
+			$footer[] = $item;
+		} elseif ( 0 === strpos( $slug, 'gi-toolkit-settings-' ) ) {
+			$modules[] = $item;
+		} else {
+			$other[] = $item;
+		}
+	}
+
+	if ( empty( $main ) && ! empty( $submenu[ $parent ][0] ) ) {
+		$main[] = $submenu[ $parent ][0];
+	}
+
+	usort( $modules, 'gi_toolkit_compare_submenu_titles' );
+	usort( $footer, 'gi_toolkit_compare_submenu_titles' );
+
+	$submenu[ $parent ] = array_merge( $main, $modules, $footer, $other );
+}
+
+/**
  * Styles admin pour les sous-pages des modules (dossier pro/).
  */
 function gi_toolkit_pro_module_admin_styles() {

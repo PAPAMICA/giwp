@@ -1,5 +1,15 @@
 == Changelog ==
 
+= 2.20.27 =
+Fix: Menu GI-Toolkit — Connect Matomo classé avec les autres modules sous « Modules » (tri + normalisation du sous-menu).
+
+= 2.20.26 =
+Fix: Connect Matomo — réglages uniquement en sous-page GI-Toolkit (`gi-toolkit-settings-analytics`), comme les autres modules.
+
+= 2.20.25 =
+Fix: Connect Matomo — slug admin `gi-toolkit-analytics` (sans « matomo » dans l’URL), enregistrement menu à priorité 999, accès admin corrigé.
+Fix: Disallow bad requests — ne plus filtrer les requêtes `/wp-admin/` des utilisateurs connectés.
+
 = 2.20.24 =
 Fix: Connect Matomo — suppression de l’enregistrement menu parent null (URL /wp-admin/{slug} → 404, admin.php?page= → 403).
 Fix: Redirection précoce des anciennes URLs Matomo ; pages admin GI-Toolkit exclues du filtre Disallow bad requests.

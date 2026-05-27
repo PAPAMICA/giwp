@@ -12,7 +12,16 @@ class Gi_Toolkit_Matomo {
 
 	const STATS_PAGE_SLUG = 'gi-statistics';
 
-	private $settings_page_slug = 'gi-toolkit-settings-matomo';
+	/** @deprecated Anciens slugs (redirection automatique). */
+	const LEGACY_SETTINGS_PAGE_SLUG = 'gi-toolkit-settings-matomo';
+
+	const LEGACY_SETTINGS_PAGE_SLUG_V2 = 'gi-toolkit-analytics';
+
+	/** Slug sous-menu GI-Toolkit (même convention que les autres modules). */
+	const SETTINGS_PAGE_SLUG = 'gi-toolkit-settings-analytics';
+
+	/** @var string */
+	private $page_slug;
 
 	private $header_title = '';
 
@@ -32,6 +41,7 @@ class Gi_Toolkit_Matomo {
 		}
 		self::$instance = $this;
 
+		$this->page_slug    = self::SETTINGS_PAGE_SLUG;
 		$this->header_title = __( 'Connect Matomo', 'gi-toolkit' );
 
 		require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/matomo/class-api.php';
@@ -39,7 +49,8 @@ class Gi_Toolkit_Matomo {
 		require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/matomo/class-tracking.php';
 		require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/matomo/class-dashboard-data.php';
 
-		add_action( 'admin_menu', array( $this, 'register_menus' ), 9 );
+		add_action( 'admin_menu', array( $this, 'register_statistics_menu' ), 9 );
+		add_action( 'admin_menu', array( $this, 'add_submenu' ), 999 );
 		add_action( 'plugins_loaded', array( $this, 'maybe_redirect_legacy_admin_url' ), 0 );
 		add_action( 'admin_init', array( $this, 'save_submenu' ) );
 
@@ -114,7 +125,7 @@ class Gi_Toolkit_Matomo {
 	 * @return string
 	 */
 	public static function get_settings_admin_url() {
-		return admin_url( 'admin.php?page=' . rawurlencode( 'gi-toolkit-settings-matomo' ) );
+		return admin_url( 'admin.php?page=' . rawurlencode( self::SETTINGS_PAGE_SLUG ) );
 	}
 
 	/**
@@ -137,6 +148,19 @@ class Gi_Toolkit_Matomo {
 	 * @return void
 	 */
 	public function maybe_redirect_legacy_admin_url() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['page'] ) ) {
+			$page = sanitize_key( wp_unslash( $_GET['page'] ) );
+			$legacy_pages = array(
+				self::LEGACY_SETTINGS_PAGE_SLUG,
+				self::LEGACY_SETTINGS_PAGE_SLUG_V2,
+			);
+			if ( in_array( $page, $legacy_pages, true ) ) {
+				wp_safe_redirect( self::get_settings_admin_url() );
+				exit;
+			}
+		}
+
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
 		if ( '' === $uri ) {
@@ -146,17 +170,25 @@ class Gi_Toolkit_Matomo {
 		if ( ! is_string( $path ) ) {
 			return;
 		}
-		// Ancienne URL générée par add_submenu_page( null, … ) : /wp-admin/{slug} sans admin.php.
-		if ( preg_match( '#/wp-admin/' . preg_quote( $this->settings_page_slug, '#' ) . '/?$#', $path ) ) {
-			wp_safe_redirect( self::get_settings_admin_url() );
-			exit;
+		// Ancienne URL /wp-admin/{slug} (parent null ou slug obsolète).
+		$legacy_slugs = array(
+			self::LEGACY_SETTINGS_PAGE_SLUG,
+			self::LEGACY_SETTINGS_PAGE_SLUG_V2,
+		);
+		foreach ( $legacy_slugs as $slug ) {
+			if ( preg_match( '#/wp-admin/' . preg_quote( $slug, '#' ) . '/?$#', $path ) ) {
+				wp_safe_redirect( self::get_settings_admin_url() );
+				exit;
+			}
 		}
 	}
 
 	/**
+	 * Menu principal Statistiques (priorité haute pour apparaître en tête).
+	 *
 	 * @return void
 	 */
-	public function register_menus() {
+	public function register_statistics_menu() {
 		add_menu_page(
 			__( 'Statistiques', 'gi-toolkit' ),
 			__( 'Statistiques', 'gi-toolkit' ),
@@ -166,24 +198,21 @@ class Gi_Toolkit_Matomo {
 			'dashicons-chart-area',
 			1
 		);
+	}
 
+	/**
+	 * Sous-page de réglages sous GI-Toolkit (comme les autres modules).
+	 *
+	 * @return void
+	 */
+	public function add_submenu() {
 		Gi_Toolkit_Settings::add_submenu_page(
 			'gi-toolkit-settings',
 			$this->header_title,
 			$this->header_title,
 			'manage_options',
-			$this->settings_page_slug,
-			array( $this, 'render_settings_page' )
-		);
-
-		// Même slug sous Statistiques (comme Connexion temporaire sous Utilisateurs + GI-Toolkit).
-		add_submenu_page(
-			self::STATS_PAGE_SLUG,
-			$this->header_title,
-			__( 'Réglages Matomo', 'gi-toolkit' ),
-			'manage_options',
-			$this->settings_page_slug,
-			array( $this, 'render_settings_page' )
+			$this->page_slug,
+			array( $this, 'render_submenu' )
 		);
 	}
 
@@ -191,7 +220,7 @@ class Gi_Toolkit_Matomo {
 	 * @return void
 	 */
 	public function save_submenu() {
-		if ( ! gi_toolkit_pro_begin_save( $this->settings_page_slug, 'gi_toolkit_matomo_save' ) ) {
+		if ( ! gi_toolkit_pro_begin_save( $this->page_slug, 'gi_toolkit_matomo_save' ) ) {
 			return;
 		}
 
@@ -226,7 +255,7 @@ class Gi_Toolkit_Matomo {
 
 		$redirect = add_query_arg(
 			array(
-				'page'                => $this->settings_page_slug,
+				'page'                => $this->page_slug,
 				'gi_toolkit_pro_saved' => '1',
 				'matomo_sync'         => ! empty( $save['success'] ) ? '1' : '0',
 			),
@@ -344,7 +373,7 @@ class Gi_Toolkit_Matomo {
 	/**
 	 * @return void
 	 */
-	public function render_settings_page() {
+	public function render_submenu() {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}

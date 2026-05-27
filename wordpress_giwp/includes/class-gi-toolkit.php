@@ -198,6 +198,7 @@ class Gi_Toolkit {
 		$gi_toolkit_settings = new Gi_Toolkit_Settings( $this->get_plugin_name(), $this->get_version() );
 		$this->loader->add_action( 'admin_enqueue_scripts', $gi_toolkit_settings, 'enqueue_scripts' );
 		$this->loader->add_action( 'admin_menu', $gi_toolkit_settings, 'add_settings_menu' );
+		$this->loader->add_action( 'admin_menu', 'gi_toolkit_normalize_settings_submenu', 10000 );
 		$this->loader->add_action( 'admin_init', $gi_toolkit_settings, 'settings_submit_button' );
 		$this->loader->add_action( 'init', $gi_toolkit_settings, 'add_shortcodes' );
 		$this->loader->add_action( 'init', $gi_toolkit_settings, 'schedule_cron_event' );
