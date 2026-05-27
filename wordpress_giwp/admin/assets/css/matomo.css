@@ -1,0 +1,150 @@
+/* Réglages Connect Matomo */
+.gi-toolkit-matomo-settings-page .gi-matomo-settings-grid {
+	display: grid;
+	gap: 20px;
+}
+
+.gi-matomo-panel {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	padding: 16px 20px 8px;
+}
+
+.gi-matomo-panel h3 {
+	margin: 0 0 8px;
+	font-size: 15px;
+}
+
+.gi-matomo-inline-result {
+	margin-left: 8px;
+	font-size: 13px;
+}
+
+.gi-matomo-inline-result.is-ok {
+	color: #00a32a;
+}
+
+.gi-matomo-inline-result.is-err {
+	color: #d63638;
+}
+
+.gi-matomo-row-manual-code {
+	display: none;
+}
+
+body.gi-matomo-track-manual .gi-matomo-row-manual-code {
+	display: table-row;
+}
+
+/* Dashboard Statistiques */
+.gi-matomo-stats-wrap {
+	margin-top: 12px;
+	max-width: 1400px;
+}
+
+.gi-matomo-stats-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	margin-bottom: 16px;
+}
+
+.gi-matomo-stats-header h1 {
+	margin: 0;
+	font-size: 23px;
+	font-weight: 600;
+}
+
+.gi-matomo-period-nav {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 20px;
+}
+
+.gi-matomo-period-btn {
+	display: inline-block;
+	padding: 6px 14px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	background: #f6f7f7;
+	color: #1d2327;
+	text-decoration: none;
+	font-size: 13px;
+}
+
+.gi-matomo-period-btn:hover,
+.gi-matomo-period-btn.is-active {
+	background: #2271b1;
+	border-color: #2271b1;
+	color: #fff;
+}
+
+.gi-matomo-kpis {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+	gap: 12px;
+	margin-bottom: 20px;
+}
+
+.gi-matomo-kpi {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	padding: 14px 16px;
+	text-align: center;
+}
+
+.gi-matomo-kpi__value {
+	display: block;
+	font-size: 22px;
+	font-weight: 700;
+	line-height: 1.2;
+	color: #1d2327;
+}
+
+.gi-matomo-kpi__label {
+	display: block;
+	margin-top: 4px;
+	font-size: 12px;
+	color: #646970;
+}
+
+.gi-matomo-chart-panel,
+.gi-matomo-table-panel {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	padding: 16px 20px;
+	margin-bottom: 16px;
+}
+
+.gi-matomo-chart-panel h2,
+.gi-matomo-table-panel h2 {
+	margin: 0 0 12px;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.gi-matomo-chart-panel canvas {
+	max-width: 100%;
+	height: auto !important;
+}
+
+.gi-matomo-tables {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 16px;
+}
+
+.gi-matomo-table .gi-matomo-num {
+	text-align: right;
+	width: 90px;
+}
+
+#gi-matomo-dashboard.is-loading {
+	opacity: 0.55;
+	pointer-events: none;
+}

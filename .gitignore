@@ -13,3 +13,5 @@ Thumbs.db
 .cache/
 
 login.css
+.cursor/
+wp-piwik/

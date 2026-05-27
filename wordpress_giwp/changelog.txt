@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.20.22 =
+Add: Module Connect Matomo — connexion API, auto-création du site, suivi front, menu Statistiques, export JSON / MainWP.
+
 = 2.20.21 =
 Fix: En-tête des pages modules — styles communs (titre h1, logo, carte) pour tous les sous-menus GI-Toolkit.
 

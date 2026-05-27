@@ -648,6 +648,12 @@ class Gi_Toolkit_Modules_Data {
 				'pro'           => false,
 				'path'          => 'core/class-media-folders.php',
 			),
+			'Gi_Toolkit_Matomo' => array(
+				'original_name' => 'Connect Matomo',
+				'group'         => 'content-media',
+				'pro'           => false,
+				'path'          => 'core/class-matomo.php',
+			),
 			'Gi_Toolkit_Paste_Image_In_Media' => array(
 				'original_name' => "Paste Image In Media",
 				'group'         => 'content-media',
@@ -1223,6 +1229,10 @@ class Gi_Toolkit_Modules_Data {
 			'Gi_Toolkit_Media_Folders' => array(
 				'name' => esc_html_x( 'Dossiers média', 'Module name', 'gi-toolkit' ),
 				'desc' => esc_html_x( 'Organisez la médiathèque en dossiers, déplacez les fichiers facilement et triez automatiquement par page.', 'Module description', 'gi-toolkit' ),
+			),
+			'Gi_Toolkit_Matomo' => array(
+				'name' => esc_html_x( 'Connect Matomo', 'Module name', 'gi-toolkit' ),
+				'desc' => esc_html_x( 'Connexion à Matomo, suivi automatique, tableau de bord Statistiques et export des réglages (URL + token API).', 'Module description', 'gi-toolkit' ),
 			),
 			'Gi_Toolkit_Paste_Image_In_Media' => array(
 				'name' => esc_html_x( "Paste Image In Media", "Module name", 'gi-toolkit' ),
