@@ -66,7 +66,7 @@ $logs       = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 					<label for="mainwp_giweb_mail_alert_email"><?php esc_html_e( 'Email de notification (optionnel)', 'mainwp-giweb' ); ?></label><br />
 					<input type="email" class="regular-text" id="mainwp_giweb_mail_alert_email" name="mail_alert_email" value="<?php echo esc_attr( (string) ( $settings['mail_alert_email'] ?? '' ) ); ?>" placeholder="<?php echo esc_attr( get_option( 'admin_email' ) ); ?>" />
 				</p>
-				<p class="description"><?php esc_html_e( 'Les statistiques sont remontées lors de « Synchroniser les statuts » et affichées dans le widget MainWP « GI-Toolkit — Mails ».', 'mainwp-giweb' ); ?></p>
+				<p class="description"><?php esc_html_e( 'Les statistiques sont remontées lors de « Synchroniser les statuts ». Le widget « GI-Toolkit — Mails » peut être masqué dans MainWP > Réglages > Outils MainWP > Masquer les widgets indésirables.', 'mainwp-giweb' ); ?></p>
 			</td>
 		</tr>
 		<tr>

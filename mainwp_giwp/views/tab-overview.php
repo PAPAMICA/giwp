@@ -28,7 +28,7 @@ if ( is_array( $bundle_modules ) ) {
 			<th class="mainwp-giweb-col-status"><?php esc_html_e( 'GI-Toolkit', 'mainwp-giweb' ); ?></th>
 			<th class="mainwp-giweb-col-version"><?php esc_html_e( 'Version', 'mainwp-giweb' ); ?></th>
 			<th class="mainwp-giweb-col-modules"><?php esc_html_e( 'Modules actifs', 'mainwp-giweb' ); ?></th>
-			<th class="mainwp-giweb-col-mail"><?php esc_html_e( 'Mails (Mail Catcher)', 'mainwp-giweb' ); ?></th>
+			<th class="mainwp-giweb-col-mail"><?php esc_html_e( 'Mails', 'mainwp-giweb' ); ?></th>
 			<th class="mainwp-giweb-col-actions"><?php esc_html_e( 'Actions', 'mainwp-giweb' ); ?></th>
 		</tr>
 	</thead>

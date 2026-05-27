@@ -70,9 +70,10 @@ class MainWP_GIWeb_Sync_Ajax {
 	 * @return void
 	 */
 	private static function verify_request() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! MainWP_GIWeb_Capabilities::can_access() ) {
 			wp_send_json_error(
-				array( 'message' => __( 'Accès refusé.', 'mainwp-giweb' ) )
+				array( 'message' => __( 'Accès refusé.', 'mainwp-giweb' ) ),
+				403
 			);
 		}
 		check_ajax_referer( self::NONCE_ACTION, 'nonce' );
@@ -187,6 +188,9 @@ class MainWP_GIWeb_Sync_Ajax {
 			MainWP_GIWeb_Mail_Stats::record_site_sync( $site_id, $label, $url, $result['api'] );
 
 			$result['mail_summary'] = MainWP_GIWeb_Mail_Stats::get_client_summary();
+			$result['mail_html']    = MainWP_GIWeb_Mail_Stats::format_site_mail_cell(
+				MainWP_GIWeb_Mail_Stats::extract_mail( $result['data'] ?? array() )
+			);
 
 			wp_send_json_success( $result );
 		} catch ( Throwable $e ) {

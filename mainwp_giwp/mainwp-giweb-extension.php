@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'MAINWP_GIWEB_VERSION' ) ) {
-	define( 'MAINWP_GIWEB_VERSION', '1.3.0' );
+	define( 'MAINWP_GIWEB_VERSION', '1.3.1' );
 }
 if ( ! defined( 'MAINWP_GIWEB_PLUGIN_FILE' ) ) {
 	define( 'MAINWP_GIWEB_PLUGIN_FILE', __DIR__ . '/mainwp-giwp.php' );
@@ -26,6 +26,7 @@ if ( ! defined( 'MAINWP_GIWEB_GI_TOOLKIT_PATH' ) ) {
 }
 
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-ui.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-capabilities.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-sites.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-catalog.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-settings.php';
@@ -143,7 +144,15 @@ class MainWP_GIWeb_Extension_Activator {
 		if ( is_array( $this->childEnabled ) && ! empty( $this->childEnabled['key'] ) ) {
 			$this->childKey = $this->childEnabled['key'];
 		}
+
+		if ( function_exists( 'mainwp_current_user_can' ) && ! MainWP_GIWeb_Capabilities::can_access() ) {
+			return;
+		}
+
 		add_filter( 'mainwp_getsubpages_extensions', array( $this, 'add_submenu' ), 10, 1 );
+		add_filter( 'mainwp_getmetaboxes', array( 'MainWP_GIWeb_Dashboard_Widget', 'register_metabox' ), 20, 1 );
+		add_filter( 'mainwp_widgets_screen_options', array( 'MainWP_GIWeb_Dashboard_Widget', 'widgets_screen_options' ), 10, 1 );
+		add_action( 'admin_enqueue_scripts', array( 'MainWP_GIWeb_Dashboard_Widget', 'enqueue_assets' ) );
 	}
 
 	/**
@@ -166,7 +175,11 @@ class MainWP_GIWeb_Extension_Activator {
 	 */
 	public function settings_page() {
 		do_action( 'mainwp_pageheader_extensions', MAINWP_GIWEB_PLUGIN_FILE );
-		if ( $this->childEnabled ) {
+		if ( ! MainWP_GIWeb_Capabilities::can_access() ) {
+			echo '<div class="notice notice-error"><p>';
+			esc_html_e( 'Vous n’avez pas les droits MainWP pour accéder au GI-Toolkit Manager.', 'mainwp-giweb' );
+			echo '</p></div>';
+		} elseif ( $this->childEnabled ) {
 			MainWP_GIWeb::render_page();
 		} else {
 			echo '<div class="notice notice-error"><p>';

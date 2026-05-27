@@ -81,4 +81,15 @@ class MainWP_GIWeb_UI {
 		);
 		return implode( ' ', $classes );
 	}
+
+	/**
+	 * URL de la page extension (sans rawurlencode du slug).
+	 *
+	 * @param array<string, string> $args Query args additionnels.
+	 * @return string
+	 */
+	public static function admin_page_url( array $args = array() ) {
+		$args = array_merge( array( 'page' => self::PAGE_SLUG ), $args );
+		return add_query_arg( $args, admin_url( 'admin.php' ) );
+	}
 }

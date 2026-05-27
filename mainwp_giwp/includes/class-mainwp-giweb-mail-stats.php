@@ -224,7 +224,7 @@ class MainWP_GIWeb_Mail_Stats {
 						__( '[MainWP GI] %d échec(s) mail sur le réseau', 'mainwp-giweb' ),
 						(int) ( $network['failed'] ?? 0 )
 					),
-					$payload['message'] . "\n\n" . admin_url( 'admin.php?page=' . rawurlencode( MainWP_GIWeb_UI::PAGE_SLUG ) )
+					$payload['message'] . "\n\n" . MainWP_GIWeb_UI::admin_page_url()
 				);
 				set_transient( $key, 1, HOUR_IN_SECONDS );
 			}
@@ -242,7 +242,7 @@ class MainWP_GIWeb_Mail_Stats {
 	 * @return void
 	 */
 	public static function render_admin_notice() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! MainWP_GIWeb_Capabilities::can_access() ) {
 			return;
 		}
 
@@ -260,7 +260,9 @@ class MainWP_GIWeb_Mail_Stats {
 				array(
 					'mainwp_giweb_dismiss_mail' => '1',
 				),
-				admin_url( 'admin.php' )
+				MainWP_GIWeb_UI::is_extension_admin_page()
+					? MainWP_GIWeb_UI::admin_page_url()
+					: ( isset( $_GET['page'] ) ? add_query_arg( 'page', sanitize_text_field( wp_unslash( $_GET['page'] ) ), admin_url( 'admin.php' ) ) : admin_url( 'admin.php' ) )
 			),
 			'mainwp_giweb_dismiss_mail'
 		);
@@ -269,7 +271,7 @@ class MainWP_GIWeb_Mail_Stats {
 		esc_html_e( 'GI-Toolkit — échecs mail détectés', 'mainwp-giweb' );
 		echo '</strong> ';
 		echo esc_html( (string) $alert['message'] );
-		echo ' <a href="' . esc_url( admin_url( 'admin.php?page=' . rawurlencode( MainWP_GIWeb_UI::PAGE_SLUG ) ) ) . '">';
+		echo ' <a href="' . esc_url( MainWP_GIWeb_UI::admin_page_url() ) . '">';
 		esc_html_e( 'Voir le manager', 'mainwp-giweb' );
 		echo '</a> · <a href="' . esc_url( $dismiss_url ) . '">';
 		esc_html_e( 'Masquer', 'mainwp-giweb' );
@@ -293,27 +295,46 @@ class MainWP_GIWeb_Mail_Stats {
 	 */
 	public static function format_site_mail_cell( $mail ) {
 		if ( ! is_array( $mail ) || empty( $mail['module_active'] ) ) {
-			return '<span class="mainwp-giweb-mail-na">—</span>';
+			return '<span class="mainwp-giweb-mail-site mainwp-giweb-mail-site--inactive"><span class="mainwp-giweb-mail-site__hint">' . esc_html__( 'Mail Catcher inactif', 'mainwp-giweb' ) . '</span></span>';
 		}
 		if ( empty( $mail['table_ready'] ) ) {
-			return '<span class="mainwp-giweb-mail-na" title="' . esc_attr__( 'Module actif, table non prête', 'mainwp-giweb' ) . '">…</span>';
+			return '<span class="mainwp-giweb-mail-site mainwp-giweb-mail-site--pending"><span class="mainwp-giweb-mail-site__hint">' . esc_html__( 'Module actif — en attente de données', 'mainwp-giweb' ) . '</span></span>';
 		}
 
-		$failed = (int) ( $mail['failed'] ?? 0 );
-		$total  = (int) ( $mail['total'] ?? 0 );
-		$today  = (int) ( $mail['today'] ?? 0 );
+		$failed  = (int) ( $mail['failed'] ?? 0 );
+		$success = (int) ( $mail['success'] ?? 0 );
+		$total   = (int) ( $mail['total'] ?? 0 );
+		$today   = (int) ( $mail['today'] ?? 0 );
+		$resent  = (int) ( $mail['resent_total'] ?? 0 );
+		$has_err = $failed > 0;
 
-		$html = '<span class="mainwp-giweb-mail-stat">' . esc_html( (string) $total ) . '</span>';
-		if ( $failed > 0 ) {
-			$html .= ' <span class="mainwp-giweb-badge err mainwp-giweb-mail-failed" title="' . esc_attr__(
-				'Emails en échec',
-				'mainwp-giweb'
-			) . '">' . esc_html( (string) $failed ) . '</span>';
+		$html  = '<div class="mainwp-giweb-mail-site' . ( $has_err ? ' mainwp-giweb-mail-site--alert' : ' mainwp-giweb-mail-site--ok' ) . '">';
+		$html .= '<div class="mainwp-giweb-mail-site__head">';
+		if ( $has_err ) {
+			$html .= '<span class="mainwp-giweb-badge err">' . esc_html(
+				sprintf(
+					/* translators: %d: failed mail count */
+					_n( '%d échec', '%d échecs', $failed, 'mainwp-giweb' ),
+					$failed
+				)
+			) . '</span>';
+		} else {
+			$html .= '<span class="mainwp-giweb-badge ok">' . esc_html__( 'Aucun échec', 'mainwp-giweb' ) . '</span>';
 		}
-		$html .= '<br><span class="mainwp-giweb-mail-today" title="' . esc_attr__( 'Aujourd’hui', 'mainwp-giweb' ) . '">';
-		/* translators: %d: mails sent today */
-		$html .= esc_html( sprintf( __( '%d auj.', 'mainwp-giweb' ), $today ) );
-		$html .= '</span>';
+		$html .= '<span class="mainwp-giweb-mail-site__total" title="' . esc_attr__( 'Total capturé', 'mainwp-giweb' ) . '">' . esc_html( (string) $total ) . '</span>';
+		$html .= '</div>';
+		$html .= '<div class="mainwp-giweb-mail-site__metrics">';
+		$html .= '<span class="mainwp-giweb-mail-metric mainwp-giweb-mail-metric--ok" title="' . esc_attr__( 'Envoyés avec succès', 'mainwp-giweb' ) . '">';
+		$html .= esc_html( (string) $success ) . ' <small>' . esc_html__( 'OK', 'mainwp-giweb' ) . '</small></span>';
+		$html .= '<span class="mainwp-giweb-mail-metric mainwp-giweb-mail-metric--fail" title="' . esc_attr__( 'En échec', 'mainwp-giweb' ) . '">';
+		$html .= esc_html( (string) $failed ) . ' <small>' . esc_html__( 'KO', 'mainwp-giweb' ) . '</small></span>';
+		$html .= '<span class="mainwp-giweb-mail-metric" title="' . esc_attr__( 'Aujourd’hui', 'mainwp-giweb' ) . '">';
+		$html .= esc_html( (string) $today ) . ' <small>' . esc_html__( 'auj.', 'mainwp-giweb' ) . '</small></span>';
+		if ( $resent > 0 ) {
+			$html .= '<span class="mainwp-giweb-mail-metric" title="' . esc_attr__( 'Renvois', 'mainwp-giweb' ) . '">';
+			$html .= esc_html( (string) $resent ) . ' <small>' . esc_html__( 'renv.', 'mainwp-giweb' ) . '</small></span>';
+		}
+		$html .= '</div></div>';
 
 		return $html;
 	}
@@ -327,12 +348,16 @@ class MainWP_GIWeb_Mail_Stats {
 		if ( empty( $_GET['mainwp_giweb_dismiss_mail'] ) ) {
 			return;
 		}
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! MainWP_GIWeb_Capabilities::can_access() ) {
 			return;
 		}
 		check_admin_referer( 'mainwp_giweb_dismiss_mail' );
 		self::clear_alert();
-		wp_safe_redirect( remove_query_arg( array( 'mainwp_giweb_dismiss_mail', '_wpnonce' ) ) );
+		$redirect = wp_get_referer();
+		if ( ! $redirect ) {
+			$redirect = MainWP_GIWeb_UI::admin_page_url();
+		}
+		wp_safe_redirect( remove_query_arg( array( 'mainwp_giweb_dismiss_mail', '_wpnonce' ), $redirect ) );
 		exit;
 	}
 }

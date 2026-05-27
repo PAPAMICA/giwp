@@ -29,6 +29,12 @@ class MainWP_GIWeb {
 			array(),
 			MAINWP_GIWEB_VERSION
 		);
+		wp_enqueue_style(
+			'mainwp-giweb-dashboard-widget',
+			MAINWP_GIWEB_PLUGIN_URL . 'assets/css/dashboard-widget.css',
+			array( 'mainwp-giweb-admin' ),
+			MAINWP_GIWEB_VERSION
+		);
 		wp_enqueue_script(
 			'mainwp-giweb-admin',
 			MAINWP_GIWEB_PLUGIN_URL . 'assets/js/admin.js',
@@ -115,8 +121,12 @@ class MainWP_GIWeb {
 	 * @return void
 	 */
 	public static function render_page() {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'Accès refusé.', 'mainwp-giweb' ) );
+		if ( ! MainWP_GIWeb_Capabilities::can_access() ) {
+			wp_die(
+				esc_html__( 'Accès refusé.', 'mainwp-giweb' ),
+				esc_html__( 'GI-Toolkit Manager', 'mainwp-giweb' ),
+				array( 'response' => 403 )
+			);
 		}
 
 		self::handle_post();

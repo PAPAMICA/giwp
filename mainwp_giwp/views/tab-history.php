@@ -25,7 +25,7 @@ $view_id     = isset( $_GET['deployment_id'] ) ? absint( $_GET['deployment_id'] 
 					<td><?php echo esc_html( (string) $row->id ); ?></td>
 					<td><?php echo esc_html( $row->template_name ?? '' ); ?></td>
 					<td><?php echo esc_html( $row->created_at ?? '' ); ?></td>
-					<td><a href="<?php echo esc_url( admin_url( 'admin.php?page=' . rawurlencode( $current_page ) . '&tab=history&deployment_id=' . (int) $row->id ) ); ?>"><?php esc_html_e( 'Détails', 'mainwp-giweb' ); ?></a></td>
+					<td><a href="<?php echo esc_url( MainWP_GIWeb_UI::admin_page_url( array( 'tab' => 'history', 'deployment_id' => (string) (int) $row->id ) ) ); ?>"><?php esc_html_e( 'Détails', 'mainwp-giweb' ); ?></a></td>
 				</tr>
 			<?php endforeach; ?>
 		<?php endif; ?>
