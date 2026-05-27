@@ -630,6 +630,24 @@ class Gi_Toolkit_Modules_Data {
 				'pro'           => false,
 				'path'          => 'core/class-media-cleaner.php',
 			),
+			'Gi_Toolkit_Unused_Media' => array(
+				'original_name' => 'Unused Media',
+				'group'         => 'content-media',
+				'pro'           => false,
+				'path'          => 'core/class-unused-media.php',
+			),
+			'Gi_Toolkit_Broken_Links' => array(
+				'original_name' => 'Broken Links',
+				'group'         => 'content-media',
+				'pro'           => false,
+				'path'          => 'core/class-broken-links.php',
+			),
+			'Gi_Toolkit_Media_Folders' => array(
+				'original_name' => 'Media Folders',
+				'group'         => 'content-media',
+				'pro'           => false,
+				'path'          => 'core/class-media-folders.php',
+			),
 			'Gi_Toolkit_Paste_Image_In_Media' => array(
 				'original_name' => "Paste Image In Media",
 				'group'         => 'content-media',
@@ -1193,6 +1211,18 @@ class Gi_Toolkit_Modules_Data {
 			'Gi_Toolkit_Media_Cleaner' => array(
 				'name' => esc_html_x( "Media Cleaner", "Module name", 'gi-toolkit' ),
 				'desc' => esc_html_x( "Automatically sanitize uploaded file names by removing special characters, and streamline media management by auto-generating key metadata fields (title, caption, alt text, and description) directly from the cleaned file name.", "Module description", 'gi-toolkit' ),
+			),
+			'Gi_Toolkit_Unused_Media' => array(
+				'name' => esc_html_x( 'Nettoyage médiathèque', 'Module name', 'gi-toolkit' ),
+				'desc' => esc_html_x( 'Liste les fichiers média non utilisés et permet de les supprimer en masse après analyse.', 'Module description', 'gi-toolkit' ),
+			),
+			'Gi_Toolkit_Broken_Links' => array(
+				'name' => esc_html_x( 'Liens cassés', 'Module name', 'gi-toolkit' ),
+				'desc' => esc_html_x( 'Scanne le contenu du site pour détecter les liens cassés, avec historique et planification automatique.', 'Module description', 'gi-toolkit' ),
+			),
+			'Gi_Toolkit_Media_Folders' => array(
+				'name' => esc_html_x( 'Dossiers média', 'Module name', 'gi-toolkit' ),
+				'desc' => esc_html_x( 'Organisez la médiathèque en dossiers, déplacez les fichiers facilement et triez automatiquement par page.', 'Module description', 'gi-toolkit' ),
 			),
 			'Gi_Toolkit_Paste_Image_In_Media' => array(
 				'name' => esc_html_x( "Paste Image In Media", "Module name", 'gi-toolkit' ),

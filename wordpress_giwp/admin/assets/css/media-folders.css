@@ -1,0 +1,131 @@
+.gi-toolkit-media-folders-layout {
+	display: flex;
+	gap: 24px;
+	align-items: flex-start;
+}
+
+.gi-toolkit-media-folders-sidebar {
+	flex: 0 0 260px;
+	max-width: 260px;
+}
+
+.gi-toolkit-media-folders-main {
+	flex: 1;
+	min-width: 0;
+}
+
+.gi-media-folders-tree ul {
+	list-style: none;
+	margin: 0 0 8px 0;
+	padding-left: 16px;
+}
+
+.gi-media-folders-tree > ul {
+	padding-left: 0;
+}
+
+.gi-media-folder-node {
+	margin: 2px 0;
+}
+
+.gi-media-folder-node button {
+	background: none;
+	border: none;
+	cursor: pointer;
+	text-align: left;
+	padding: 4px 8px;
+	border-radius: 4px;
+	width: 100%;
+	color: inherit;
+}
+
+.gi-media-folder-node button:hover,
+.gi-media-folder-node.is-active button {
+	background: rgba(0, 0, 0, 0.06);
+}
+
+.gi-media-folder-attachments {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+	gap: 12px;
+	margin-top: 12px;
+}
+
+.gi-media-folder-attachment {
+	border: 2px solid transparent;
+	border-radius: 6px;
+	padding: 6px;
+	cursor: pointer;
+	text-align: center;
+	font-size: 11px;
+}
+
+.gi-media-folder-attachment.is-selected {
+	border-color: #2271b1;
+	background: #f0f6fc;
+}
+
+.gi-media-folder-attachment img {
+	max-width: 100%;
+	height: auto;
+	display: block;
+	margin: 0 auto 4px;
+	border-radius: 4px;
+}
+
+.gi-media-folders-bulk {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin-bottom: 12px;
+}
+
+/* Médiathèque native */
+.gi-media-folders-native-wrap {
+	display: flex;
+	gap: 0;
+	align-items: stretch;
+}
+
+.gi-media-folders-native-sidebar {
+	flex: 0 0 220px;
+	background: #fff;
+	border-right: 1px solid #c3c4c7;
+	padding: 12px;
+	max-height: calc(100vh - 120px);
+	overflow-y: auto;
+}
+
+body.upload-php .wrap {
+	position: relative;
+}
+
+body.upload-php .gi-media-folders-native-sidebar {
+	position: relative;
+	margin: 0 0 16px -12px;
+}
+
+body.upload-php.gi-media-folders-active .wrap > h1,
+body.upload-php.gi-media-folders-active .wrap > .wp-header-end,
+body.upload-php.gi-media-folders-active .wrap > hr {
+	/* contenu principal décalé via flex sur parent injecté */
+}
+
+.gi-media-folders-native-layout {
+	display: flex;
+	width: 100%;
+	gap: 0;
+}
+
+.gi-media-folders-native-layout > .gi-media-folders-native-main {
+	flex: 1;
+	min-width: 0;
+}
+
+.gi-media-folders-native-bulk {
+	margin: 8px 0;
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}

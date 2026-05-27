@@ -1,5 +1,10 @@
 == Changelog ==
 
+= 2.20.16 =
+Add: Nettoyage médiathèque — analyse des médias non utilisés, liste avec aperçu au survol, suppression en masse.
+Add: Liens cassés — scan du contenu, historique des analyses, planification cron.
+Add: Dossiers média — taxonomie, intégration médiathèque WordPress, auto-tri par slug de page, dossiers header/footer.
+
 = 2.20.10 =
 Fix: Mail catcher — cases à cocher (colonne th WP_List_Table), aperçu plus rapide, détection HTML via balise &lt;p&gt;, métadonnées dans l’onglet HTML.
 
