@@ -200,7 +200,7 @@ class Gi_Toolkit_Mail_Catcher_Logs_List_Table extends WP_List_Table {
 	 */
 	public function get_columns() {
 		return array(
-			'cb'         => '<input type="checkbox" id="gi-toolkit-mail-cb-select-all" />',
+			'cb'         => '<input type="checkbox" />',
 			'receiver'   => __( 'Destinataire', 'gi-toolkit' ),
 			'subject'    => __( 'Objet', 'gi-toolkit' ),
 			'status'     => __( 'Statut', 'gi-toolkit' ),
@@ -232,11 +232,18 @@ class Gi_Toolkit_Mail_Catcher_Logs_List_Table extends WP_List_Table {
 	 */
 	protected function column_cb( $item ) {
 		return sprintf(
-			'<label class="gi-toolkit-mail-catcher-cb"><input type="checkbox" class="gi-toolkit-mail-catcher-row-cb" name="%1$s[]" value="%2$s" /><span class="screen-reader-text">%3$s</span></label>',
+			'<input type="checkbox" class="gi-toolkit-mail-catcher-row-cb" name="%1$s[]" value="%2$s" aria-label="%3$s" />',
 			esc_attr( $this->_args['singular'] ),
 			esc_attr( $item['id'] ),
-			esc_html__( 'Sélectionner cet e-mail', 'gi-toolkit' )
+			esc_attr__( 'Sélectionner cet e-mail', 'gi-toolkit' )
 		);
+	}
+
+	/**
+	 * @return string
+	 */
+	protected function get_primary_column_name() {
+		return 'subject';
 	}
 
 	/**

@@ -428,6 +428,15 @@ class Gi_Toolkit_Mail_Catcher {
 				if ( ! empty( $item ) ) {
 					$message = $item['message'] ?? '';
 
+					if ( ! $this->is_html_mail( $item ) ) {
+						nocache_headers();
+						header( 'Content-Type: text/html; charset=UTF-8' );
+						echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{margin:0;padding:16px;font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#1d2327;background:#fff;white-space:pre-wrap;word-break:break-word;}</style></head><body>';
+						echo esc_html( $this->get_plain_mail_text( $message ) );
+						echo '</body></html>';
+						exit();
+					}
+
 					// Strip <xml> and comment tags.
         			$message = preg_replace( '/<xml\b[^>]*>(.*?)<\/xml>/is', '', $message );
         			$message = preg_replace( '/<!--(.*?)-->/', '', $message );
@@ -439,6 +448,53 @@ class Gi_Toolkit_Mail_Catcher {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Détecte si le message est HTML.
+	 *
+	 * @param array<string, mixed> $item Ligne mail.
+	 * @return bool
+	 */
+	private function is_html_mail( $item ) {
+		$headers = (string) ( $item['headers'] ?? '' );
+		if ( '' !== $headers && false !== stripos( $headers, 'text/html' ) ) {
+			return true;
+		}
+
+		$message = (string) ( $item['message'] ?? '' );
+		if ( '' === trim( $message ) ) {
+			return false;
+		}
+
+		return (bool) preg_match( '/<\s*(html|body|table|div|p|br|center|!DOCTYPE)\b/i', $message );
+	}
+
+	/**
+	 * Normalise le texte brut d’un mail.
+	 *
+	 * @param string $message Contenu message.
+	 * @return string
+	 */
+	private function get_plain_mail_text( $message ) {
+		$text = wp_strip_all_tags( (string) $message );
+		$text = str_replace( array( "\r\n", "\n", "\r" ), "\n", $text );
+		return trim( $text );
+	}
+
+	/**
+	 * Rendu du corps du message pour l’aperçu.
+	 *
+	 * @param array<string, mixed> $item Ligne mail.
+	 * @return string
+	 */
+	private function render_message_body_preview( $item ) {
+		if ( $this->is_html_mail( $item ) ) {
+			$iframe_src = $this->get_iframe_src( $item );
+			return '<iframe class="gi-toolkit-email-preview__iframe" src="' . esc_url( $iframe_src ) . '" frameborder="0" title="' . esc_attr__( 'Aperçu HTML', 'gi-toolkit' ) . '"></iframe>';
+		}
+
+		return '<pre class="gi-toolkit-email-preview__plaintext">' . esc_html( $this->get_plain_mail_text( $item['message'] ?? '' ) ) . '</pre>';
 	}
 
 	/**
@@ -1235,8 +1291,9 @@ class Gi_Toolkit_Mail_Catcher {
 			return false;
 		}
 
-		$iframe_src       = $this->get_iframe_src( $item );
 		$attachments_html = $this->get_attachments_html( $item );
+		$is_html          = $this->is_html_mail( $item );
+		$format_label     = $is_html ? __( 'HTML', 'gi-toolkit' ) : __( 'Texte brut', 'gi-toolkit' );
 
 		ob_start();
 		?>
@@ -1280,8 +1337,16 @@ class Gi_Toolkit_Mail_Catcher {
 			<div class="gi-toolkit-email-preview__content__item">
 				<div class="gi-toolkit-email-preview__content__item__title"><?php esc_html_e( 'Message', 'gi-toolkit' ); ?></div>
 				<div class="gi-toolkit-email-preview__content__item__content">
+					<div class="gi-toolkit-email-preview__format">
+						<span class="gi-toolkit-email-preview__format-badge <?php echo $is_html ? 'is-html' : 'is-plain'; ?>">
+							<?php echo esc_html( $format_label ); ?>
+						</span>
+					</div>
 					<div class="gi-toolkit-email-preview__content__item__content__message">
-						<iframe src="<?php echo esc_url( $iframe_src ); ?>" frameborder="0"></iframe>
+						<?php
+						// Déjà échappé dans render_message_body_preview().
+						echo $this->render_message_body_preview( $item ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+						?>
 					</div>
 				</div>
 			</div>
@@ -1395,7 +1460,7 @@ class Gi_Toolkit_Mail_Catcher {
 				<div class="gi-toolkit-popup__content">
 					<div class="gi-toolkit-popup__header">
 						<div class="gi-toolkit-popup__header__left">
-							<div class="gi-toolkit-popup__header__title"><?php esc_html_e( 'Email Preview', 'gi-toolkit' ); ?></div>
+							<div class="gi-toolkit-popup__header__title"><?php esc_html_e( 'Aperçu du mail', 'gi-toolkit' ); ?></div>
 						</div>
 						<div class="gi-toolkit-popup__header__right">
 							<div class="gi-toolkit-popup__header__close" id="JS-close-popup">

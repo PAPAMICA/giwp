@@ -140,6 +140,7 @@ class MainWP_GIWeb_Dashboard_Widget {
 			$segments[] = array(
 				'id'     => (int) $site_id,
 				'label'  => (string) ( $row['label'] ?? ( '#' . $site_id ) ),
+				'url'    => (string) ( $row['url'] ?? '' ),
 				'total'  => $total,
 				'failed' => (int) ( $mail['failed'] ?? 0 ),
 			);
@@ -153,6 +154,20 @@ class MainWP_GIWeb_Dashboard_Widget {
 		);
 
 		return $segments;
+	}
+
+	/**
+	 * URL admin Mail Catcher sur un site enfant.
+	 *
+	 * @param string $site_url URL du site.
+	 * @return string
+	 */
+	private static function site_mail_catcher_url( $site_url ) {
+		$site_url = untrailingslashit( (string) $site_url );
+		if ( '' === $site_url ) {
+			return '';
+		}
+		return $site_url . '/wp-admin/admin.php?page=gi-toolkit-settings-mail-catcher';
 	}
 
 	/**
@@ -250,6 +265,7 @@ class MainWP_GIWeb_Dashboard_Widget {
 		$sent   = isset( $network['chart_sent'] ) && is_array( $network['chart_sent'] ) ? $network['chart_sent'] : array();
 		$failed = isset( $network['chart_failed'] ) && is_array( $network['chart_failed'] ) ? $network['chart_failed'] : array();
 		$max    = 1;
+		$bar_h  = 56;
 		foreach ( $labels as $i => $label ) {
 			unset( $label );
 			$max = max( $max, (int) ( $sent[ $i ] ?? 0 ) + (int) ( $failed[ $i ] ?? 0 ) );
@@ -321,29 +337,36 @@ class MainWP_GIWeb_Dashboard_Widget {
 							<ul class="mainwp-giweb-mail-widget__donut-legend">
 								<?php foreach ( $donut_segments as $i => $segment ) : ?>
 									<?php
-									$color = $donut['colors'][ $i ] ?? '#316bff';
-									$share = $donut['sum'] > 0 ? round( ( $segment['total'] / $donut['sum'] ) * 100 ) : 0;
+									$color      = $donut['colors'][ $i ] ?? '#316bff';
+									$share      = $donut['sum'] > 0 ? round( ( $segment['total'] / $donut['sum'] ) * 100 ) : 0;
+									$site_url   = self::site_mail_catcher_url( $segment['url'] ?? '' );
+									$line_label = sprintf(
+										/* translators: 1: percentage, 2: mail count */
+										__( '%1$s%% (%2$s)', 'mainwp-giweb' ),
+										(string) $share,
+										number_format_i18n( (int) $segment['total'] )
+									);
+									if ( (int) $segment['failed'] > 0 ) {
+										$line_label .= ' · ' . sprintf(
+											/* translators: %d: failed count */
+											_n( '%d échec', '%d échecs', (int) $segment['failed'], 'mainwp-giweb' ),
+											(int) $segment['failed']
+										);
+									}
 									?>
 									<li class="mainwp-giweb-mail-widget__donut-legend-item">
 										<span class="mainwp-giweb-mail-widget__donut-swatch" style="background:<?php echo esc_attr( $color ); ?>"></span>
-										<div class="mainwp-giweb-mail-widget__donut-legend-body">
-											<div class="mainwp-giweb-mail-widget__donut-legend-top">
-												<span class="mainwp-giweb-mail-widget__donut-legend-name" title="<?php echo esc_attr( $segment['label'] ); ?>">
-													<?php echo esc_html( $segment['label'] ); ?>
-												</span>
-												<span class="mainwp-giweb-mail-widget__donut-legend-pct"><?php echo esc_html( (string) $share ); ?>%</span>
-											</div>
-											<div class="mainwp-giweb-mail-widget__donut-bar" aria-hidden="true">
-												<span class="mainwp-giweb-mail-widget__donut-bar-fill" style="width:<?php echo esc_attr( (string) $share ); ?>%;background:<?php echo esc_attr( $color ); ?>"></span>
-											</div>
-											<span class="mainwp-giweb-mail-widget__donut-legend-meta">
-												<?php echo esc_html( number_format_i18n( (int) $segment['total'] ) ); ?>
-												<?php esc_html_e( 'mails', 'mainwp-giweb' ); ?>
-												<?php if ( (int) $segment['failed'] > 0 ) : ?>
-													<span class="mainwp-giweb-mail-widget__donut-fail">· <?php echo esc_html( (string) (int) $segment['failed'] ); ?> <?php esc_html_e( 'échec(s)', 'mainwp-giweb' ); ?></span>
-												<?php endif; ?>
+										<?php if ( $site_url ) : ?>
+											<a class="mainwp-giweb-mail-widget__donut-legend-line" href="<?php echo esc_url( $site_url ); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr( $segment['label'] ); ?>">
+												<span class="mainwp-giweb-mail-widget__donut-legend-name"><?php echo esc_html( $segment['label'] ); ?></span>
+												<span class="mainwp-giweb-mail-widget__donut-legend-meta"><?php echo esc_html( $line_label ); ?></span>
+											</a>
+										<?php else : ?>
+											<span class="mainwp-giweb-mail-widget__donut-legend-line">
+												<span class="mainwp-giweb-mail-widget__donut-legend-name"><?php echo esc_html( $segment['label'] ); ?></span>
+												<span class="mainwp-giweb-mail-widget__donut-legend-meta"><?php echo esc_html( $line_label ); ?></span>
 											</span>
-										</div>
+										<?php endif; ?>
 									</li>
 								<?php endforeach; ?>
 							</ul>
@@ -357,23 +380,26 @@ class MainWP_GIWeb_Dashboard_Widget {
 						<div class="mainwp-giweb-mail-widget__chart-bars" aria-hidden="true">
 							<?php foreach ( $labels as $i => $label ) : ?>
 								<?php
-								$s  = (int) ( $sent[ $i ] ?? 0 );
-								$f  = (int) ( $failed[ $i ] ?? 0 );
-								$sh = $max > 0 ? round( ( $s / $max ) * 100 ) : 0;
-								$fh = $max > 0 ? round( ( $f / $max ) * 100 ) : 0;
+								$s      = (int) ( $sent[ $i ] ?? 0 );
+								$f      = (int) ( $failed[ $i ] ?? 0 );
+								$ok_h   = ( $max > 0 && $s > 0 ) ? max( 4, (int) round( ( $s / $max ) * $bar_h ) ) : 0;
+								$fail_h = ( $max > 0 && $f > 0 ) ? max( 3, (int) round( ( $f / $max ) * $bar_h ) ) : 0;
 								?>
 								<div class="mainwp-giweb-mail-widget__bar-col" title="<?php echo esc_attr( $label . ' — ' . $s . ' OK / ' . $f . ' KO' ); ?>">
-									<div class="mainwp-giweb-mail-widget__bar-stack">
-										<span class="mainwp-giweb-mail-widget__bar mainwp-giweb-mail-widget__bar--fail" style="height:<?php echo esc_attr( (string) $fh ); ?>%"></span>
-										<span class="mainwp-giweb-mail-widget__bar mainwp-giweb-mail-widget__bar--ok" style="height:<?php echo esc_attr( (string) $sh ); ?>%"></span>
+									<div class="mainwp-giweb-mail-widget__bar-stack" style="height:<?php echo esc_attr( (string) $bar_h ); ?>px">
+										<?php if ( $fail_h > 0 ) : ?>
+											<span class="mainwp-giweb-mail-widget__bar mainwp-giweb-mail-widget__bar--fail" style="height:<?php echo esc_attr( (string) $fail_h ); ?>px"></span>
+										<?php endif; ?>
+										<?php if ( $ok_h > 0 ) : ?>
+											<span class="mainwp-giweb-mail-widget__bar mainwp-giweb-mail-widget__bar--ok" style="height:<?php echo esc_attr( (string) $ok_h ); ?>px"></span>
+										<?php endif; ?>
+										<?php if ( $ok_h <= 0 && $fail_h <= 0 ) : ?>
+											<span class="mainwp-giweb-mail-widget__bar mainwp-giweb-mail-widget__bar--empty"></span>
+										<?php endif; ?>
 									</div>
 									<span class="mainwp-giweb-mail-widget__bar-label"><?php echo esc_html( wp_trim_words( $label, 1, '' ) ); ?></span>
 								</div>
 							<?php endforeach; ?>
-						</div>
-						<div class="mainwp-giweb-mail-widget__legend">
-							<span><i class="mainwp-giweb-mail-widget__dot mainwp-giweb-mail-widget__dot--ok"></i><?php esc_html_e( 'OK', 'mainwp-giweb' ); ?></span>
-							<span><i class="mainwp-giweb-mail-widget__dot mainwp-giweb-mail-widget__dot--fail"></i><?php esc_html_e( 'Échecs', 'mainwp-giweb' ); ?></span>
 						</div>
 					</div>
 				<?php endif; ?>

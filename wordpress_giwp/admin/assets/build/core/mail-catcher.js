@@ -1,1 +1,200 @@
-!function(){"use strict";const e=()=>{const e=document.querySelector(".gi-toolkit-popup"),t=document.querySelector("#JS-close-popup"),o=document.querySelector("#JS-popup-overlay"),c=document.querySelector("#JS-gi-toolkit-email-preview"),r=document.querySelector("#JS-gi-toolkit-email-loader"),n=document.querySelector("#email-list"),i=Gi_ToolkitSubmenu&&Gi_ToolkitSubmenu.i18n?Gi_ToolkitSubmenu.i18n:{},a=()=>{e&&e.classList.remove("show")},l=e=>{if(!e)return;const t=e.dataset.emailId||e.value;if(!t)return;c.innerHTML="",r.classList.add("show");const o=new FormData;o.append("action","gi_toolkit_mail_catcher_preview"),o.append("nonce",Gi_ToolkitSubmenu.nonce),o.append("email_id",t),fetch(Gi_ToolkitSubmenu.ajaxUrl,{method:"POST",body:o}).then(e=>e.json()).then(t=>{t.success?(c.innerHTML=t.data,r.classList.remove("show")):(c.innerHTML="<p>"+(t.data||"Error")+"</p>",r.classList.remove("show"))}).catch(e=>{console.error(e),r.classList.remove("show")})};t&&t.addEventListener("click",a),o&&o.addEventListener("click",a),document.querySelectorAll(".gi-toolkit-view").forEach(t=>{t.addEventListener("click",t=>{t.preventDefault(),t.stopPropagation(),e&&e.classList.add("show"),l(t.currentTarget)})}),document.querySelectorAll(".gi-toolkit-delete").forEach(e=>{e.addEventListener("click",t=>{i.confirmDelete&&!confirm(i.confirmDelete)&&t.preventDefault()})}),document.querySelectorAll(".gi-toolkit-resend").forEach(e=>{e.addEventListener("click",t=>{i.confirmResend&&!confirm(i.confirmResend)&&t.preventDefault()})});const s=document.getElementById("gi-toolkit-mail-cb-select-all"),d=document.getElementById("cb-select-all-1")||document.getElementById("cb-select-all-2"),u=()=>document.querySelectorAll(".gi-toolkit-mail-catcher-row-cb");s&&s.addEventListener("change",()=>{u().forEach(e=>{e.checked=s.checked})}),d&&!s&&d.addEventListener("change",()=>{u().forEach(e=>{e.checked=d.checked})}),u().forEach(e=>{e.addEventListener("click",e=>e.stopPropagation())}),n&&n.addEventListener("submit",e=>{const t=e.submitter;if(t&&("delete"===t.name||"resend"===t.name))return;const o=document.getElementById("bulk-action-selector-top"),c=document.getElementById("bulk-action-selector-bottom"),r=o&&"-1"!==o.value?o.value:c&&"-1"!==c.value?c.value:"";if(!r)return;const a=n.querySelectorAll(".gi-toolkit-mail-catcher-row-cb:checked");if(a.length){if("delete"===r&&i.confirmBulkDelete&&!confirm(i.confirmBulkDelete))return e.preventDefault(),!1;if("resend"===r&&i.confirmBulkResend&&!confirm(i.confirmBulkResend))return e.preventDefault(),!1}});const m=Gi_ToolkitSubmenu&&Gi_ToolkitSubmenu.stats?Gi_ToolkitSubmenu.stats:null;if(m&&"undefined"!=typeof Chart){const e=document.getElementById("gi-toolkit-mail-chart-volume"),t=document.getElementById("gi-toolkit-mail-chart-status");e&&new Chart(e,{type:"bar",data:{labels:m.chart_labels||[],datasets:[{label:i.chartSent||"Envoyés",data:m.chart_sent||[],backgroundColor:"rgba(49,107,255,0.85)",borderRadius:6},{label:i.chartFailed||"Échoués",data:m.chart_failed||[],backgroundColor:"rgba(240,68,56,0.85)",borderRadius:6}]},options:{responsive:!0,maintainAspectRatio:!1,plugins:{legend:{position:"bottom"}},scales:{y:{beginAtZero:!0,ticks:{precision:0}}}}}),t&&new Chart(t,{type:"doughnut",data:{labels:[i.chartSent||"Réussis",i.chartFailed||"Échoués"],datasets:[{data:[m.success||0,m.failed||0],backgroundColor:["#12b76a","#f04438"],borderWidth:0}]},options:{responsive:!0,maintainAspectRatio:!1,plugins:{legend:{position:"bottom"}}}})}};document.addEventListener("DOMContentLoaded",e)}();
+( function () {
+	'use strict';
+
+	function initMailCatcher() {
+		var popup = document.querySelector( '.gi-toolkit-popup' );
+		var closeBtn = document.querySelector( '#JS-close-popup' );
+		var overlay = document.querySelector( '#JS-popup-overlay' );
+		var preview = document.querySelector( '#JS-gi-toolkit-email-preview' );
+		var loader = document.querySelector( '#JS-gi-toolkit-email-loader' );
+		var form = document.querySelector( '#email-list' );
+		var i18n = ( window.Gi_ToolkitSubmenu && window.Gi_ToolkitSubmenu.i18n ) ? window.Gi_ToolkitSubmenu.i18n : {};
+
+		function closePopup() {
+			if ( popup ) {
+				popup.classList.remove( 'show' );
+			}
+		}
+
+		function openPreview( trigger ) {
+			if ( ! trigger || ! preview || ! loader ) {
+				return;
+			}
+
+			var emailId = trigger.dataset.emailId || trigger.value;
+			if ( ! emailId || ! window.Gi_ToolkitSubmenu ) {
+				return;
+			}
+
+			preview.innerHTML = '';
+			loader.classList.add( 'show' );
+
+			var body = new FormData();
+			body.append( 'action', 'gi_toolkit_mail_catcher_preview' );
+			body.append( 'nonce', window.Gi_ToolkitSubmenu.nonce );
+			body.append( 'email_id', emailId );
+
+			fetch( window.Gi_ToolkitSubmenu.ajaxUrl, {
+				method: 'POST',
+				body: body,
+			} )
+				.then( function ( response ) {
+					return response.json();
+				} )
+				.then( function ( data ) {
+					if ( data.success ) {
+						preview.innerHTML = data.data;
+					} else {
+						preview.innerHTML = '<p>' + ( data.data || 'Error' ) + '</p>';
+					}
+					loader.classList.remove( 'show' );
+				} )
+				.catch( function () {
+					loader.classList.remove( 'show' );
+				} );
+		}
+
+		if ( closeBtn ) {
+			closeBtn.addEventListener( 'click', closePopup );
+		}
+		if ( overlay ) {
+			overlay.addEventListener( 'click', closePopup );
+		}
+
+		document.querySelectorAll( '.gi-toolkit-view' ).forEach( function ( btn ) {
+			btn.addEventListener( 'click', function ( event ) {
+				event.preventDefault();
+				event.stopPropagation();
+				if ( popup ) {
+					popup.classList.add( 'show' );
+				}
+				openPreview( event.currentTarget );
+			} );
+		} );
+
+		document.querySelectorAll( '.gi-toolkit-delete' ).forEach( function ( btn ) {
+			btn.addEventListener( 'click', function ( event ) {
+				if ( i18n.confirmDelete && ! window.confirm( i18n.confirmDelete ) ) {
+					event.preventDefault();
+				}
+			} );
+		} );
+
+		document.querySelectorAll( '.gi-toolkit-resend' ).forEach( function ( btn ) {
+			btn.addEventListener( 'click', function ( event ) {
+				if ( i18n.confirmResend && ! window.confirm( i18n.confirmResend ) ) {
+					event.preventDefault();
+				}
+			} );
+		} );
+
+		function rowCheckboxes() {
+			return document.querySelectorAll( '.gi-toolkit-mail-catcher-row-cb' );
+		}
+
+		function headerCheckbox() {
+			return document.getElementById( 'cb-select-all-1' ) || document.getElementById( 'cb-select-all-2' );
+		}
+
+		var selectAll = headerCheckbox();
+		if ( selectAll ) {
+			selectAll.addEventListener( 'change', function () {
+				rowCheckboxes().forEach( function ( cb ) {
+					cb.checked = selectAll.checked;
+				} );
+			} );
+		}
+
+		rowCheckboxes().forEach( function ( cb ) {
+			cb.addEventListener( 'click', function ( event ) {
+				event.stopPropagation();
+			} );
+		} );
+
+		if ( form ) {
+			form.addEventListener( 'submit', function ( event ) {
+				var submitter = event.submitter;
+				if ( submitter && ( submitter.name === 'delete' || submitter.name === 'resend' ) ) {
+					return;
+				}
+
+				var top = document.getElementById( 'bulk-action-selector-top' );
+				var bottom = document.getElementById( 'bulk-action-selector-bottom' );
+				var action = top && top.value !== '-1' ? top.value : ( bottom && bottom.value !== '-1' ? bottom.value : '' );
+				if ( ! action ) {
+					return;
+				}
+
+				var checked = form.querySelectorAll( '.gi-toolkit-mail-catcher-row-cb:checked' );
+				if ( ! checked.length ) {
+					return;
+				}
+
+				if ( action === 'delete' && i18n.confirmBulkDelete && ! window.confirm( i18n.confirmBulkDelete ) ) {
+					event.preventDefault();
+				}
+				if ( action === 'resend' && i18n.confirmBulkResend && ! window.confirm( i18n.confirmBulkResend ) ) {
+					event.preventDefault();
+				}
+			} );
+		}
+
+		var stats = window.Gi_ToolkitSubmenu && window.Gi_ToolkitSubmenu.stats ? window.Gi_ToolkitSubmenu.stats : null;
+		if ( stats && typeof window.Chart !== 'undefined' ) {
+			var volume = document.getElementById( 'gi-toolkit-mail-chart-volume' );
+			var status = document.getElementById( 'gi-toolkit-mail-chart-status' );
+
+			if ( volume ) {
+				new window.Chart( volume, {
+					type: 'bar',
+					data: {
+						labels: stats.chart_labels || [],
+						datasets: [
+							{
+								label: i18n.chartSent || 'Envoyés',
+								data: stats.chart_sent || [],
+								backgroundColor: 'rgba(18, 183, 106, 0.85)',
+								borderRadius: 6,
+							},
+							{
+								label: i18n.chartFailed || 'Échoués',
+								data: stats.chart_failed || [],
+								backgroundColor: 'rgba(240, 68, 56, 0.85)',
+								borderRadius: 6,
+							},
+						],
+					},
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						plugins: { legend: { position: 'bottom' } },
+						scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+					},
+				} );
+			}
+
+			if ( status ) {
+				new window.Chart( status, {
+					type: 'doughnut',
+					data: {
+						labels: [ i18n.chartSent || 'Réussis', i18n.chartFailed || 'Échoués' ],
+						datasets: [
+							{
+								data: [ stats.success || 0, stats.failed || 0 ],
+								backgroundColor: [ '#12b76a', '#f04438' ],
+								borderWidth: 0,
+							},
+						],
+					},
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						plugins: { legend: { position: 'bottom' } },
+					},
+				} );
+			}
+		}
+	}
+
+	document.addEventListener( 'DOMContentLoaded', initMailCatcher );
+} )();

@@ -1,5 +1,11 @@
 == Changelog ==
 
+= 2.20.8 =
+Fix: Mail catcher — alignement des cases à cocher, aperçu HTML vs texte brut selon le contenu.
+
+= 2.20.7 =
+Update: Mail catcher — remontée stats MainWP (API), améliorations tableau admin.
+
 = 2.20.6 =
 Fix: Mail catcher — cases à cocher cliquables, colonnes WP_List_Table corrigées, boutons d’action refaits.
 

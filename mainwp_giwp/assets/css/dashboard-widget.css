@@ -253,9 +253,10 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget__pill {
 }
 
 .mainwp-giweb-mail-widget__donut-legend-item {
+	align-items: center;
 	display: flex;
 	gap: 8px;
-	margin-bottom: 10px;
+	margin-bottom: 8px;
 }
 
 .mainwp-giweb-mail-widget__donut-legend-item:last-child {
@@ -266,68 +267,48 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget__pill {
 	border-radius: 4px;
 	flex: 0 0 10px;
 	height: 10px;
-	margin-top: 4px;
 	width: 10px;
 }
 
-.mainwp-giweb-mail-widget__donut-legend-body {
+.mainwp-giweb-mail-widget__donut-legend-line {
+	align-items: baseline;
+	color: inherit;
+	display: flex;
 	flex: 1;
+	gap: 6px;
 	min-width: 0;
+	text-decoration: none;
 }
 
-.mainwp-giweb-mail-widget__donut-legend-top {
-	align-items: baseline;
-	display: flex;
-	gap: 8px;
-	justify-content: space-between;
-	margin-bottom: 4px;
+.mainwp-giweb-mail-widget__donut-legend-line:hover .mainwp-giweb-mail-widget__donut-legend-name {
+	color: var(--giweb-w-accent);
+	text-decoration: underline;
 }
 
 .mainwp-giweb-mail-widget__donut-legend-name {
+	flex: 1 1 auto;
 	font-weight: 600;
+	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.mainwp-giweb-mail-widget__donut-legend-pct {
-	color: var(--giweb-w-muted);
-	flex-shrink: 0;
-	font-size: 10px;
-	font-variant-numeric: tabular-nums;
-	font-weight: 700;
-}
-
-.mainwp-giweb-mail-widget__donut-bar {
-	background: var(--giweb-w-surface-2);
-	border-radius: 999px;
-	height: 4px;
-	margin-bottom: 4px;
-	overflow: hidden;
-}
-
-.mainwp-giweb-mail-widget__donut-bar-fill {
-	border-radius: inherit;
-	display: block;
-	height: 100%;
-	min-width: 2px;
-}
-
 .mainwp-giweb-mail-widget__donut-legend-meta {
 	color: var(--giweb-w-muted);
-	font-size: 10px;
-}
-
-.mainwp-giweb-mail-widget__donut-fail {
-	color: var(--giweb-w-fail);
+	flex: 0 0 auto;
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
 }
 
 .mainwp-giweb-mail-widget__chart-bars {
 	align-items: flex-end;
 	display: flex;
 	gap: 4px;
-	height: clamp(64px, 20cqi, 88px);
+	height: auto;
 	justify-content: space-between;
+	min-height: 72px;
 	overflow-x: auto;
 	padding-bottom: 2px;
 }
@@ -342,31 +323,33 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget__pill {
 }
 
 .mainwp-giweb-mail-widget__bar-stack {
-	align-items: flex-end;
-	background: linear-gradient(to top, var(--giweb-w-surface-2), transparent);
-	border-radius: 6px 6px 0 0;
+	align-items: center;
 	display: flex;
 	flex-direction: column-reverse;
-	height: 100%;
 	justify-content: flex-start;
-	padding: 0 2px;
 	width: 100%;
 }
 
 .mainwp-giweb-mail-widget__bar {
 	border-radius: 4px 4px 0 0;
 	display: block;
-	min-height: 3px;
-	width: 100%;
+	min-width: 10px;
+	width: 72%;
 }
 
 .mainwp-giweb-mail-widget__bar--ok {
-	background: linear-gradient(180deg, var(--giweb-w-accent), rgba(49, 107, 255, 0.72));
+	background: linear-gradient(180deg, var(--giweb-w-ok), rgba(18, 183, 106, 0.72));
 }
 
 .mainwp-giweb-mail-widget__bar--fail {
 	background: linear-gradient(180deg, var(--giweb-w-fail), rgba(240, 68, 56, 0.72));
 	margin-bottom: 2px;
+}
+
+.mainwp-giweb-mail-widget__bar--empty {
+	background: var(--giweb-w-surface-2);
+	height: 2px !important;
+	opacity: 0.5;
 }
 
 .mainwp-giweb-mail-widget__bar-label {
@@ -379,32 +362,6 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget__pill {
 	text-transform: lowercase;
 	white-space: nowrap;
 	width: 100%;
-}
-
-.mainwp-giweb-mail-widget__legend {
-	color: var(--giweb-w-muted);
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px 14px;
-	justify-content: center;
-	margin-top: 10px;
-}
-
-.mainwp-giweb-mail-widget__dot {
-	border-radius: 50%;
-	display: inline-block;
-	height: 8px;
-	margin-right: 5px;
-	vertical-align: middle;
-	width: 8px;
-}
-
-.mainwp-giweb-mail-widget__dot--ok {
-	background: var(--giweb-w-accent);
-}
-
-.mainwp-giweb-mail-widget__dot--fail {
-	background: var(--giweb-w-fail);
 }
 
 .mainwp-giweb-mail-widget__sites ul {

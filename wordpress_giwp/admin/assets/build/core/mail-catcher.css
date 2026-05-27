@@ -19,3 +19,15 @@
 .gi-toolkit-mail-catcher-cell-receiver{color:#475467;font-size:13px}
 .gi-toolkit-mail-catcher-table .tablenav{margin:12px 0}
 .gi-toolkit-mail-catcher-table .subsubsub{margin-bottom:12px}
+
+.gi-toolkit-modern-post-list .gi-toolkit-mail-catcher-table .wp-list-table{overflow:visible!important;border-collapse:collapse}
+.gi-toolkit-mail-catcher-table .wp-list-table tbody tr td.check-column,.gi-toolkit-mail-catcher-table .wp-list-table thead tr td.check-column,.gi-toolkit-mail-catcher-table .wp-list-table tfoot tr td.check-column{background:inherit;padding:12px 10px!important;text-align:center;vertical-align:middle;width:44px;min-width:44px}
+.gi-toolkit-mail-catcher-table .check-column input[type=checkbox],.gi-toolkit-mail-catcher-row-cb{width:18px;height:18px;margin:0;cursor:pointer;accent-color:#316bff;vertical-align:middle;position:static}
+.gi-toolkit-mail-catcher-table .tablenav.top{margin-bottom:8px}
+.gi-toolkit-mail-catcher-table .tablenav.bottom{margin-top:8px}
+.gi-toolkit-email-preview__format{margin-bottom:10px}
+.gi-toolkit-email-preview__format-badge{border-radius:999px;display:inline-block;font-size:11px;font-weight:700;letter-spacing:.03em;padding:4px 10px;text-transform:uppercase}
+.gi-toolkit-email-preview__format-badge.is-html{background:#eff4ff;color:#316bff}
+.gi-toolkit-email-preview__format-badge.is-plain{background:#f2f4f7;color:#475467}
+.gi-toolkit-email-preview__content__item__content__message iframe,.gi-toolkit-email-preview__iframe{background:#fff;border:1px solid #eaecf0;border-radius:8px;display:block;height:360px;width:100%}
+.gi-toolkit-email-preview__plaintext{background:#f9fafb;border:1px solid #eaecf0;border-radius:8px;color:#344054;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:0;max-height:360px;overflow:auto;padding:14px;white-space:pre-wrap;word-break:break-word}
