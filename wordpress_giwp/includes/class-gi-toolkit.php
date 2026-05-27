@@ -126,6 +126,7 @@ class Gi_Toolkit {
 		 */
 		require_once GI_TOOLKIT_PLUGIN_PATH . 'includes/global-functions.php';
 
+		require_once GI_TOOLKIT_PLUGIN_PATH . 'includes/class-gi-toolkit-module-css-options.php';
 		require_once GI_TOOLKIT_PLUGIN_PATH . 'includes/class-gi-toolkit-security.php';
 
 		if ( self::is_mainwp_child_site() ) {

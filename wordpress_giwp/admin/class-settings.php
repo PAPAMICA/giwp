@@ -393,7 +393,13 @@ class Gi_Toolkit_Settings {
 	 */
 	public static function invoke_module_get_settings( $class_or_instance ) {
 		$class = is_object( $class_or_instance ) ? get_class( $class_or_instance ) : $class_or_instance;
-		if ( ! is_string( $class ) || ! class_exists( $class ) || ! method_exists( $class, 'get_settings' ) ) {
+		if ( ! is_string( $class ) || ! class_exists( $class ) ) {
+			return null;
+		}
+		if ( ! method_exists( $class, 'get_settings' ) ) {
+			if ( class_exists( 'Gi_Toolkit_Module_Css_Options' ) && Gi_Toolkit_Module_Css_Options::is_css_module( $class ) ) {
+				return Gi_Toolkit_Module_Css_Options::get_settings_for_class( $class );
+			}
 			return null;
 		}
 
@@ -410,6 +416,9 @@ class Gi_Toolkit_Settings {
 			$settings = $method->invoke( $instance );
 			return is_array( $settings ) ? $settings : array();
 		} catch ( ReflectionException $e ) {
+			if ( class_exists( 'Gi_Toolkit_Module_Css_Options' ) ) {
+				return Gi_Toolkit_Module_Css_Options::get_settings_for_class( $class );
+			}
 			return null;
 		}
 	}
@@ -428,7 +437,13 @@ class Gi_Toolkit_Settings {
 		}
 
 		$class = is_object( $class_or_instance ) ? get_class( $class_or_instance ) : $class_or_instance;
-		if ( ! is_string( $class ) || ! class_exists( $class ) || ! method_exists( $class, 'save_settings' ) ) {
+		if ( ! is_string( $class ) || ! class_exists( $class ) ) {
+			return false;
+		}
+		if ( ! method_exists( $class, 'save_settings' ) ) {
+			if ( class_exists( 'Gi_Toolkit_Module_Css_Options' ) && Gi_Toolkit_Module_Css_Options::is_css_module( $class ) ) {
+				return Gi_Toolkit_Module_Css_Options::save_settings_for_class( $class, $settings );
+			}
 			return false;
 		}
 
@@ -445,6 +460,9 @@ class Gi_Toolkit_Settings {
 			$method->invoke( $instance, $settings );
 			return true;
 		} catch ( ReflectionException $e ) {
+			if ( class_exists( 'Gi_Toolkit_Module_Css_Options' ) ) {
+				return Gi_Toolkit_Module_Css_Options::save_settings_for_class( $class, $settings );
+			}
 			return false;
 		}
 	}
@@ -517,8 +535,14 @@ class Gi_Toolkit_Settings {
 			if ( in_array( $item, $excluded_option_mods, true ) ) {
 				continue;
 			}
-			if ( isset( $upload_file_json[ $item ]['options'] ) && class_exists( $item ) && method_exists( $item, 'save_settings' ) ) {
-				$sanitized_items_data[ $item ] = $upload_file_json[ $item ]['options'];
+			if ( isset( $upload_file_json[ $item ]['options'] ) && is_array( $upload_file_json[ $item ]['options'] ) ) {
+				$can_save = class_exists( $item ) && method_exists( $item, 'save_settings' );
+				if ( ! $can_save && class_exists( 'Gi_Toolkit_Module_Css_Options' ) ) {
+					$can_save = Gi_Toolkit_Module_Css_Options::is_css_module( $item );
+				}
+				if ( $can_save ) {
+					$sanitized_items_data[ $item ] = $upload_file_json[ $item ]['options'];
+				}
 			}
 		}
 

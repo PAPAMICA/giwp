@@ -18,6 +18,7 @@ class MainWP_GIWeb_Sync_Ajax {
 		add_action( 'wp_ajax_mainwp_giweb_sync_site', array( __CLASS__, 'ajax_site' ) );
 		add_action( 'wp_ajax_mainwp_giweb_pull_config', array( __CLASS__, 'ajax_pull_config' ) );
 		add_action( 'wp_ajax_mainwp_giweb_get_module_options', array( __CLASS__, 'ajax_get_module_options' ) );
+		add_action( 'wp_ajax_mainwp_giweb_save_module_options', array( __CLASS__, 'ajax_save_module_options' ) );
 		add_action( 'wp_ajax_mainwp_giweb_save_template', array( __CLASS__, 'ajax_save_template' ) );
 		add_action( 'wp_ajax_mainwp_giweb_delete_template', array( __CLASS__, 'ajax_delete_template' ) );
 		add_action( 'wp_ajax_mainwp_giweb_save_working_modules', array( __CLASS__, 'ajax_save_working_modules' ) );
@@ -295,6 +296,11 @@ class MainWP_GIWeb_Sync_Ajax {
 				);
 			}
 
+			$is_css = MainWP_GIWeb_Module_Options::is_css_module( $class );
+			if ( $is_css ) {
+				$options = MainWP_GIWeb_Module_Options::normalize_css_options( $class, $options );
+			}
+
 			$masked = MainWP_GIWeb_Bundle::mask_sensitive_for_display( $options );
 			$name   = $class;
 			if ( MainWP_GIWeb_Catalog::load_modules_data() ) {
@@ -302,11 +308,62 @@ class MainWP_GIWeb_Sync_Ajax {
 				$name = $mods[ $class ]['name'] ?? $class;
 			}
 
+			$payload = array(
+				'module_class' => $class,
+				'module_name'  => $name,
+				'editor_type'  => $is_css ? 'css' : 'json',
+				'json'         => wp_json_encode( $masked, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE ),
+			);
+
+			if ( $is_css ) {
+				$payload['css_field'] = MainWP_GIWeb_Module_Options::FIELD_KEY;
+				$payload['css_label'] = MainWP_GIWeb_Module_Options::css_modules()[ $class ] ?? __( 'CSS', 'mainwp-giweb' );
+				$payload['css_value'] = $options[ MainWP_GIWeb_Module_Options::FIELD_KEY ] ?? '';
+				$payload['editable']  = true;
+			}
+
+			wp_send_json_success( $payload );
+		} catch ( Throwable $e ) {
+			self::send_exception( $e );
+		} catch ( Exception $e ) {
+			self::send_exception( $e );
+		}
+	}
+
+	/**
+	 * Enregistre les options d’un module dans le bundle de travail (édition dashboard).
+	 *
+	 * @return void
+	 */
+	public static function ajax_save_module_options() {
+		self::bootstrap_ajax();
+		try {
+			self::verify_request();
+
+			$class = isset( $_POST['module_class'] ) ? sanitize_text_field( wp_unslash( $_POST['module_class'] ) ) : '';
+			if ( '' === $class || ! MainWP_GIWeb_Module_Options::is_css_module( $class ) ) {
+				wp_send_json_error( array( 'message' => __( 'Module non éditable depuis le dashboard.', 'mainwp-giweb' ) ) );
+			}
+
+			$css = isset( $_POST['css_value'] ) ? wp_unslash( $_POST['css_value'] ) : '';
+			if ( ! is_string( $css ) ) {
+				$css = '';
+			}
+
+			$options = MainWP_GIWeb_Module_Options::normalize_css_options(
+				$class,
+				array( MainWP_GIWeb_Module_Options::FIELD_KEY => MainWP_GIWeb_Module_Options::sanitize_css( $css ) )
+			);
+
+			$saved = MainWP_GIWeb_Bundle::set_module_options( $class, $options );
+			if ( is_wp_error( $saved ) ) {
+				wp_send_json_error( array( 'message' => $saved->get_error_message() ) );
+			}
+
 			wp_send_json_success(
 				array(
+					'message'      => __( 'CSS enregistré dans la configuration de travail. Déployez pour l’appliquer aux sites.', 'mainwp-giweb' ),
 					'module_class' => $class,
-					'module_name'  => $name,
-					'json'         => wp_json_encode( $masked, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE ),
 				)
 			);
 		} catch ( Throwable $e ) {

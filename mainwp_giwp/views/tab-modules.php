@@ -114,14 +114,25 @@ if ( ! empty( $gi_modules ) ) {
 										<?php if ( $is_risk ) : ?><span class="mainwp-giweb-risk-tag">⚠</span><?php endif; ?>
 									</span>
 									<span class="gi-toolkit__body__sections__item__title__tags">
-										<?php if ( ! empty( $bundle_modules[ $class ]['options'] ) ) : ?>
+										<?php
+										$has_bundle_options = ! empty( $bundle_modules[ $class ]['options'] );
+										$is_css_editor      = MainWP_GIWeb_Module_Options::is_css_module( $class );
+										if ( $has_bundle_options || $is_css_editor ) :
+											?>
 											<button
 												type="button"
 												class="button-link mainwp-giweb-view-module-options"
 												data-module-class="<?php echo esc_attr( $class ); ?>"
 												data-module-name="<?php echo esc_attr( $mod['name'] ?? $class ); ?>"
+												<?php echo $is_css_editor ? ' data-editor-type="css"' : ''; ?>
 											>
-												<?php esc_html_e( 'Voir les réglages', 'mainwp-giweb' ); ?>
+												<?php
+												echo esc_html(
+													$is_css_editor
+														? __( 'Modifier le CSS', 'mainwp-giweb' )
+														: __( 'Voir les réglages', 'mainwp-giweb' )
+												);
+												?>
 											</button>
 										<?php endif; ?>
 									</span>

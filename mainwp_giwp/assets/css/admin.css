@@ -392,6 +392,22 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-wrap .button:not(.button-primar
 	text-transform: uppercase;
 }
 
+.mainwp-giweb-module-options-css-textarea {
+	width: 100%;
+	min-height: 320px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 12px;
+	line-height: 1.45;
+	tab-size: 2;
+	resize: vertical;
+}
+
+.mainwp-giweb-module-options-modal--css .mainwp-giweb-modal__footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
 .mainwp-giweb-modal__dialog {
 	position: relative;
 	z-index: 1;

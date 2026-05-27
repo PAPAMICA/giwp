@@ -134,4 +134,32 @@ class Gi_Toolkit_Custom_Login_Design {
 		}
 		echo '<style id="gi-toolkit-login-css">' . wp_strip_all_tags( $css ) . '</style>';
 	}
+
+	/**
+	 * Réglages exportables (MainWP / import-export).
+	 *
+	 * @return array{code_snippet: string}
+	 */
+	public function get_settings() {
+		$css = get_option( 'gi_toolkit_login_custom_css', '' );
+		return array(
+			'code_snippet' => is_string( $css ) ? $css : '',
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $settings Réglages.
+	 * @return void
+	 */
+	public function save_settings( $settings ) {
+		$raw = '';
+		if ( is_array( $settings ) ) {
+			if ( isset( $settings['code_snippet'] ) ) {
+				$raw = (string) $settings['code_snippet'];
+			} elseif ( isset( $settings['custom_css'] ) ) {
+				$raw = (string) $settings['custom_css'];
+			}
+		}
+		update_option( 'gi_toolkit_login_custom_css', Gi_Toolkit_Module_Css_Options::sanitize_css( $raw ), false );
+	}
 }

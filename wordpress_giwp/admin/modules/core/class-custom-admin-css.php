@@ -162,7 +162,7 @@ class Gi_Toolkit_Custom_Admin_CSS {
      * @since   1.4.0
      * @return void
      */
-    private function get_settings(){
+    public function get_settings(){
         $this->default_settings = $this->get_default_settings();
         return get_option( $this->option_id, $this->default_settings );
     }
@@ -172,7 +172,7 @@ class Gi_Toolkit_Custom_Admin_CSS {
      * 
      * @since   1.4.0
      */
-    private function save_settings( $new_settings ) {
+    public function save_settings( $new_settings ) {
 		update_option( $this->option_id, $new_settings );
     }
 

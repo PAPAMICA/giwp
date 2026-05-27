@@ -119,6 +119,8 @@ class MainWP_GIWeb {
 					'templateSaved'  => __( 'Modèle enregistré.', 'mainwp-giweb' ),
 					'templateDeleted' => __( 'Modèle supprimé.', 'mainwp-giweb' ),
 					'optionsLoading' => __( 'Chargement des réglages…', 'mainwp-giweb' ),
+					'optionsCssSaved' => __( 'CSS enregistré dans la configuration de travail.', 'mainwp-giweb' ),
+					'optionsCssLabel' => __( 'CSS', 'mainwp-giweb' ),
 					'modulesSaved'   => __( 'Configuration enregistrée.', 'mainwp-giweb' ),
 					'deployTitle'    => __( 'Déploiement de la configuration', 'mainwp-giweb' ),
 					'deployStarting' => __( 'Préparation du déploiement…', 'mainwp-giweb' ),

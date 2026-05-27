@@ -636,9 +636,56 @@
 		} );
 
 		var $optionsModal = $( '#mainwp-giweb-module-options-modal' );
+		var optionsModuleClass = '';
+
+		function setModuleOptionsEditorMode( editorType ) {
+			var isCss = editorType === 'css';
+			$optionsModal
+				.toggleClass( 'mainwp-giweb-module-options-modal--css', isCss )
+				.find( '.mainwp-giweb-module-options-css' )
+				.prop( 'hidden', ! isCss );
+			$optionsModal.find( '.mainwp-giweb-module-options-json' ).prop( 'hidden', isCss );
+			$optionsModal.find( '.mainwp-giweb-module-options-save' ).prop( 'hidden', ! isCss );
+			$optionsModal.find( '.mainwp-giweb-module-options-hint' ).prop( 'hidden', isCss );
+			$optionsModal.find( '.mainwp-giweb-module-options-css-hint' ).prop( 'hidden', ! isCss );
+		}
+
 		if ( $optionsModal.length ) {
 			$optionsModal.find( '.mainwp-giweb-module-options-close, .mainwp-giweb-modal__backdrop' ).on( 'click', function () {
 				$optionsModal.removeClass( 'mainwp-giweb-modal--open' ).attr( 'aria-hidden', 'true' );
+				optionsModuleClass = '';
+			} );
+
+			$optionsModal.find( '.mainwp-giweb-module-options-save' ).on( 'click', function () {
+				if ( ! hasAjax() || ! optionsModuleClass ) {
+					return;
+				}
+				var $saveBtn = $( this );
+				var cssValue = $optionsModal.find( '.mainwp-giweb-module-options-css-textarea' ).val();
+				$saveBtn.prop( 'disabled', true );
+				postAjax( 'mainwp_giweb_save_module_options', {
+					module_class: optionsModuleClass,
+					css_value: cssValue,
+				} )
+					.done( function ( response ) {
+						if ( response && response.success ) {
+							showInlineNotice(
+								( response.data && response.data.message ) || i18n( 'optionsCssSaved', 'CSS enregistré.' ),
+								'success'
+							);
+						} else {
+							showInlineNotice(
+								( response && response.data && response.data.message ) || i18n( 'pullError', 'Erreur' ),
+								'error'
+							);
+						}
+					} )
+					.fail( function () {
+						showInlineNotice( i18n( 'syncError', 'Erreur réseau' ), 'error' );
+					} )
+					.always( function () {
+						$saveBtn.prop( 'disabled', false );
+					} );
 			} );
 		}
 
@@ -650,20 +697,34 @@
 			var $btn = $( this );
 			var moduleClass = $btn.data( 'module-class' );
 			var moduleName = $btn.data( 'module-name' ) || moduleClass;
+			optionsModuleClass = moduleClass;
+			setModuleOptionsEditorMode( $btn.data( 'editor-type' ) || 'json' );
 			$optionsModal.addClass( 'mainwp-giweb-modal--open' ).attr( 'aria-hidden', 'false' );
 			$optionsModal.find( '#mainwp-giweb-module-options-title' ).text( moduleName );
 			$optionsModal.find( '.mainwp-giweb-module-options-json' ).text( i18n( 'optionsLoading', 'Chargement…' ) );
+			$optionsModal.find( '.mainwp-giweb-module-options-css-textarea' ).val( '' );
 			postAjax( 'mainwp_giweb_get_module_options', { module_class: moduleClass } )
 				.done( function ( response ) {
-					if ( response && response.success && response.data && response.data.json ) {
-						$optionsModal.find( '.mainwp-giweb-module-options-json' ).text( response.data.json );
-					} else {
+					if ( ! response || ! response.success || ! response.data ) {
+						setModuleOptionsEditorMode( 'json' );
 						$optionsModal.find( '.mainwp-giweb-module-options-json' ).text(
 							( response && response.data && response.data.message ) || i18n( 'pullError', 'Erreur' )
 						);
+						return;
+					}
+					var data = response.data;
+					setModuleOptionsEditorMode( data.editor_type || 'json' );
+					if ( data.editor_type === 'css' ) {
+						$optionsModal
+							.find( '.mainwp-giweb-module-options-css-label' )
+							.text( data.css_label || i18n( 'optionsCssLabel', 'CSS' ) );
+						$optionsModal.find( '.mainwp-giweb-module-options-css-textarea' ).val( data.css_value || '' );
+					} else if ( data.json ) {
+						$optionsModal.find( '.mainwp-giweb-module-options-json' ).text( data.json );
 					}
 				} )
 				.fail( function () {
+					setModuleOptionsEditorMode( 'json' );
 					$optionsModal.find( '.mainwp-giweb-module-options-json' ).text( i18n( 'syncError', 'Erreur réseau' ) );
 				} );
 		} );

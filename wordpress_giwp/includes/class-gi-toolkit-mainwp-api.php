@@ -144,7 +144,9 @@ class Gi_Toolkit_MainWP_API {
 			return self::error( __( 'Module introuvable.', 'gi-toolkit' ) );
 		}
 		Gi_Toolkit_Handle_options::require_once_all_options();
-		if ( ! method_exists( $class, 'save_settings' ) ) {
+		$can_save = method_exists( $class, 'save_settings' )
+			|| ( class_exists( 'Gi_Toolkit_Module_Css_Options' ) && Gi_Toolkit_Module_Css_Options::is_css_module( $class ) );
+		if ( ! $can_save ) {
 			return self::error( __( 'Ce module ne supporte pas la sauvegarde distante.', 'gi-toolkit' ) );
 		}
 		if ( ! Gi_Toolkit_Settings::invoke_module_save_settings( $class, $options ) ) {

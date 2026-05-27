@@ -145,10 +145,40 @@ class MainWP_GIWeb_Bundle {
 		}
 		$modules = $bundle['modules'] ?? array();
 		if ( ! is_array( $modules ) || ! isset( $modules[ $class ]['options'] ) ) {
+			if ( MainWP_GIWeb_Module_Options::is_css_module( $class ) ) {
+				return array( MainWP_GIWeb_Module_Options::FIELD_KEY => '' );
+			}
 			return null;
 		}
 		$options = $modules[ $class ]['options'];
 		return is_array( $options ) ? $options : null;
+	}
+
+	/**
+	 * Met à jour les options d’un module dans le bundle de travail.
+	 *
+	 * @param string               $class   Classe module.
+	 * @param array<string, mixed> $options Options.
+	 * @return true|WP_Error
+	 */
+	public static function set_module_options( $class, $options ) {
+		if ( '' === $class || ! is_array( $options ) ) {
+			return new WP_Error( 'mainwp_giweb_invalid_module', __( 'Module ou options invalides.', 'mainwp-giweb' ) );
+		}
+
+		$bundle = self::get();
+		if ( empty( $bundle['modules'] ) || ! is_array( $bundle['modules'] ) ) {
+			$bundle['modules'] = array();
+		}
+
+		if ( ! isset( $bundle['modules'][ $class ] ) || ! is_array( $bundle['modules'][ $class ] ) ) {
+			$bundle['modules'][ $class ] = array(
+				'active' => '0',
+			);
+		}
+
+		$bundle['modules'][ $class ]['options'] = $options;
+		return self::save( $bundle );
 	}
 
 	/**
