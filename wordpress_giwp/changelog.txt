@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.20.6 =
+Fix: Mail catcher — cases à cocher cliquables, colonnes WP_List_Table corrigées, boutons d’action refaits.
+
 = 2.20.5 =
 Add: Mail catcher — sélection multiple, suppression et renvoi en masse, colonnes statut/renvois, statistiques et graphiques (7 jours).
 

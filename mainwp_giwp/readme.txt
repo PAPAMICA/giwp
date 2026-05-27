@@ -3,7 +3,7 @@ Contributors: genevois-informatique
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.1.4
+Stable tag: 1.2.0
 License: GPLv2 or later
 
 Gérez et déployez GI-Toolkit sur tous vos sites WordPress via MainWP.
@@ -39,6 +39,8 @@ MainWP > Extensions > GI-Toolkit Manager
 4. **Déploiement** : sélectionnez les sites et déployez.
 5. **Exclusions** : modules à ne pas écraser par site.
 6. **Historique** : suivi des déploiements.
+7. **Réglages** : profil par défaut, options d’onboarding.
+8. **Ajout de site MainWP** : installer GI-Toolkit depuis le ZIP monorepo et appliquer un profil (défaut : Default).
 
 == Tests manuels (checklist) ==
 
@@ -48,8 +50,15 @@ MainWP > Extensions > GI-Toolkit Manager
 - [ ] Exclusion module sur site C : module inchangé après push
 - [ ] Historique : succès/échec par site
 - [ ] Version GI-Toolkit < 2.19 : avertissement api_compatible false
+- [ ] Ajout site : cocher install + profil Default → GI-Toolkit installé et config déployée
+- [ ] Modèle « Default » défini comme profil par défaut dans Réglages
 
 == Changelog ==
+
+= 1.2.0 =
+* Add: section GI-Toolkit sur le formulaire MainWP « Ajouter un site » (install ZIP + profil).
+* Add: génération ZIP depuis wordpress_giwp, installation distante via MainWP (install_plugin_theme).
+* Add: profil par défaut (modèle « Default » ou réglage), onglet Réglages, journal d’onboarding.
 
 = 1.1.4 =
 * Fix: déploiement en AJAX avec modale de progression (plus d’AbortError MainWP).

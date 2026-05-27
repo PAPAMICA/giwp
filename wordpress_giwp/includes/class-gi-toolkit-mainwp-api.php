@@ -104,7 +104,7 @@ class Gi_Toolkit_MainWP_API {
 			}
 		}
 
-		return array(
+		$payload = array(
 			'gi_toolkit_version' => defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '',
 			'min_api_version'    => self::MIN_VERSION,
 			'api_compatible'     => version_compare( defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '0', self::MIN_VERSION, '>=' ),
@@ -113,6 +113,12 @@ class Gi_Toolkit_MainWP_API {
 			'active_modules'     => $active,
 			'site_url'           => get_site_url(),
 		);
+
+		if ( class_exists( 'Gi_Toolkit_Mail_Catcher' ) ) {
+			$payload['mail_catcher'] = Gi_Toolkit_Mail_Catcher::get_mainwp_status_payload();
+		}
+
+		return $payload;
 	}
 
 	/**

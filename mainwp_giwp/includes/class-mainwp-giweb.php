@@ -82,6 +82,9 @@ class MainWP_GIWeb {
 					'deployDonePartial' => __( 'Déploiement terminé : %1$d réussi(s), %2$d en échec. Voir l’historique.', 'mainwp-giweb' ),
 					'deployDoneFailed' => __( 'Échec du déploiement sur tous les sites (%d). Vérifiez la connexion MainWP de chaque site.', 'mainwp-giweb' ),
 					'deployNoSites'    => __( 'Sélectionnez au moins un site.', 'mainwp-giweb' ),
+					'mailAlertSync'    => __( '%d site(s) ont des emails en échec. Consultez l’onglet Vue d’ensemble ou le widget MainWP.', 'mainwp-giweb' ),
+					'mailColTotal'     => __( 'Mails', 'mainwp-giweb' ),
+					'mailTodayShort'   => __( 'auj.', 'mainwp-giweb' ),
 				),
 		);
 	}
@@ -209,6 +212,32 @@ class MainWP_GIWeb {
 					MainWP_GIWeb_Notices::add( 'success', __( 'Modèle supprimé.', 'mainwp-giweb' ) );
 				}
 				self::redirect_after_post( 'templates' );
+				break;
+
+			case 'set_default_template':
+				$tpl_id = sanitize_text_field( wp_unslash( $_POST['template_id'] ?? '' ) );
+				if ( $tpl_id && MainWP_GIWeb_Templates::set_default( $tpl_id ) ) {
+					MainWP_GIWeb_Notices::add( 'success', __( 'Profil par défaut mis à jour.', 'mainwp-giweb' ) );
+				} else {
+					MainWP_GIWeb_Notices::add( 'error', __( 'Impossible de définir ce modèle par défaut.', 'mainwp-giweb' ) );
+				}
+				self::redirect_after_post( 'templates' );
+				break;
+
+			case 'save_settings':
+				MainWP_GIWeb_Settings::save(
+					array(
+						'default_template_id'        => sanitize_text_field( wp_unslash( $_POST['default_template_id'] ?? '' ) ),
+						'install_checked_by_default' => ! empty( $_POST['install_checked_by_default'] ),
+						'apply_profile_by_default'   => ! empty( $_POST['apply_profile_by_default'] ),
+						'activate_after_install'     => ! empty( $_POST['activate_after_install'] ),
+						'mail_alert_enabled'         => ! empty( $_POST['mail_alert_enabled'] ),
+						'mail_alert_min_failed'      => absint( $_POST['mail_alert_min_failed'] ?? 1 ),
+						'mail_alert_email'           => sanitize_email( wp_unslash( $_POST['mail_alert_email'] ?? '' ) ),
+					)
+				);
+				MainWP_GIWeb_Notices::add( 'success', __( 'Réglages enregistrés.', 'mainwp-giweb' ) );
+				self::redirect_after_post( 'settings' );
 				break;
 
 			case 'save_overrides':

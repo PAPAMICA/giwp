@@ -10,6 +10,7 @@ $tabs = array(
 	'deploy'    => __( 'Déploiement', 'mainwp-giweb' ),
 	'excludes'  => __( 'Exclusions', 'mainwp-giweb' ),
 	'history'   => __( 'Historique', 'mainwp-giweb' ),
+	'settings'  => __( 'Réglages', 'mainwp-giweb' ),
 );
 
 $modules = MainWP_GIWeb_Catalog::get_modules();
@@ -58,6 +59,9 @@ $giweb_cfg = isset( $giweb_script_config ) && is_array( $giweb_script_config ) ?
 				break;
 			case 'history':
 				include MAINWP_GIWEB_PLUGIN_PATH . 'views/tab-history.php';
+				break;
+			case 'settings':
+				include MAINWP_GIWEB_PLUGIN_PATH . 'views/tab-settings.php';
 				break;
 			default:
 				include MAINWP_GIWEB_PLUGIN_PATH . 'views/tab-overview.php';

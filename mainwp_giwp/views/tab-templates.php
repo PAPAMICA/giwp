@@ -2,7 +2,8 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
-$templates = MainWP_GIWeb_Templates::all();
+$templates  = MainWP_GIWeb_Templates::all();
+$default_id = MainWP_GIWeb_Templates::get_default_template_id();
 ?>
 <h2><?php esc_html_e( 'Modèles de configuration', 'mainwp-giweb' ); ?></h2>
 <p class="description"><?php esc_html_e( 'Un modèle enregistre la configuration de travail complète (modules actifs + réglages importés).', 'mainwp-giweb' ); ?></p>
@@ -24,18 +25,33 @@ $templates = MainWP_GIWeb_Templates::all();
 			<th><?php esc_html_e( 'Nom', 'mainwp-giweb' ); ?></th>
 			<th><?php esc_html_e( 'Créé le', 'mainwp-giweb' ); ?></th>
 			<th><?php esc_html_e( 'Hash', 'mainwp-giweb' ); ?></th>
+			<th><?php esc_html_e( 'Défaut', 'mainwp-giweb' ); ?></th>
 			<th></th>
 		</tr>
 	</thead>
 	<tbody>
 		<?php if ( empty( $templates ) ) : ?>
-			<tr class="mainwp-giweb-templates-empty"><td colspan="4"><?php esc_html_e( 'Aucun modèle.', 'mainwp-giweb' ); ?></td></tr>
+			<tr class="mainwp-giweb-templates-empty"><td colspan="5"><?php esc_html_e( 'Aucun modèle.', 'mainwp-giweb' ); ?></td></tr>
 		<?php else : ?>
 			<?php foreach ( $templates as $id => $tpl ) : ?>
 				<tr data-template-id="<?php echo esc_attr( $id ); ?>">
 					<td><?php echo esc_html( $tpl['name'] ?? $id ); ?></td>
 					<td><?php echo esc_html( $tpl['created_at'] ?? '' ); ?></td>
 					<td><code><?php echo esc_html( substr( $tpl['hash'] ?? '', 0, 8 ) ); ?></code></td>
+					<td>
+						<?php if ( $default_id === $id || ! empty( $tpl['is_default'] ) ) : ?>
+							<span class="mainwp-giweb-badge-ok"><?php esc_html_e( 'Défaut', 'mainwp-giweb' ); ?></span>
+						<?php else : ?>
+							<form method="post" style="display:inline;">
+								<?php wp_nonce_field( 'mainwp_giweb_action', 'mainwp_giweb_nonce' ); ?>
+								<input type="hidden" name="mainwp_giweb_action" value="set_default_template" />
+								<input type="hidden" name="tab" value="templates" />
+								<input type="hidden" name="page" value="<?php echo esc_attr( $current_page ?? MainWP_GIWeb_UI::PAGE_SLUG ); ?>" />
+								<input type="hidden" name="template_id" value="<?php echo esc_attr( $id ); ?>" />
+								<button type="submit" class="button button-small"><?php esc_html_e( 'Définir par défaut', 'mainwp-giweb' ); ?></button>
+							</form>
+						<?php endif; ?>
+					</td>
 					<td>
 						<button
 							type="button"

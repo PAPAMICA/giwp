@@ -98,7 +98,7 @@ class Gi_Toolkit_Mail_Catcher_Logs_List_Table extends WP_List_Table {
 		$ids = array_filter( $ids );
 
 		if ( empty( $ids ) ) {
-			$this->mail_catcher->redirect_with_notice( 'deleted', 0 );
+			return;
 		}
 
 		if ( 'delete' === $action ) {
@@ -200,15 +200,14 @@ class Gi_Toolkit_Mail_Catcher_Logs_List_Table extends WP_List_Table {
 	 */
 	public function get_columns() {
 		return array(
-			'cb'         => '<input type="checkbox" />',
-			'id'         => __( 'ID', 'gi-toolkit' ),
+			'cb'         => '<input type="checkbox" id="gi-toolkit-mail-cb-select-all" />',
 			'receiver'   => __( 'Destinataire', 'gi-toolkit' ),
 			'subject'    => __( 'Objet', 'gi-toolkit' ),
 			'status'     => __( 'Statut', 'gi-toolkit' ),
 			'mail_error' => __( 'Erreur', 'gi-toolkit' ),
 			'resent'     => __( 'Renvois', 'gi-toolkit' ),
 			'time'       => __( 'Date', 'gi-toolkit' ),
-			'actions'    => '',
+			'actions'    => __( 'Actions', 'gi-toolkit' ),
 		);
 	}
 
@@ -225,51 +224,77 @@ class Gi_Toolkit_Mail_Catcher_Logs_List_Table extends WP_List_Table {
 	 * @return array<int, string>
 	 */
 	public function get_hidden_columns() {
-		return array( 'id' );
-	}
-
-	/**
-	 * @param array<string, mixed> $item        Ligne.
-	 * @param string               $column_name Colonne.
-	 */
-	public function column_default( $item, $column_name ) {
-		switch ( $column_name ) {
-			case 'receiver':
-				return wp_kses_post( nl2br( str_replace( '\n', "\n", $item['receiver'] ) ) );
-			case 'subject':
-				return esc_html( $item['subject'] );
-			case 'status':
-				return $this->get_status_badge( $item );
-			case 'mail_error':
-				$error = $item['error'] ?? '';
-				if ( empty( $error ) ) {
-					return '<span class="gi-toolkit-mail-catcher-muted">—</span>';
-				}
-				return '<span class="gi-toolkit-mail-catcher-error" title="' . esc_attr( $error ) . '">' . esc_html( wp_html_excerpt( $error, 80, '…' ) ) . '</span>';
-			case 'resent':
-				$count = absint( $item['resent_count'] ?? 0 );
-				if ( $count < 1 ) {
-					return '<span class="gi-toolkit-mail-catcher-muted">—</span>';
-				}
-				$last = ! empty( $item['last_resent_at'] ) ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $item['last_resent_at'] ) : '';
-				return '<span class="gi-toolkit-mail-catcher-resent" title="' . esc_attr( $last ) . '">' . esc_html( (string) $count ) . '</span>';
-			case 'time':
-				return esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $item['unixtime'] ) );
-			case 'actions':
-				return $this->get_actions_html( $item );
-		}
-		return '';
+		return array();
 	}
 
 	/**
 	 * @param array<string, mixed> $item Ligne.
 	 */
-	public function column_cb( $item ) {
+	protected function column_cb( $item ) {
 		return sprintf(
-			'<input type="checkbox" name="%1$s[]" value="%2$s" />',
+			'<label class="gi-toolkit-mail-catcher-cb"><input type="checkbox" class="gi-toolkit-mail-catcher-row-cb" name="%1$s[]" value="%2$s" /><span class="screen-reader-text">%3$s</span></label>',
 			esc_attr( $this->_args['singular'] ),
-			esc_attr( $item['id'] )
+			esc_attr( $item['id'] ),
+			esc_html__( 'Sélectionner cet e-mail', 'gi-toolkit' )
 		);
+	}
+
+	/**
+	 * @param array<string, mixed> $item Ligne.
+	 */
+	protected function column_receiver( $item ) {
+		return '<span class="gi-toolkit-mail-catcher-cell-receiver">' . wp_kses_post( nl2br( str_replace( '\n', "\n", $item['receiver'] ?? '' ) ) ) . '</span>';
+	}
+
+	/**
+	 * @param array<string, mixed> $item Ligne.
+	 */
+	protected function column_subject( $item ) {
+		return '<span class="gi-toolkit-mail-catcher-cell-subject">' . esc_html( $item['subject'] ?? '' ) . '</span>';
+	}
+
+	/**
+	 * @param array<string, mixed> $item Ligne.
+	 */
+	protected function column_status( $item ) {
+		return $this->get_status_badge( $item );
+	}
+
+	/**
+	 * @param array<string, mixed> $item Ligne.
+	 */
+	protected function column_mail_error( $item ) {
+		$error = $item['error'] ?? '';
+		if ( empty( $error ) ) {
+			return '<span class="gi-toolkit-mail-catcher-muted">—</span>';
+		}
+		return '<span class="gi-toolkit-mail-catcher-error" title="' . esc_attr( $error ) . '">' . esc_html( wp_html_excerpt( $error, 80, '…' ) ) . '</span>';
+	}
+
+	/**
+	 * @param array<string, mixed> $item Ligne.
+	 */
+	protected function column_resent( $item ) {
+		$count = absint( $item['resent_count'] ?? 0 );
+		if ( $count < 1 ) {
+			return '<span class="gi-toolkit-mail-catcher-muted">—</span>';
+		}
+		$last = ! empty( $item['last_resent_at'] ) ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $item['last_resent_at'] ) : '';
+		return '<span class="gi-toolkit-mail-catcher-resent" title="' . esc_attr( $last ) . '">' . esc_html( (string) $count ) . '</span>';
+	}
+
+	/**
+	 * @param array<string, mixed> $item Ligne.
+	 */
+	protected function column_time( $item ) {
+		return '<span class="gi-toolkit-mail-catcher-cell-time">' . esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) ( $item['unixtime'] ?? 0 ) ) ) . '</span>';
+	}
+
+	/**
+	 * @param array<string, mixed> $item Ligne.
+	 */
+	protected function column_actions( $item ) {
+		return $this->get_actions_html( $item );
 	}
 
 	/**
@@ -304,17 +329,23 @@ class Gi_Toolkit_Mail_Catcher_Logs_List_Table extends WP_List_Table {
 	 * @param array<string, mixed> $item Ligne.
 	 */
 	private function get_actions_html( $item ) {
+		$id = absint( $item['id'] ?? 0 );
 		ob_start();
 		?>
-		<button class="gi-toolkit-view" type="button" name="view" value="<?php echo esc_attr( $item['id'] ); ?>" title="<?php esc_attr_e( 'Aperçu', 'gi-toolkit' ); ?>">
-			<?php echo wp_kses( file_get_contents( GI_TOOLKIT_PLUGIN_PATH . 'admin/svg/eye.svg' ), gi_toolkit_allowed_tags_for_svg_files() ); ?>
-		</button>
-		<button class="gi-toolkit-resend" type="submit" name="resend" value="<?php echo esc_attr( $item['id'] ); ?>" title="<?php esc_attr_e( 'Renvoyer', 'gi-toolkit' ); ?>">
-			<span class="dashicons dashicons-email-alt"></span>
-		</button>
-		<button class="button-link-delete gi-toolkit-delete" type="submit" name="delete" value="<?php echo esc_attr( $item['id'] ); ?>" title="<?php esc_attr_e( 'Supprimer', 'gi-toolkit' ); ?>">
-			<?php echo wp_kses( file_get_contents( GI_TOOLKIT_PLUGIN_PATH . 'admin/svg/delete.svg' ), gi_toolkit_allowed_tags_for_svg_files() ); ?>
-		</button>
+		<div class="gi-toolkit-mail-catcher-actions">
+			<button type="button" class="gi-toolkit-mail-catcher-action gi-toolkit-mail-catcher-action--view gi-toolkit-view" data-email-id="<?php echo esc_attr( (string) $id ); ?>" title="<?php esc_attr_e( 'Aperçu', 'gi-toolkit' ); ?>">
+				<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
+				<span class="screen-reader-text"><?php esc_html_e( 'Aperçu', 'gi-toolkit' ); ?></span>
+			</button>
+			<button type="submit" class="gi-toolkit-mail-catcher-action gi-toolkit-mail-catcher-action--resend gi-toolkit-resend" name="resend" value="<?php echo esc_attr( (string) $id ); ?>" title="<?php esc_attr_e( 'Renvoyer', 'gi-toolkit' ); ?>">
+				<span class="dashicons dashicons-email-alt" aria-hidden="true"></span>
+				<span class="screen-reader-text"><?php esc_html_e( 'Renvoyer', 'gi-toolkit' ); ?></span>
+			</button>
+			<button type="submit" class="gi-toolkit-mail-catcher-action gi-toolkit-mail-catcher-action--delete gi-toolkit-delete" name="delete" value="<?php echo esc_attr( (string) $id ); ?>" title="<?php esc_attr_e( 'Supprimer', 'gi-toolkit' ); ?>">
+				<span class="dashicons dashicons-trash" aria-hidden="true"></span>
+				<span class="screen-reader-text"><?php esc_html_e( 'Supprimer', 'gi-toolkit' ); ?></span>
+			</button>
+		</div>
 		<?php
 		return ob_get_clean();
 	}

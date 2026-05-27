@@ -86,6 +86,15 @@ class MainWP_GIWeb_Deploy {
 				$version,
 				$modules
 			);
+			$mail = MainWP_GIWeb_Mail_Stats::extract_mail( $data );
+			if ( is_array( $mail ) && ! empty( $mail['module_active'] ) && ! empty( $mail['table_ready'] ) ) {
+				$detail .= sprintf(
+					/* translators: 1: total mails, 2: failed mails */
+					__( ' — mails : %1$d total, %2$d échec(s)', 'mainwp-giweb' ),
+					(int) ( $mail['total'] ?? 0 ),
+					(int) ( $mail['failed'] ?? 0 )
+				);
+			}
 		} else {
 			$detail = ! empty( $api['errors'][0] ) ? (string) $api['errors'][0] : __( 'Échec', 'mainwp-giweb' );
 		}

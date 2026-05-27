@@ -29,6 +29,20 @@ body.mainwp-ui .wrap.mainwp-giweb-wrap {
 	color: var(--giweb-text);
 }
 
+.mainwp-giweb-badge-ok {
+	background: #ecfdf3;
+	border-radius: 4px;
+	color: #027a48;
+	display: inline-block;
+	font-size: 12px;
+	font-weight: 600;
+	padding: 2px 8px;
+}
+
+.mainwp-giweb-onboarding-header {
+	margin-top: 1.5em;
+}
+
 /* Titre écran : MainWP affiche déjà le titre dans #mainwp-page-header */
 .mainwp-giweb-screen-title {
 	margin: 0 0 8px;

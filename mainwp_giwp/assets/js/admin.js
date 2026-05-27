@@ -203,6 +203,45 @@
 		$row.find( '.mainwp-giweb-col-modules' ).text(
 			typeof data.active_modules !== 'undefined' ? String( data.active_modules ) : '—'
 		);
+
+		var mail = data.mail_catcher;
+		var $mailCol = $row.find( '.mainwp-giweb-col-mail' );
+		if ( $mailCol.length ) {
+			if ( ! mail || ! mail.module_active ) {
+				$mailCol.html( '<span class="mainwp-giweb-mail-na">—</span>' );
+			} else if ( ! mail.table_ready ) {
+				$mailCol.html( '<span class="mainwp-giweb-mail-na">…</span>' );
+			} else {
+				var failed = parseInt( mail.failed, 10 ) || 0;
+				var total = parseInt( mail.total, 10 ) || 0;
+				var today = parseInt( mail.today, 10 ) || 0;
+				var html =
+					'<span class="mainwp-giweb-mail-stat">' + total + '</span>';
+				if ( failed > 0 ) {
+					html +=
+						' <span class="mainwp-giweb-badge err mainwp-giweb-mail-failed">' +
+						failed +
+						'</span>';
+				}
+				html +=
+					'<br><span class="mainwp-giweb-mail-today">' + today + ' ' + i18n( 'mailTodayShort', 'auj.' ) + '</span>';
+				$mailCol.html( html );
+			}
+		}
+	}
+
+	function showMailSyncAlert( mailSummary ) {
+		if ( ! mailSummary || ! mailSummary.sites_with_failures ) {
+			return;
+		}
+		var tpl = i18n(
+			'mailAlertSync',
+			'%d site(s) ont des emails en échec. Consultez la vue d’ensemble ou le widget MainWP.'
+		);
+		showInlineNotice(
+			tpl.replace( '%d', String( mailSummary.sites_with_failures ) ),
+			'warning'
+		);
 	}
 
 	function setPullButtonLoading( $btn, loading ) {
@@ -420,11 +459,13 @@
 				}
 
 				var index = 0;
+				var lastMailSummary = null;
 
 				function next() {
 					if ( index >= sites.length ) {
 						modal.setProgress( total, total );
 						modal.appendLog( i18n( 'syncDone', 'Terminé.' ), true );
+						showMailSyncAlert( lastMailSummary );
 						modal.enableClose();
 						$btn.prop( 'disabled', false );
 						return;
@@ -442,6 +483,9 @@
 							if ( siteResponse && siteResponse.success && siteResponse.data ) {
 								modal.appendLog( siteResponse.data.log, siteResponse.data.success );
 								updateTableRow( site.id, siteResponse.data );
+								if ( siteResponse.data.mail_summary ) {
+									lastMailSummary = siteResponse.data.mail_summary;
+								}
 							} else {
 								modal.appendLog(
 									( siteResponse && siteResponse.data && siteResponse.data.message ) ||

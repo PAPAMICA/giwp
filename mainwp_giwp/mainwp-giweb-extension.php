@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'MAINWP_GIWEB_VERSION' ) ) {
-	define( 'MAINWP_GIWEB_VERSION', '1.1.5' );
+	define( 'MAINWP_GIWEB_VERSION', '1.3.0' );
 }
 if ( ! defined( 'MAINWP_GIWEB_PLUGIN_FILE' ) ) {
 	define( 'MAINWP_GIWEB_PLUGIN_FILE', __DIR__ . '/mainwp-giwp.php' );
@@ -28,14 +28,20 @@ if ( ! defined( 'MAINWP_GIWEB_GI_TOOLKIT_PATH' ) ) {
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-ui.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-sites.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-catalog.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-settings.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-overrides.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-templates.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-zip.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-plugin-installer.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-onboarding.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-history.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-bundle.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-modules-ui.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-api.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-deploy.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-notices.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-mail-stats.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-dashboard-widget.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-sync-ajax.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb.php';
 
@@ -202,3 +208,6 @@ class MainWP_GIWeb_Extension_Activator {
 
 global $mainwp_giweb_activator;
 $mainwp_giweb_activator = new MainWP_GIWeb_Extension_Activator();
+
+MainWP_GIWeb_Onboarding::init();
+add_action( 'admin_notices', array( 'MainWP_GIWeb_Onboarding', 'maybe_render_notice' ) );

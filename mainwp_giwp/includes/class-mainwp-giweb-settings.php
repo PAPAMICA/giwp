@@ -1,0 +1,69 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Réglages extension (onboarding, profil par défaut).
+ */
+class MainWP_GIWeb_Settings {
+
+	const OPTION_KEY = 'mainwp_giweb_settings';
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public static function get() {
+		$defaults = self::defaults();
+		$saved    = get_option( self::OPTION_KEY, array() );
+		if ( ! is_array( $saved ) ) {
+			$saved = array();
+		}
+		return array_merge( $defaults, $saved );
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public static function defaults() {
+		return array(
+			'default_template_id'           => '',
+			'install_checked_by_default'    => '1',
+			'apply_profile_by_default'      => '1',
+			'activate_after_install'        => '1',
+			'mail_alert_enabled'            => '1',
+			'mail_alert_min_failed'         => 1,
+			'mail_alert_email'              => '',
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $data Données brutes.
+	 * @return bool
+	 */
+	public static function save( array $data ) {
+		$clean = self::defaults();
+
+		if ( isset( $data['default_template_id'] ) ) {
+			$clean['default_template_id'] = sanitize_text_field( (string) $data['default_template_id'] );
+		}
+		$clean['install_checked_by_default'] = ! empty( $data['install_checked_by_default'] ) ? '1' : '0';
+		$clean['apply_profile_by_default']   = ! empty( $data['apply_profile_by_default'] ) ? '1' : '0';
+		$clean['activate_after_install']       = ! empty( $data['activate_after_install'] ) ? '1' : '0';
+		$clean['mail_alert_enabled']           = ! empty( $data['mail_alert_enabled'] ) ? '1' : '0';
+		$clean['mail_alert_min_failed']        = max( 1, absint( $data['mail_alert_min_failed'] ?? 1 ) );
+		$email                                 = isset( $data['mail_alert_email'] ) ? sanitize_email( (string) $data['mail_alert_email'] ) : '';
+		$clean['mail_alert_email']             = is_email( $email ) ? $email : '';
+
+		return update_option( self::OPTION_KEY, $clean, false );
+	}
+
+	/**
+	 * ID du modèle par défaut (profil « Default »).
+	 *
+	 * @return string
+	 */
+	public static function default_template_id() {
+		return MainWP_GIWeb_Templates::get_default_template_id();
+	}
+}

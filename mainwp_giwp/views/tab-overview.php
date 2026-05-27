@@ -28,12 +28,13 @@ if ( is_array( $bundle_modules ) ) {
 			<th class="mainwp-giweb-col-status"><?php esc_html_e( 'GI-Toolkit', 'mainwp-giweb' ); ?></th>
 			<th class="mainwp-giweb-col-version"><?php esc_html_e( 'Version', 'mainwp-giweb' ); ?></th>
 			<th class="mainwp-giweb-col-modules"><?php esc_html_e( 'Modules actifs', 'mainwp-giweb' ); ?></th>
+			<th class="mainwp-giweb-col-mail"><?php esc_html_e( 'Mails (Mail Catcher)', 'mainwp-giweb' ); ?></th>
 			<th class="mainwp-giweb-col-actions"><?php esc_html_e( 'Actions', 'mainwp-giweb' ); ?></th>
 		</tr>
 	</thead>
 	<tbody>
 		<?php if ( empty( $websites ) ) : ?>
-			<tr><td colspan="6"><?php esc_html_e( 'Aucun site enfant trouvé.', 'mainwp-giweb' ); ?></td></tr>
+			<tr><td colspan="7"><?php esc_html_e( 'Aucun site enfant trouvé.', 'mainwp-giweb' ); ?></td></tr>
 		<?php else : ?>
 			<?php foreach ( $websites as $site ) :
 				$row    = MainWP_GIWeb_Sites::normalize_one( $site );
@@ -59,6 +60,15 @@ if ( is_array( $bundle_modules ) ) {
 					</td>
 					<td class="mainwp-giweb-col-version"><?php echo esc_html( $data['gi_toolkit_version'] ?? '—' ); ?></td>
 					<td class="mainwp-giweb-col-modules"><?php echo esc_html( isset( $data['active_modules'] ) ? (string) $data['active_modules'] : '—' ); ?></td>
+					<td class="mainwp-giweb-col-mail">
+						<?php
+						echo wp_kses_post(
+							MainWP_GIWeb_Mail_Stats::format_site_mail_cell(
+								MainWP_GIWeb_Mail_Stats::extract_mail( $data )
+							)
+						);
+						?>
+					</td>
 					<td class="mainwp-giweb-col-actions">
 						<form
 							method="post"

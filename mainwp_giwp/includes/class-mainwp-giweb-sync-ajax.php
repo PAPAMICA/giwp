@@ -139,6 +139,8 @@ class MainWP_GIWeb_Sync_Ajax {
 			}
 
 			set_transient( 'mainwp_giweb_status_cache', array(), 15 * MINUTE_IN_SECONDS );
+			update_option( MainWP_GIWeb_Mail_Stats::AGGREGATE_OPTION, array( 'sites' => array(), 'network' => MainWP_GIWeb_Mail_Stats::compute_network( array() ), 'updated_at' => 0 ), false );
+			MainWP_GIWeb_Mail_Stats::clear_alert();
 
 			wp_send_json_success(
 				array(
@@ -179,6 +181,12 @@ class MainWP_GIWeb_Sync_Ajax {
 			}
 			$cache[ $site_id ] = $result['api'];
 			set_transient( 'mainwp_giweb_status_cache', $cache, 15 * MINUTE_IN_SECONDS );
+
+			$row = MainWP_GIWeb_Sites::find_by_id( $site_id, self::activator() );
+			$url = is_array( $row ) ? (string) ( $row['url'] ?? '' ) : '';
+			MainWP_GIWeb_Mail_Stats::record_site_sync( $site_id, $label, $url, $result['api'] );
+
+			$result['mail_summary'] = MainWP_GIWeb_Mail_Stats::get_client_summary();
 
 			wp_send_json_success( $result );
 		} catch ( Throwable $e ) {

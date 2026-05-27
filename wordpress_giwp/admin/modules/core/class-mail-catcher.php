@@ -738,6 +738,103 @@ class Gi_Toolkit_Mail_Catcher {
 	}
 
 	/**
+	 * Derniers envois en échec (pour MainWP / API distante).
+	 *
+	 * @param int $limit Nombre max.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function get_recent_failures( $limit = 5 ) {
+		global $wpdb;
+
+		$limit = max( 1, min( 20, absint( $limit ) ) );
+		if ( ! $this->is_table_exist() ) {
+			return array();
+		}
+
+		$table = $this->get_table_name();
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT id, receiver, subject, error, unixtime FROM {$table} WHERE error IS NOT NULL AND error != '' ORDER BY unixtime DESC LIMIT %d",
+				$limit
+			),
+			ARRAY_A
+		);
+
+		if ( ! is_array( $rows ) ) {
+			return array();
+		}
+
+		$out = array();
+		foreach ( $rows as $row ) {
+			$out[] = array(
+				'id'        => isset( $row['id'] ) ? (int) $row['id'] : 0,
+				'receiver'  => isset( $row['receiver'] ) ? (string) $row['receiver'] : '',
+				'subject'   => isset( $row['subject'] ) ? (string) $row['subject'] : '',
+				'error'     => isset( $row['error'] ) ? (string) $row['error'] : '',
+				'unixtime'  => isset( $row['unixtime'] ) ? (int) $row['unixtime'] : 0,
+				'sent_at'   => ! empty( $row['unixtime'] ) ? wp_date( 'Y-m-d H:i', (int) $row['unixtime'] ) : '',
+			);
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Statistiques mail pour l’API MainWP (sans graphiques lourds).
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function get_mainwp_status_payload() {
+		$db_options = get_option( GI_TOOLKIT_PLUGIN_SETTINGS, array() );
+		$active     = is_array( $db_options )
+			&& ! empty( $db_options['Gi_Toolkit_Mail_Catcher'] )
+			&& '1' === (string) $db_options['Gi_Toolkit_Mail_Catcher'];
+
+		if ( ! $active ) {
+			return array(
+				'module_active' => false,
+			);
+		}
+
+		$mc = self::instance();
+		if ( ! $mc ) {
+			return array(
+				'module_active' => true,
+				'table_ready'   => false,
+			);
+		}
+
+		if ( ! $mc->is_table_exist() ) {
+			return array(
+				'module_active' => true,
+				'table_ready'   => false,
+				'total'         => 0,
+				'success'       => 0,
+				'failed'        => 0,
+				'today'         => 0,
+				'resent_total'  => 0,
+			);
+		}
+
+		$stats = $mc->get_mail_statistics();
+
+		return array(
+			'module_active'    => true,
+			'table_ready'      => true,
+			'total'            => (int) ( $stats['total'] ?? 0 ),
+			'success'          => (int) ( $stats['success'] ?? 0 ),
+			'failed'           => (int) ( $stats['failed'] ?? 0 ),
+			'today'            => (int) ( $stats['today'] ?? 0 ),
+			'resent_total'     => (int) ( $stats['resent_total'] ?? 0 ),
+			'chart_labels'     => isset( $stats['chart_labels'] ) && is_array( $stats['chart_labels'] ) ? $stats['chart_labels'] : array(),
+			'chart_sent'       => isset( $stats['chart_sent'] ) && is_array( $stats['chart_sent'] ) ? array_map( 'intval', $stats['chart_sent'] ) : array(),
+			'chart_failed'     => isset( $stats['chart_failed'] ) && is_array( $stats['chart_failed'] ) ? array_map( 'intval', $stats['chart_failed'] ) : array(),
+			'recent_failures'  => $mc->get_recent_failures( 5 ),
+		);
+	}
+
+	/**
 	 * Récupère une entrée par ID.
 	 *
 	 * @param int $id ID.
@@ -1283,12 +1380,14 @@ class Gi_Toolkit_Mail_Catcher {
 					<input type="hidden" name="search[place]" value="<?php echo esc_attr( $search_place ); ?>" />
 					<input type="hidden" name="search[term]" value="<?php echo esc_attr( $search_term ); ?>" />
 				<?php endif; ?>
+				<div class="gi-toolkit-mail-catcher-table">
 				<?php
 					wp_nonce_field( $this->nonce, $this->nonce_name );
 					$table->search_box( __( 'Search', 'gi-toolkit' ), 's' );
 					$table->views();
 					$table->display();
 				?>
+				</div>
 			</form>
 
 			<div class="gi-toolkit-popup">
