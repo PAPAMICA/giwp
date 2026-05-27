@@ -51,6 +51,62 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 	margin-bottom: 16px;
 }
 
+.gi-matomo-stats-header__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.gi-matomo-setup-panel {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 8px;
+	box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+	margin: 24px 0;
+	max-width: 640px;
+	padding: 32px 28px;
+	text-align: center;
+}
+
+.gi-matomo-setup-panel__icon {
+	color: #2271b1;
+	font-size: 48px;
+	height: 48px;
+	margin: 0 auto 12px;
+	width: 48px;
+}
+
+.gi-matomo-setup-panel h2 {
+	font-size: 20px;
+	margin: 0 0 10px;
+}
+
+.gi-matomo-setup-panel p {
+	color: #50575e;
+	font-size: 14px;
+	margin: 0 0 16px;
+}
+
+.gi-matomo-setup-steps {
+	list-style: none;
+	margin: 20px 0 0;
+	padding: 0;
+	text-align: left;
+}
+
+.gi-matomo-setup-steps li {
+	border-left: 3px solid #dcdcde;
+	color: #646970;
+	font-size: 13px;
+	margin: 0 0 8px;
+	padding: 6px 0 6px 12px;
+}
+
+.gi-matomo-setup-steps li.is-done {
+	border-left-color: #00a32a;
+	color: #1d2327;
+}
+
 .gi-matomo-stats-header h1 {
 	margin: 0;
 	font-size: 23px;

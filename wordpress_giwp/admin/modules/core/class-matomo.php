@@ -40,6 +40,7 @@ class Gi_Toolkit_Matomo {
 		require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/matomo/class-dashboard-data.php';
 
 		add_action( 'admin_menu', array( $this, 'register_menus' ), 9 );
+		add_action( 'admin_init', array( $this, 'maybe_redirect_legacy_admin_url' ), 1 );
 		add_action( 'admin_init', array( $this, 'save_submenu' ) );
 
 		add_action( 'wp_ajax_gi_toolkit_matomo_test_connection', array( $this, 'ajax_test_connection' ) );
@@ -108,6 +109,53 @@ class Gi_Toolkit_Matomo {
 	}
 
 	/**
+	 * URL admin de la page de réglages (format WordPress correct).
+	 *
+	 * @return string
+	 */
+	public static function get_settings_admin_url() {
+		return admin_url( 'admin.php?page=' . rawurlencode( 'gi-toolkit-settings-matomo' ) );
+	}
+
+	/**
+	 * Matomo est-il prêt pour le tableau de bord (URL + token + site).
+	 *
+	 * @param array<string, mixed>|null $settings Réglages optionnels.
+	 * @return bool
+	 */
+	public static function is_dashboard_ready( $settings = null ) {
+		if ( null === $settings ) {
+			$settings = self::get_settings_static();
+		}
+		$api = new Gi_Toolkit_Matomo_API( $settings );
+		return $api->is_configured() && absint( $settings['site_id'] ?? 0 ) > 0;
+	}
+
+	/**
+	 * Redirige les URLs incorrectes /wp-admin/gi-toolkit-settings-matomo vers admin.php?page=…
+	 *
+	 * @return void
+	 */
+	public function maybe_redirect_legacy_admin_url() {
+		if ( ! is_admin() ) {
+			return;
+		}
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+		if ( '' === $uri ) {
+			return;
+		}
+		$path = wp_parse_url( $uri, PHP_URL_PATH );
+		if ( ! is_string( $path ) ) {
+			return;
+		}
+		if ( preg_match( '#/wp-admin/gi-toolkit-settings-matomo/?$#', $path ) ) {
+			wp_safe_redirect( self::get_settings_admin_url() );
+			exit;
+		}
+	}
+
+	/**
 	 * @return void
 	 */
 	public function register_menus() {
@@ -118,11 +166,30 @@ class Gi_Toolkit_Matomo {
 			self::STATS_PAGE_SLUG,
 			array( $this, 'render_statistics_page' ),
 			'dashicons-chart-area',
-			26
+			1
 		);
 
 		Gi_Toolkit_Settings::add_submenu_page(
 			'gi-toolkit-settings',
+			$this->header_title,
+			$this->header_title,
+			'manage_options',
+			$this->settings_page_slug,
+			array( $this, 'render_settings_page' )
+		);
+
+		add_submenu_page(
+			self::STATS_PAGE_SLUG,
+			$this->header_title,
+			__( 'Réglages Matomo', 'gi-toolkit' ),
+			'manage_options',
+			$this->settings_page_slug,
+			array( $this, 'render_settings_page' )
+		);
+
+		// En dernier : enregistrement « orphelin » pour garantir admin.php?page=gi-toolkit-settings-matomo.
+		add_submenu_page(
+			null,
 			$this->header_title,
 			$this->header_title,
 			'manage_options',
@@ -467,7 +534,7 @@ class Gi_Toolkit_Matomo {
 			array(
 				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
 				'nonce'         => wp_create_nonce( 'gi_toolkit_matomo_dashboard' ),
-				'settingsUrl'   => admin_url( 'admin.php?page=' . $this->settings_page_slug ),
+				'settingsUrl'   => self::get_settings_admin_url(),
 				'matomoUrl'     => Gi_Toolkit_Matomo_API::normalize_matomo_url( $settings['matomo_url'] ?? '' ),
 				'defaultPeriod' => 'last7',
 				'i18n'          => array(
@@ -481,35 +548,31 @@ class Gi_Toolkit_Matomo {
 		$period_key = isset( $_GET['period'] ) ? sanitize_key( wp_unslash( $_GET['period'] ) ) : 'last7';
 		$dashboard  = array( 'success' => false );
 
-		if ( $api->is_configured() && absint( $settings['site_id'] ?? 0 ) > 0 ) {
+		$is_ready = self::is_dashboard_ready( $settings );
+		if ( $is_ready ) {
 			$dashboard = Gi_Toolkit_Matomo_Dashboard_Data::fetch( $settings, $period_key );
 		}
+
+		$settings_url = self::get_settings_admin_url();
 
 		?>
 		<div class="wrap gi-matomo-stats-wrap">
 			<header class="gi-matomo-stats-header">
 				<h1><?php esc_html_e( 'Statistiques', 'gi-toolkit' ); ?></h1>
-				<?php if ( ! empty( $settings['matomo_url'] ) ) : ?>
-					<a class="button button-secondary" href="<?php echo esc_url( $settings['matomo_url'] ); ?>" target="_blank" rel="noopener noreferrer">
-						<?php esc_html_e( 'Ouvrir dans Matomo', 'gi-toolkit' ); ?>
+				<div class="gi-matomo-stats-header__actions">
+					<a class="button button-secondary" href="<?php echo esc_url( $settings_url ); ?>">
+						<?php esc_html_e( 'Réglages Matomo', 'gi-toolkit' ); ?>
 					</a>
-				<?php endif; ?>
+					<?php if ( $is_ready && ! empty( $settings['matomo_url'] ) ) : ?>
+						<a class="button button-secondary" href="<?php echo esc_url( $settings['matomo_url'] ); ?>" target="_blank" rel="noopener noreferrer">
+							<?php esc_html_e( 'Ouvrir dans Matomo', 'gi-toolkit' ); ?>
+						</a>
+					<?php endif; ?>
+				</div>
 			</header>
 
-			<?php if ( ! $api->is_configured() ) : ?>
-				<div class="notice notice-warning"><p>
-					<?php
-					printf(
-						/* translators: %s: settings URL */
-						wp_kses_post( __( 'Connectez Matomo dans <a href="%s">les réglages GI-Toolkit</a>.', 'gi-toolkit' ) ),
-						esc_url( admin_url( 'admin.php?page=' . $this->settings_page_slug ) )
-					);
-					?>
-				</p></div>
-			<?php elseif ( absint( $settings['site_id'] ?? 0 ) < 1 ) : ?>
-				<div class="notice notice-warning"><p>
-					<?php esc_html_e( 'Aucun site Matomo associé. Synchronisez depuis les réglages Connect Matomo.', 'gi-toolkit' ); ?>
-				</p></div>
+			<?php if ( ! $is_ready ) : ?>
+				<?php $this->render_setup_notice( $api, $settings ); ?>
 			<?php else : ?>
 				<nav class="gi-matomo-period-nav" aria-label="<?php esc_attr_e( 'Période', 'gi-toolkit' ); ?>">
 					<?php
@@ -532,6 +595,49 @@ class Gi_Toolkit_Matomo {
 					<?php $this->render_dashboard_markup( $dashboard ); ?>
 				</div>
 			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Panneau d’accueil lorsque Matomo n’est pas configuré.
+	 *
+	 * @param Gi_Toolkit_Matomo_API $api      Client API.
+	 * @param array<string, mixed>  $settings Réglages.
+	 * @return void
+	 */
+	private function render_setup_notice( Gi_Toolkit_Matomo_API $api, array $settings ) {
+		$settings_url = self::get_settings_admin_url();
+		$has_conn       = $api->is_configured();
+		$has_site       = absint( $settings['site_id'] ?? 0 ) > 0;
+
+		?>
+		<div class="gi-matomo-setup-panel">
+			<div class="gi-matomo-setup-panel__icon dashicons dashicons-chart-area" aria-hidden="true"></div>
+			<h2><?php esc_html_e( 'Matomo n’est pas encore configuré', 'gi-toolkit' ); ?></h2>
+			<?php if ( ! $has_conn ) : ?>
+				<p><?php esc_html_e( 'Renseignez l’URL de votre instance Matomo et votre token API pour afficher les statistiques de ce site.', 'gi-toolkit' ); ?></p>
+			<?php elseif ( ! $has_site ) : ?>
+				<p><?php esc_html_e( 'La connexion Matomo est enregistrée, mais aucun site n’est associé à cette URL WordPress. Lancez une synchronisation depuis les réglages.', 'gi-toolkit' ); ?></p>
+			<?php else : ?>
+				<p><?php esc_html_e( 'Terminez la configuration Matomo pour afficher le tableau de bord.', 'gi-toolkit' ); ?></p>
+			<?php endif; ?>
+			<p>
+				<a class="button button-primary button-hero" href="<?php echo esc_url( $settings_url ); ?>">
+					<?php esc_html_e( 'Configurer Connect Matomo', 'gi-toolkit' ); ?>
+				</a>
+			</p>
+			<ul class="gi-matomo-setup-steps">
+				<li class="<?php echo $has_conn ? 'is-done' : ''; ?>">
+					<?php esc_html_e( '1. URL Matomo + token API', 'gi-toolkit' ); ?>
+				</li>
+				<li class="<?php echo $has_site ? 'is-done' : ''; ?>">
+					<?php esc_html_e( '2. Synchroniser le site (détection ou création automatique)', 'gi-toolkit' ); ?>
+				</li>
+				<li>
+					<?php esc_html_e( '3. Revenir ici pour consulter les statistiques', 'gi-toolkit' ); ?>
+				</li>
+			</ul>
 		</div>
 		<?php
 	}

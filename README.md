@@ -4,7 +4,7 @@ Dépôt regroupant **GI-Toolkit** (plugin sur chaque site WordPress) et **MainWP
 
 | Composant | Dossier | Version | Où l’installer |
 |-----------|---------|---------|----------------|
-| **GI-Toolkit** | `wordpress_giwp/` | 2.20.22 | Chaque site WordPress (enfant MainWP) |
+| **GI-Toolkit** | `wordpress_giwp/` | 2.20.23 | Chaque site WordPress (enfant MainWP) |
 | **MainWP GI-Toolkit Manager** | `mainwp_giwp/` | 1.4.2 | Dashboard MainWP uniquement |
 
 ---

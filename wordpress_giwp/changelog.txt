@@ -1,5 +1,9 @@
 == Changelog ==
 
+= 2.20.23 =
+Fix: Connect Matomo — page réglages accessible (admin.php?page=), redirection URL incorrecte, menu Statistiques en tête.
+Update: Panneau de configuration affiché sur Statistiques si Matomo n’est pas prêt.
+
 = 2.20.22 =
 Add: Module Connect Matomo — connexion API, auto-création du site, suivi front, menu Statistiques, export JSON / MainWP.
 
