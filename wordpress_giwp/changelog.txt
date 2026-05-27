@@ -1,5 +1,9 @@
 == Changelog ==
 
+= 2.20.32 =
+Add: Onglet « En direct » — visiteurs live (API Matomo Live) avec rafraîchissement auto toutes les 10 s.
+Update: Carte mondiale à droite de l’évolution du trafic et des camemberts (format carré).
+
 = 2.20.31 =
 Add: Graphique visites (7 j) dans la barre d’administration WordPress (style wp-piwik).
 Add: Carte mondiale des origines des visiteurs sur le tableau de bord Statistiques.

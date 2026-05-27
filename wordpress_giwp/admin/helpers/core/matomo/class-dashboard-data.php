@@ -15,6 +15,7 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 	 */
 	public static function period_keys() {
 		return array(
+			'live',
 			'today',
 			'yesterday',
 			'last7',
@@ -31,6 +32,12 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 	 */
 	public static function resolve_period( $period_key ) {
 		$map = array(
+			'live'        => array(
+				'period'        => 'day',
+				'date'          => 'today',
+				'label'         => __( 'En direct', 'gi-toolkit' ),
+				'compare_label' => '',
+			),
 			'today'       => array(
 				'period'         => 'day',
 				'date'           => 'today',
@@ -169,6 +176,11 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 	 * @return array<string, mixed>
 	 */
 	public static function fetch( array $settings, $period_key = 'last7' ) {
+		if ( 'live' === $period_key ) {
+			require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/matomo/class-live-data.php';
+			return Gi_Toolkit_Matomo_Live_Data::fetch( $settings );
+		}
+
 		$site_id = absint( $settings['site_id'] ?? 0 );
 		if ( $site_id < 1 ) {
 			return array(

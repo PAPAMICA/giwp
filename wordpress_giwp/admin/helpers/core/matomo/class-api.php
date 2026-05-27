@@ -148,6 +148,17 @@ class Gi_Toolkit_Matomo_API {
 			return $base;
 		}
 
+		if ( 'live' === $period_key ) {
+			return add_query_arg(
+				array(
+					'module' => 'Live',
+					'action' => 'index',
+					'idSite' => $site_id,
+				),
+				$base . '/index.php'
+			);
+		}
+
 		$period = class_exists( 'Gi_Toolkit_Matomo_Dashboard_Data' )
 			? Gi_Toolkit_Matomo_Dashboard_Data::resolve_period( $period_key )
 			: array(

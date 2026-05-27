@@ -4,6 +4,8 @@
 	var cfg = window.giToolkitMatomoDashboard || {};
 	var chartInstances = [];
 	var worldMapInstance = null;
+	var liveRefreshTimer = null;
+	var currentPeriod = null;
 
 	var palette = {
 		primary: '#2271b1',
@@ -253,37 +255,75 @@
 		initWorldMap( charts.world_map );
 	}
 
-	function setLoading( isLoading ) {
+	function stopLiveRefresh() {
+		if ( liveRefreshTimer ) {
+			clearInterval( liveRefreshTimer );
+			liveRefreshTimer = null;
+		}
+		$( '#gi-matomo-dashboard-wrap' ).removeClass( 'is-live-mode' );
+	}
+
+	function startLiveRefresh( seconds ) {
+		stopLiveRefresh();
+		var interval = ( seconds || cfg.liveRefresh || 10 ) * 1000;
+		$( '#gi-matomo-dashboard-wrap' ).addClass( 'is-live-mode' );
+		liveRefreshTimer = setInterval( function () {
+			if ( currentPeriod === 'live' ) {
+				loadPeriod( 'live', true );
+			}
+		}, interval );
+	}
+
+	function setLoading( isLoading, silent ) {
 		var $wrap = $( '#gi-matomo-dashboard-wrap' );
 		var $loader = $( '#gi-matomo-loader' );
 		if ( ! $wrap.length ) {
 			return;
 		}
-		if ( isLoading ) {
+		if ( isLoading && ! silent ) {
 			$wrap.addClass( 'is-loading' );
 			$loader.removeAttr( 'hidden' ).attr( 'aria-busy', 'true' );
 			$( '.gi-matomo-period-btn' ).addClass( 'is-disabled' ).attr( 'aria-disabled', 'true' );
-		} else {
-			$wrap.removeClass( 'is-loading' );
+		} else if ( ! isLoading ) {
+			$wrap.removeClass( 'is-loading is-refreshing' );
 			$loader.attr( 'hidden', 'hidden' ).attr( 'aria-busy', 'false' );
 			$( '.gi-matomo-period-btn' ).removeClass( 'is-disabled' ).removeAttr( 'aria-disabled' );
+		} else if ( silent ) {
+			$wrap.addClass( 'is-refreshing' );
 		}
 	}
 
-	function renderDashboard( html, matomoUrl ) {
+	function renderDashboard( html, meta ) {
+		meta = meta || {};
 		$( '#gi-matomo-dashboard' ).html( html );
-		initCharts();
-		if ( matomoUrl ) {
-			$( '#gi-matomo-external-link' ).attr( 'href', matomoUrl );
+
+		if ( meta.is_live ) {
+			destroyCharts();
+			destroyWorldMap();
+			startLiveRefresh( meta.refresh_seconds );
+		} else {
+			stopLiveRefresh();
+			initCharts();
+		}
+
+		if ( meta.matomoUrl ) {
+			$( '#gi-matomo-external-link' ).attr( 'href', meta.matomoUrl );
 		}
 	}
 
-	function loadPeriod( period ) {
+	function loadPeriod( period, silent ) {
 		var $root = $( '#gi-matomo-dashboard' );
 		if ( ! $root.length ) {
 			return;
 		}
-		setLoading( true );
+
+		currentPeriod = period;
+
+		if ( period !== 'live' ) {
+			stopLiveRefresh();
+		}
+
+		setLoading( true, silent );
 
 		$.post( cfg.ajaxUrl, {
 			action: 'gi_toolkit_matomo_dashboard',
@@ -292,12 +332,19 @@
 		} )
 			.done( function ( res ) {
 				if ( ! res.success || ! res.data || ! res.data.html ) {
-					window.alert( ( res.data && res.data.message ) || cfg.i18n.error );
+					if ( ! silent ) {
+						window.alert( ( res.data && res.data.message ) || cfg.i18n.error );
+					}
 					return;
 				}
-				renderDashboard( res.data.html, res.data.matomoUrl );
+				renderDashboard( res.data.html, {
+					matomoUrl: res.data.matomoUrl,
+					is_live: res.data.is_live,
+					refresh_seconds: res.data.refresh_seconds,
+				} );
 				$( '.gi-matomo-period-btn' ).removeClass( 'is-active' );
 				$( '.gi-matomo-period-btn[data-period="' + period + '"]' ).addClass( 'is-active' );
+				$( '#gi-matomo-dashboard-wrap' ).attr( 'data-period', period );
 				if ( window.history && window.history.replaceState ) {
 					var url = new URL( window.location.href );
 					url.searchParams.set( 'period', period );
@@ -305,7 +352,9 @@
 				}
 			} )
 			.fail( function () {
-				window.alert( cfg.i18n.error );
+				if ( ! silent ) {
+					window.alert( cfg.i18n.error );
+				}
 			} )
 			.always( function () {
 				setLoading( false );
@@ -313,7 +362,14 @@
 	}
 
 	$( function () {
-		initCharts();
+		var $wrap = $( '#gi-matomo-dashboard-wrap' );
+		currentPeriod = $wrap.data( 'period' ) || 'last7';
+
+		if ( currentPeriod === 'live' ) {
+			startLiveRefresh( cfg.liveRefresh );
+		} else {
+			initCharts();
+		}
 
 		$( document ).on( 'click', '.gi-matomo-period-btn[data-period]', function ( e ) {
 			var period = $( this ).data( 'period' );
@@ -321,7 +377,9 @@
 				return;
 			}
 			e.preventDefault();
-			loadPeriod( period );
+			loadPeriod( period, false );
 		} );
+
+		$( window ).on( 'beforeunload', stopLiveRefresh );
 	} );
 } )( jQuery );

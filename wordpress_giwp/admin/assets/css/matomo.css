@@ -258,11 +258,60 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 	color: #646970;
 }
 
-.gi-matomo-charts {
+.gi-matomo-period-btn--live .gi-matomo-live-dot {
+	background: #00a32a;
+	border-radius: 50%;
+	box-shadow: 0 0 0 0 rgba(0, 163, 42, 0.5);
+	display: inline-block;
+	height: 8px;
+	margin-right: 6px;
+	vertical-align: middle;
+	width: 8px;
+	animation: gi-matomo-live-dot 1.8s ease-in-out infinite;
+}
+
+.gi-matomo-period-btn--live.is-active {
+	border-color: #00a32a;
+	background: #edfaef;
+	color: #1d2327;
+}
+
+.gi-matomo-period-btn--live.is-active:hover {
+	background: #d8f5dc;
+	color: #1d2327;
+}
+
+@keyframes gi-matomo-live-dot {
+	0% {
+		box-shadow: 0 0 0 0 rgba(0, 163, 42, 0.55);
+	}
+	70% {
+		box-shadow: 0 0 0 8px rgba(0, 163, 42, 0);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(0, 163, 42, 0);
+	}
+}
+
+.gi-matomo-charts-grid {
+	align-items: stretch;
+	display: grid;
+	gap: 16px;
+	grid-template-columns: 1fr minmax(300px, 34%);
+	margin-bottom: 20px;
+}
+
+.gi-matomo-charts-left {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	min-width: 0;
+}
+
+.gi-matomo-charts-donuts {
 	display: grid;
 	gap: 16px;
 	grid-template-columns: repeat(3, 1fr);
-	margin-bottom: 20px;
 }
 
 .gi-matomo-chart-panel {
@@ -271,10 +320,31 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 	border-radius: 10px;
 	box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
 	padding: 16px 18px;
+	min-width: 0;
 }
 
-.gi-matomo-chart-panel--wide {
-	grid-column: 1 / -1;
+.gi-matomo-chart-panel--map {
+	display: flex;
+	flex-direction: column;
+}
+
+.gi-matomo-map-square {
+	aspect-ratio: 1;
+	flex: 1;
+	min-height: 280px;
+	position: relative;
+	width: 100%;
+}
+
+.gi-matomo-map-square .gi-matomo-world-map,
+.gi-matomo-map-square #gi-matomo-world-map {
+	height: 100% !important;
+	width: 100%;
+}
+
+.gi-matomo-map-square .jvm-container {
+	height: 100% !important;
+	width: 100% !important;
 }
 
 .gi-matomo-chart-panel h2 {
@@ -424,6 +494,202 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 	user-select: none;
 }
 
+.gi-matomo-dashboard-wrap.is-refreshing #gi-matomo-dashboard {
+	opacity: 0.88;
+	transition: opacity 0.2s ease;
+}
+
+.gi-matomo-dashboard-wrap.is-live-mode .gi-matomo-loader__ring {
+	border-top-color: #00a32a;
+}
+
+/* Vue En direct */
+.gi-matomo-live {
+	animation: gi-matomo-fade-in 0.25s ease;
+}
+
+@keyframes gi-matomo-fade-in {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.gi-matomo-dash-meta--live {
+	align-items: center;
+	justify-content: space-between;
+}
+
+.gi-matomo-live-pulse {
+	background: #00a32a;
+	border-radius: 50%;
+	display: inline-block;
+	height: 10px;
+	margin-right: 8px;
+	width: 10px;
+	animation: gi-matomo-live-dot 1.8s ease-in-out infinite;
+}
+
+.gi-matomo-live-updated {
+	align-items: center;
+	color: #646970;
+	display: flex;
+	flex-wrap: wrap;
+	font-size: 12px;
+	gap: 10px;
+	margin: 0;
+}
+
+.gi-matomo-live-refresh-badge {
+	background: #edfaef;
+	border-radius: 12px;
+	color: #007017;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 3px 10px;
+}
+
+.gi-matomo-live-counters {
+	display: grid;
+	gap: 12px;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	margin-bottom: 20px;
+}
+
+.gi-matomo-live-counter {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 10px;
+	box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+	padding: 16px;
+	text-align: center;
+}
+
+.gi-matomo-live-counter--active {
+	border-color: #68de7c;
+	background: linear-gradient(135deg, #edfaef 0%, #fff 100%);
+}
+
+.gi-matomo-live-counter__value {
+	color: #1d2327;
+	display: block;
+	font-size: 28px;
+	font-weight: 700;
+	line-height: 1.1;
+}
+
+.gi-matomo-live-counter__label {
+	color: #1d2327;
+	display: block;
+	font-size: 13px;
+	font-weight: 600;
+	margin-top: 4px;
+}
+
+.gi-matomo-live-counter small {
+	color: #646970;
+	display: block;
+	font-size: 11px;
+	margin-top: 4px;
+}
+
+.gi-matomo-live-feed {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 10px;
+	box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+	padding: 16px 18px;
+}
+
+.gi-matomo-live-feed h2 {
+	font-size: 14px;
+	font-weight: 600;
+	margin: 0 0 14px;
+}
+
+.gi-matomo-live-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.gi-matomo-live-visit {
+	align-items: flex-start;
+	border-bottom: 1px solid #f0f0f1;
+	display: flex;
+	gap: 12px;
+	padding: 12px 0;
+}
+
+.gi-matomo-live-visit:last-child {
+	border-bottom: 0;
+	padding-bottom: 0;
+}
+
+.gi-matomo-live-visit.is-new .gi-matomo-live-visit__dot {
+	background: #00a32a;
+	box-shadow: 0 0 0 4px rgba(0, 163, 42, 0.2);
+}
+
+.gi-matomo-live-visit__dot {
+	background: #72aee6;
+	border-radius: 50%;
+	flex-shrink: 0;
+	height: 10px;
+	margin-top: 6px;
+	width: 10px;
+}
+
+.gi-matomo-live-visit__body {
+	flex: 1;
+	min-width: 0;
+}
+
+.gi-matomo-live-visit__row {
+	align-items: baseline;
+	display: flex;
+	gap: 10px;
+	justify-content: space-between;
+}
+
+.gi-matomo-live-visit__location {
+	font-size: 14px;
+}
+
+.gi-matomo-live-visit__time {
+	color: #646970;
+	flex-shrink: 0;
+	font-size: 12px;
+}
+
+.gi-matomo-live-visit__page {
+	color: #2271b1;
+	font-size: 13px;
+	margin-top: 4px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.gi-matomo-live-visit__meta {
+	color: #646970;
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+.gi-matomo-live-visit__sep {
+	margin: 0 4px;
+}
+
+.gi-matomo-live-empty {
+	margin: 24px 0;
+	text-align: center;
+}
+
 .gi-matomo-period-btn.is-disabled {
 	cursor: wait;
 	opacity: 0.55;
@@ -442,14 +708,6 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 	margin-left: 6px;
 }
 
-.gi-matomo-chart-panel--map {
-	grid-column: 1 / -1;
-}
-
-.gi-matomo-world-map {
-	height: 380px;
-	width: 100%;
-}
 
 .gi-matomo-map-legend {
 	margin: 8px 0 0;
@@ -503,18 +761,18 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 	background: #2c3338;
 }
 
-@media (max-width: 1100px) {
-	.gi-matomo-charts {
-		grid-template-columns: 1fr 1fr;
+@media (max-width: 1200px) {
+	.gi-matomo-charts-grid {
+		grid-template-columns: 1fr;
 	}
 
-	.gi-matomo-chart-panel--wide {
-		grid-column: 1 / -1;
+	.gi-matomo-chart-panel--map {
+		max-width: 480px;
 	}
 }
 
 @media (max-width: 782px) {
-	.gi-matomo-charts {
+	.gi-matomo-charts-donuts {
 		grid-template-columns: 1fr;
 	}
 

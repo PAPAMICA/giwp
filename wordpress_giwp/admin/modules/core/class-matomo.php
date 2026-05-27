@@ -396,7 +396,7 @@ class Gi_Toolkit_Matomo {
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$period_key = isset( $_POST['period'] ) ? sanitize_key( wp_unslash( $_POST['period'] ) ) : 'last7';
 		$settings   = $this->get_settings();
-		$data       = Gi_Toolkit_Matomo_Dashboard_Data::fetch( $settings, $period_key );
+		$data = Gi_Toolkit_Matomo_Dashboard_Data::fetch( $settings, $period_key );
 
 		if ( empty( $data['success'] ) ) {
 			wp_send_json_error( array( 'message' => $data['message'] ?? '' ) );
@@ -408,9 +408,11 @@ class Gi_Toolkit_Matomo {
 
 		wp_send_json_success(
 			array(
-				'html'       => $html,
-				'period_key' => $period_key,
-				'matomoUrl'  => Gi_Toolkit_Matomo_API::get_site_dashboard_url( $settings, $period_key ),
+				'html'            => $html,
+				'period_key'      => $period_key,
+				'matomoUrl'       => Gi_Toolkit_Matomo_API::get_site_dashboard_url( $settings, $period_key ),
+				'is_live'         => 'live' === $period_key,
+				'refresh_seconds' => 'live' === $period_key ? 10 : 0,
 			)
 		);
 	}
@@ -788,7 +790,9 @@ class Gi_Toolkit_Matomo {
 					'unique'   => __( 'Visiteurs uniques', 'gi-toolkit' ),
 					'actions'  => __( 'Pages vues', 'gi-toolkit' ),
 					'mapEmpty' => __( 'Aucune donnée géographique pour cette période.', 'gi-toolkit' ),
+					'liveNow'  => __( 'Actualisation automatique', 'gi-toolkit' ),
 				),
+				'liveRefresh' => 10,
 			)
 		);
 
@@ -826,13 +830,17 @@ class Gi_Toolkit_Matomo {
 					<?php
 					$periods = Gi_Toolkit_Matomo_Dashboard_Data::period_keys();
 					foreach ( $periods as $key ) {
-						$p   = Gi_Toolkit_Matomo_Dashboard_Data::resolve_period( $key );
-						$url = add_query_arg( array( 'page' => self::STATS_PAGE_SLUG, 'period' => $key ), admin_url( 'admin.php' ) );
+						$p            = Gi_Toolkit_Matomo_Dashboard_Data::resolve_period( $key );
+						$url          = add_query_arg( array( 'page' => self::STATS_PAGE_SLUG, 'period' => $key ), admin_url( 'admin.php' ) );
+						$extra_class  = 'live' === $key ? ' gi-matomo-period-btn--live' : '';
+						$live_marker  = 'live' === $key ? '<span class="gi-matomo-live-dot" aria-hidden="true"></span>' : '';
 						printf(
-							'<a href="%s" class="gi-matomo-period-btn%s" data-period="%s">%s</a>',
+							'<a href="%s" class="gi-matomo-period-btn%s%s" data-period="%s">%s%s</a>',
 							esc_url( $url ),
+							$extra_class,
 							$key === $period_key ? ' is-active' : '',
 							esc_attr( $key ),
+							$live_marker,
 							esc_html( $p['label'] )
 						);
 					}
@@ -906,6 +914,11 @@ class Gi_Toolkit_Matomo {
 			return;
 		}
 
+		if ( 'live' === ( $dashboard['mode'] ?? '' ) ) {
+			$this->render_live_markup( $dashboard );
+			return;
+		}
+
 		$kpis          = $dashboard['kpis'] ?? array();
 		$period        = $dashboard['period']['label'] ?? '';
 		$compare_label = $dashboard['compare_label'] ?? '';
@@ -971,34 +984,40 @@ class Gi_Toolkit_Matomo {
 			?>
 		</div>
 
-		<div class="gi-matomo-charts">
-			<div class="gi-matomo-chart-panel gi-matomo-chart-panel--wide">
-				<h2><?php esc_html_e( 'Évolution du trafic', 'gi-toolkit' ); ?></h2>
-				<div class="gi-matomo-chart-canvas-wrap">
-					<canvas id="gi-matomo-chart-timeline" role="img" aria-label="<?php esc_attr_e( 'Évolution du trafic', 'gi-toolkit' ); ?>"></canvas>
+		<div class="gi-matomo-charts-grid">
+			<div class="gi-matomo-charts-left">
+				<div class="gi-matomo-chart-panel gi-matomo-chart-panel--timeline">
+					<h2><?php esc_html_e( 'Évolution du trafic', 'gi-toolkit' ); ?></h2>
+					<div class="gi-matomo-chart-canvas-wrap">
+						<canvas id="gi-matomo-chart-timeline" role="img" aria-label="<?php esc_attr_e( 'Évolution du trafic', 'gi-toolkit' ); ?>"></canvas>
+					</div>
 				</div>
-			</div>
-			<div class="gi-matomo-chart-panel">
-				<h2><?php esc_html_e( 'Sources', 'gi-toolkit' ); ?></h2>
-				<div class="gi-matomo-chart-canvas-wrap gi-matomo-chart-canvas-wrap--donut">
-					<canvas id="gi-matomo-chart-referrers" role="img" aria-label="<?php esc_attr_e( 'Sources de trafic', 'gi-toolkit' ); ?>"></canvas>
-				</div>
-			</div>
-			<div class="gi-matomo-chart-panel">
-				<h2><?php esc_html_e( 'Pays', 'gi-toolkit' ); ?></h2>
-				<div class="gi-matomo-chart-canvas-wrap gi-matomo-chart-canvas-wrap--donut">
-					<canvas id="gi-matomo-chart-countries" role="img" aria-label="<?php esc_attr_e( 'Répartition par pays', 'gi-toolkit' ); ?>"></canvas>
-				</div>
-			</div>
-			<div class="gi-matomo-chart-panel">
-				<h2><?php esc_html_e( 'Appareils', 'gi-toolkit' ); ?></h2>
-				<div class="gi-matomo-chart-canvas-wrap gi-matomo-chart-canvas-wrap--donut">
-					<canvas id="gi-matomo-chart-devices" role="img" aria-label="<?php esc_attr_e( 'Types d’appareils', 'gi-toolkit' ); ?>"></canvas>
+				<div class="gi-matomo-charts-donuts">
+					<div class="gi-matomo-chart-panel">
+						<h2><?php esc_html_e( 'Sources', 'gi-toolkit' ); ?></h2>
+						<div class="gi-matomo-chart-canvas-wrap gi-matomo-chart-canvas-wrap--donut">
+							<canvas id="gi-matomo-chart-referrers" role="img" aria-label="<?php esc_attr_e( 'Sources de trafic', 'gi-toolkit' ); ?>"></canvas>
+						</div>
+					</div>
+					<div class="gi-matomo-chart-panel">
+						<h2><?php esc_html_e( 'Pays', 'gi-toolkit' ); ?></h2>
+						<div class="gi-matomo-chart-canvas-wrap gi-matomo-chart-canvas-wrap--donut">
+							<canvas id="gi-matomo-chart-countries" role="img" aria-label="<?php esc_attr_e( 'Répartition par pays', 'gi-toolkit' ); ?>"></canvas>
+						</div>
+					</div>
+					<div class="gi-matomo-chart-panel">
+						<h2><?php esc_html_e( 'Appareils', 'gi-toolkit' ); ?></h2>
+						<div class="gi-matomo-chart-canvas-wrap gi-matomo-chart-canvas-wrap--donut">
+							<canvas id="gi-matomo-chart-devices" role="img" aria-label="<?php esc_attr_e( 'Types d’appareils', 'gi-toolkit' ); ?>"></canvas>
+						</div>
+					</div>
 				</div>
 			</div>
 			<div class="gi-matomo-chart-panel gi-matomo-chart-panel--map">
 				<h2><?php esc_html_e( 'Origine des visiteurs', 'gi-toolkit' ); ?></h2>
-				<div id="gi-matomo-world-map" class="gi-matomo-world-map" role="img" aria-label="<?php esc_attr_e( 'Carte mondiale des visites', 'gi-toolkit' ); ?>"></div>
+				<div class="gi-matomo-map-square">
+					<div id="gi-matomo-world-map" class="gi-matomo-world-map" role="img" aria-label="<?php esc_attr_e( 'Carte mondiale des visites', 'gi-toolkit' ); ?>"></div>
+				</div>
 				<p class="gi-matomo-map-legend description"><?php esc_html_e( 'Intensité de couleur = nombre de visites par pays.', 'gi-toolkit' ); ?></p>
 			</div>
 		</div>
@@ -1011,6 +1030,92 @@ class Gi_Toolkit_Matomo {
 			<?php $this->render_report_table( __( 'Pays', 'gi-toolkit' ), $dashboard['countries'] ?? array(), 'dashicons-location-alt' ); ?>
 			<?php $this->render_report_table( __( 'Navigateurs', 'gi-toolkit' ), $dashboard['browsers'] ?? array(), 'dashicons-desktop' ); ?>
 			<?php $this->render_report_table( __( 'Appareils', 'gi-toolkit' ), $dashboard['devices'] ?? array(), 'dashicons-smartphone' ); ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Vue temps réel (onglet En direct).
+	 *
+	 * @param array<string, mixed> $dashboard Données live.
+	 * @return void
+	 */
+	private function render_live_markup( array $dashboard ) {
+		$live          = $dashboard['live'] ?? array();
+		$c3            = $live['counters']['3'] ?? array();
+		$c30           = $live['counters']['30'] ?? array();
+		$visits        = $live['visits'] ?? array();
+		$updated_at    = ! empty( $live['updated_at'] ) ? (int) $live['updated_at'] : time();
+		$refresh       = (int) ( $dashboard['refresh_seconds'] ?? 10 );
+		$updated_label = sprintf(
+			/* translators: %s: time */
+			__( 'Mis à jour à %s', 'gi-toolkit' ),
+			wp_date( 'H:i:s', $updated_at )
+		);
+		?>
+		<div class="gi-matomo-live" data-refresh="<?php echo esc_attr( (string) $refresh ); ?>">
+			<div class="gi-matomo-dash-meta gi-matomo-dash-meta--live">
+				<p class="gi-matomo-dash-meta__period">
+					<span class="gi-matomo-live-pulse" aria-hidden="true"></span>
+					<?php esc_html_e( 'En direct', 'gi-toolkit' ); ?>
+				</p>
+				<p class="gi-matomo-live-updated">
+					<span id="gi-matomo-live-updated-text"><?php echo esc_html( $updated_label ); ?></span>
+					<span class="gi-matomo-live-refresh-badge"><?php echo esc_html( sprintf( __( 'Rafraîchissement %ds', 'gi-toolkit' ), $refresh ) ); ?></span>
+				</p>
+			</div>
+
+			<div class="gi-matomo-live-counters">
+				<div class="gi-matomo-live-counter gi-matomo-live-counter--active">
+					<span class="gi-matomo-live-counter__value"><?php echo esc_html( number_format_i18n( (int) ( $c3['visitors'] ?? 0 ) ) ); ?></span>
+					<span class="gi-matomo-live-counter__label"><?php esc_html_e( 'Visiteurs actifs', 'gi-toolkit' ); ?></span>
+					<small><?php esc_html_e( '3 dernières minutes', 'gi-toolkit' ); ?></small>
+				</div>
+				<div class="gi-matomo-live-counter">
+					<span class="gi-matomo-live-counter__value"><?php echo esc_html( number_format_i18n( (int) ( $c30['visits'] ?? 0 ) ) ); ?></span>
+					<span class="gi-matomo-live-counter__label"><?php esc_html_e( 'Visites', 'gi-toolkit' ); ?></span>
+					<small><?php esc_html_e( '30 dernières minutes', 'gi-toolkit' ); ?></small>
+				</div>
+				<div class="gi-matomo-live-counter">
+					<span class="gi-matomo-live-counter__value"><?php echo esc_html( number_format_i18n( (int) ( $c30['visitors'] ?? 0 ) ) ); ?></span>
+					<span class="gi-matomo-live-counter__label"><?php esc_html_e( 'Visiteurs uniques', 'gi-toolkit' ); ?></span>
+					<small><?php esc_html_e( '30 dernières minutes', 'gi-toolkit' ); ?></small>
+				</div>
+				<div class="gi-matomo-live-counter">
+					<span class="gi-matomo-live-counter__value"><?php echo esc_html( number_format_i18n( (int) ( $c30['actions'] ?? 0 ) ) ); ?></span>
+					<span class="gi-matomo-live-counter__label"><?php esc_html_e( 'Actions', 'gi-toolkit' ); ?></span>
+					<small><?php esc_html_e( '30 dernières minutes', 'gi-toolkit' ); ?></small>
+				</div>
+			</div>
+
+			<div class="gi-matomo-live-feed">
+				<h2><?php esc_html_e( 'Dernières visites', 'gi-toolkit' ); ?></h2>
+				<?php if ( empty( $visits ) ) : ?>
+					<p class="gi-matomo-live-empty description"><?php esc_html_e( 'Aucun visiteur récent. Les nouvelles visites apparaîtront ici automatiquement.', 'gi-toolkit' ); ?></p>
+				<?php else : ?>
+					<ul class="gi-matomo-live-list">
+						<?php foreach ( $visits as $visit ) : ?>
+							<li class="gi-matomo-live-visit<?php echo ! empty( $visit['is_new'] ) ? ' is-new' : ''; ?>">
+								<span class="gi-matomo-live-visit__dot" aria-hidden="true"></span>
+								<div class="gi-matomo-live-visit__body">
+									<div class="gi-matomo-live-visit__row">
+										<strong class="gi-matomo-live-visit__location"><?php echo esc_html( $visit['location'] ?? '' ); ?></strong>
+										<time class="gi-matomo-live-visit__time"><?php echo esc_html( $visit['time'] ?? '' ); ?></time>
+									</div>
+									<div class="gi-matomo-live-visit__page" title="<?php echo esc_attr( $visit['page'] ?? '' ); ?>">
+										<?php echo esc_html( $visit['page'] ?? '' ); ?>
+									</div>
+									<div class="gi-matomo-live-visit__meta">
+										<span><?php echo esc_html( $visit['device'] ?? '' ); ?></span>
+										<span class="gi-matomo-live-visit__sep">·</span>
+										<span><?php echo esc_html( $visit['referrer'] ?? '' ); ?></span>
+									</div>
+								</div>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				<?php endif; ?>
+			</div>
 		</div>
 		<?php
 	}
