@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.20.9 =
+Update: Mail catcher — tableau type journal (Jour, Destinataire, Sujet, Erreur) et aperçu avec onglets HTML / RAW / JSON.
+
 = 2.20.8 =
 Fix: Mail catcher — alignement des cases à cocher, aperçu HTML vs texte brut selon le contenu.
 

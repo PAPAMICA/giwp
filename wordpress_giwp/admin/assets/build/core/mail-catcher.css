@@ -31,3 +31,39 @@
 .gi-toolkit-email-preview__format-badge.is-plain{background:#f2f4f7;color:#475467}
 .gi-toolkit-email-preview__content__item__content__message iframe,.gi-toolkit-email-preview__iframe{background:#fff;border:1px solid #eaecf0;border-radius:8px;display:block;height:360px;width:100%}
 .gi-toolkit-email-preview__plaintext{background:#f9fafb;border:1px solid #eaecf0;border-radius:8px;color:#344054;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:0;max-height:360px;overflow:auto;padding:14px;white-space:pre-wrap;word-break:break-word}
+
+.gi-toolkit-mail-catcher-table--log .wp-list-table{border:1px solid #c3c4c7!important;border-radius:0!important;box-shadow:none!important;margin:1em 0 0!important}
+.gi-toolkit-mail-catcher-table--log .wp-list-table thead th,.gi-toolkit-mail-catcher-table--log .wp-list-table tfoot th{background:#fff!important;border-bottom:1px solid #c3c4c7;color:#2271b1!important;font-size:13px;font-weight:600;height:auto!important;padding:10px 12px!important}
+.gi-toolkit-mail-catcher-table--log .wp-list-table thead th a,.gi-toolkit-mail-catcher-table--log .wp-list-table thead th.sortable a{color:#2271b1}
+.gi-toolkit-mail-catcher-table--log .wp-list-table tbody td{background:#fff!important;border-bottom:1px solid #dcdcde;height:auto!important;padding:11px 12px!important;vertical-align:middle!important}
+.gi-toolkit-mail-catcher-table--log .wp-list-table tbody tr:nth-child(even) td{background:#f6f7f7!important}
+.gi-toolkit-mail-catcher-table--log .wp-list-table tbody tr:hover td{background:#f0f6fc!important}
+.gi-toolkit-mail-catcher-table--log .check-column{width:2.2em!important;min-width:2.2em!important;padding:11px 0 0 12px!important;text-align:left!important}
+.gi-toolkit-mail-catcher-table--log .column-mail_error{width:18%}
+.gi-toolkit-mail-catcher-table--log .column-subject{width:38%}
+.gi-toolkit-mail-catcher-table--log .column-time{width:170px;white-space:nowrap}
+.gi-toolkit-mail-catcher-table--log .column-receiver{width:220px}
+.gi-toolkit-mail-catcher-table--log .column-actions{width:130px}
+
+.gi-toolkit-popup--mail-catcher .gi-toolkit-popup__content{border-radius:4px;max-height:90vh;max-width:760px;overflow:auto;padding:0;width:calc(100% - 32px)}
+.gi-toolkit-popup--mail-catcher .gi-toolkit-popup__header{align-items:center;border-bottom:1px solid #dcdcde;margin:0;padding:14px 18px}
+.gi-toolkit-popup--mail-catcher .gi-toolkit-popup__header__title{font-size:16px;font-weight:600}
+.gi-toolkit-popup--mail-catcher .gi-toolkit-popup__header__close{right:0;top:0}
+.gi-toolkit-popup--mail-catcher .gi-toolkit-popup__body{padding:0}
+.gi-toolkit-popup--mail-catcher .gi-toolkit-email-preview__content{border:none;border-radius:0;min-height:0}
+.gi-toolkit-mail-preview__tabs{border-bottom:1px solid #dcdcde;display:flex;gap:28px;padding:0 18px}
+.gi-toolkit-mail-preview__tab{background:none;border:none;border-bottom:2px solid transparent;color:#50575e;cursor:pointer;font-size:13px;font-weight:600;margin:0 0 -1px;padding:12px 2px}
+.gi-toolkit-mail-preview__tab.is-active{border-bottom-color:#d97426;color:#d97426}
+.gi-toolkit-mail-preview__tab:focus-visible{outline:2px solid #2271b1;outline-offset:2px}
+.gi-toolkit-mail-preview__panels{padding:0}
+.gi-toolkit-mail-preview__panel{display:none}
+.gi-toolkit-mail-preview__panel.is-active{display:block}
+.gi-toolkit-email-preview__content--html{padding:0}
+.gi-toolkit-email-preview__content--html .gi-toolkit-email-preview__iframe{border:none;border-radius:0;height:420px;max-height:60vh;width:100%}
+.gi-toolkit-email-preview__content--raw .gi-toolkit-email-preview__content__item{align-items:flex-start;border-bottom:1px solid #dcdcde;display:flex;gap:16px;padding:12px 18px}
+.gi-toolkit-email-preview__content--raw .gi-toolkit-email-preview__content__item:last-child{border-bottom:none}
+.gi-toolkit-email-preview__content--raw .gi-toolkit-email-preview__content__item__title{color:#1d2327;flex:0 0 120px;font-size:13px;font-weight:700;width:120px}
+.gi-toolkit-email-preview__content--raw .gi-toolkit-email-preview__content__item__content{flex:1;min-width:0}
+.gi-toolkit-email-preview__content--raw .gi-toolkit-email-preview__content__item__content__value{color:#2c3338;font-size:13px;line-height:1.5;word-break:break-word}
+.gi-toolkit-email-preview__content--raw .gi-toolkit-email-preview__content__item__content__message .gi-toolkit-email-preview__plaintext{background:#fff;border:none;border-radius:0;margin:0;max-height:280px;padding:0}
+.gi-toolkit-mail-preview__json{background:#fff;color:#2c3338;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:0;max-height:60vh;overflow:auto;padding:16px 18px;white-space:pre-wrap;word-break:break-word}

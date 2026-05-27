@@ -201,12 +201,10 @@ class Gi_Toolkit_Mail_Catcher_Logs_List_Table extends WP_List_Table {
 	public function get_columns() {
 		return array(
 			'cb'         => '<input type="checkbox" />',
+			'time'       => __( 'Jour', 'gi-toolkit' ),
 			'receiver'   => __( 'Destinataire', 'gi-toolkit' ),
-			'subject'    => __( 'Objet', 'gi-toolkit' ),
-			'status'     => __( 'Statut', 'gi-toolkit' ),
+			'subject'    => __( 'Sujet', 'gi-toolkit' ),
 			'mail_error' => __( 'Erreur', 'gi-toolkit' ),
-			'resent'     => __( 'Renvois', 'gi-toolkit' ),
-			'time'       => __( 'Date', 'gi-toolkit' ),
 			'actions'    => __( 'Actions', 'gi-toolkit' ),
 		);
 	}
@@ -216,7 +214,9 @@ class Gi_Toolkit_Mail_Catcher_Logs_List_Table extends WP_List_Table {
 	 */
 	public function get_sortable_columns() {
 		return array(
-			'time' => array( 'unixtime', true ),
+			'time'     => array( 'unixtime', true ),
+			'receiver' => array( 'receiver', false ),
+			'subject'  => array( 'subject', false ),
 		);
 	}
 
@@ -294,7 +294,8 @@ class Gi_Toolkit_Mail_Catcher_Logs_List_Table extends WP_List_Table {
 	 * @param array<string, mixed> $item Ligne.
 	 */
 	protected function column_time( $item ) {
-		return '<span class="gi-toolkit-mail-catcher-cell-time">' . esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) ( $item['unixtime'] ?? 0 ) ) ) . '</span>';
+		$timestamp = (int) ( $item['unixtime'] ?? 0 );
+		return '<span class="gi-toolkit-mail-catcher-cell-time">' . esc_html( wp_date( 'Y-m-d H:i:s', $timestamp ) ) . '</span>';
 	}
 
 	/**
@@ -345,7 +346,7 @@ class Gi_Toolkit_Mail_Catcher_Logs_List_Table extends WP_List_Table {
 				<span class="screen-reader-text"><?php esc_html_e( 'Aperçu', 'gi-toolkit' ); ?></span>
 			</button>
 			<button type="submit" class="gi-toolkit-mail-catcher-action gi-toolkit-mail-catcher-action--resend gi-toolkit-resend" name="resend" value="<?php echo esc_attr( (string) $id ); ?>" title="<?php esc_attr_e( 'Renvoyer', 'gi-toolkit' ); ?>">
-				<span class="dashicons dashicons-email-alt" aria-hidden="true"></span>
+				<span class="dashicons dashicons-update" aria-hidden="true"></span>
 				<span class="screen-reader-text"><?php esc_html_e( 'Renvoyer', 'gi-toolkit' ); ?></span>
 			</button>
 			<button type="submit" class="gi-toolkit-mail-catcher-action gi-toolkit-mail-catcher-action--delete gi-toolkit-delete" name="delete" value="<?php echo esc_attr( (string) $id ); ?>" title="<?php esc_attr_e( 'Supprimer', 'gi-toolkit' ); ?>">
