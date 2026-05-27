@@ -1,5 +1,13 @@
 == Changelog ==
 
+= 2.20.36 =
+Fix: Déploiement MainWP Matomo — enregistrement immédiat des réglages puis sync API (évite les faux timeouts MainWP).
+Update: Sync Matomo en échec = avertissement (réglages conservés), pas un échec d’import complet.
+
+= 2.20.35 =
+Fix: Import MainWP — activation du module Matomo avant déploiement des réglages (fonctionne sans activation manuelle préalable).
+Fix: Déploiement Matomo sans instancier le module ; ignore les tokens masqués (••••) dans le bundle.
+
 = 2.20.34 =
 Fix: Déploiement MainWP Matomo — URL + token API envoyés à chaque site enfant ; site_id réinitialisé et création/association automatique par URL WordPress.
 Update: Export bundle sans site_id source ; statut MainWP enrichi (configured, site_id).

@@ -756,6 +756,63 @@
 			switchGiwebTab( initialTab );
 		}
 
+		var $historyDetail = $( '#mainwp-giweb-history-detail' );
+		$( document ).on( 'click', '.mainwp-giweb-history-detail', function () {
+			var deploymentId = parseInt( $( this ).data( 'deploymentId' ) || $( this ).attr( 'data-deployment-id' ), 10 );
+			if ( ! deploymentId || ! hasAjax() || ! $historyDetail.length ) {
+				return;
+			}
+			switchGiwebTab( 'history' );
+			$historyDetail.removeAttr( 'hidden' );
+			$historyDetail.find( '.mainwp-giweb-history-detail__title' ).text(
+				( i18n( 'historyDetailTitle', 'Détail du déploiement #' ) || 'Détail du déploiement #' ) + deploymentId
+			);
+			$historyDetail.find( '.mainwp-giweb-history-detail__loading' ).removeAttr( 'hidden' );
+			$historyDetail.find( '.mainwp-giweb-history-detail__error' ).attr( 'hidden', 'hidden' ).text( '' );
+			$historyDetail.find( '.mainwp-giweb-history-detail__table' ).attr( 'hidden', 'hidden' );
+			$historyDetail.find( 'tbody' ).empty();
+
+			postAjax( 'mainwp_giweb_get_deployment_detail', { deployment_id: deploymentId } )
+				.done( function ( response ) {
+					$historyDetail.find( '.mainwp-giweb-history-detail__loading' ).attr( 'hidden', 'hidden' );
+					if ( ! response || ! response.success || ! response.data || ! response.data.sites ) {
+						$historyDetail
+							.find( '.mainwp-giweb-history-detail__error' )
+							.removeAttr( 'hidden' )
+							.text(
+								( response && response.data && response.data.message ) ||
+									i18n( 'historyDetailError', 'Impossible de charger le détail.' )
+							);
+						return;
+					}
+					var $tbody = $historyDetail.find( 'tbody' );
+					response.data.sites.forEach( function ( row ) {
+						var ok = row.status === 'success';
+						var $tr = $( '<tr/>' );
+						$tr.append( $( '<td/>' ).text( row.name || '#' + row.site_id ) );
+						$tr.append(
+							$( '<td/>' ).html(
+								'<span class="mainwp-giweb-badge ' +
+									( ok ? 'ok' : 'err' ) +
+									'">' +
+									( row.status || '' ) +
+									'</span>'
+							)
+						);
+						$tr.append( $( '<td/>' ).text( row.message || '' ) );
+						$tbody.append( $tr );
+					} );
+					$historyDetail.find( '.mainwp-giweb-history-detail__table' ).removeAttr( 'hidden' );
+				} )
+				.fail( function () {
+					$historyDetail.find( '.mainwp-giweb-history-detail__loading' ).attr( 'hidden', 'hidden' );
+					$historyDetail
+						.find( '.mainwp-giweb-history-detail__error' )
+						.removeAttr( 'hidden' )
+						.text( i18n( 'historyDetailError', 'Impossible de charger le détail.' ) );
+				} );
+		} );
+
 		$( document ).on( 'click', '.mainwp-giweb-pull-config', function ( e ) {
 			log( 'jQuery click pull', this.dataset );
 			if ( ! hasAjax() ) {

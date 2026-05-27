@@ -85,33 +85,155 @@ class MainWP_GIWeb_API {
 	 * @param string $raw_error  Erreur brute.
 	 * @return string
 	 */
-	public static function format_site_error( $website_id, $label, $raw_error ) {
-		$raw_error = wp_strip_all_tags( (string) $raw_error );
+	/**
+	 * Extrait les messages d’erreur d’une réponse import GI-Toolkit.
+	 *
+	 * @param array<string, mixed> $result Réponse normalisée.
+	 * @return string[]
+	 */
+	public static function extract_import_errors( $result ) {
+		if ( ! is_array( $result ) ) {
+			return array();
+		}
+
+		$messages = array();
+		if ( ! empty( $result['errors'] ) && is_array( $result['errors'] ) ) {
+			foreach ( $result['errors'] as $err ) {
+				$err = trim( wp_strip_all_tags( (string) $err ) );
+				if ( '' !== $err ) {
+					$messages[] = $err;
+				}
+			}
+		}
+
+		if ( ! empty( $result['data']['warnings'] ) && is_array( $result['data']['warnings'] ) ) {
+			foreach ( $result['data']['warnings'] as $warn ) {
+				$warn = trim( wp_strip_all_tags( (string) $warn ) );
+				if ( '' !== $warn ) {
+					$messages[] = $warn;
+				}
+			}
+		}
+
+		if ( ! empty( $result['data']['matomo']['message'] ) ) {
+			$messages[] = trim( wp_strip_all_tags( (string) $result['data']['matomo']['message'] ) );
+		}
+
+		return array_values( array_unique( array_filter( $messages ) ) );
+	}
+
+	/**
+	 * Message d’erreur lisible pour un déploiement / import.
+	 *
+	 * @param int                  $website_id ID site.
+	 * @param string               $label      Nom affiché.
+	 * @param string               $raw_error  Erreur brute.
+	 * @param array<string, mixed> $result     Réponse API complète (optionnel).
+	 * @return string
+	 */
+	public static function format_site_error( $website_id, $label, $raw_error, $result = null ) {
+		$raw_error = trim( wp_strip_all_tags( (string) $raw_error ) );
 		$site      = MainWP_GIWeb_Sites::find_by_id( $website_id, self::activator() );
+		$label     = $label ?: ( $site['name'] ?? '' );
 		$url       = $site['url'] ?: ( '#' . $website_id );
 
-		if ( false !== stripos( $raw_error, 'child plugin not detected' )
-			|| false !== stripos( $raw_error, 'could not be reached' ) ) {
+		$structured = self::extract_import_errors( is_array( $result ) ? $result : array() );
+		if ( ! empty( $structured ) ) {
+			$joined = implode( ' — ', $structured );
+			if ( self::message_looks_like_matomo( $joined ) ) {
+				$joined = '[Matomo] ' . $joined;
+			}
+			return sprintf( '« %1$s » : %2$s', $label, $joined );
+		}
+
+		if ( false !== stripos( $raw_error, 'child plugin not detected' ) ) {
 			return sprintf(
 				/* translators: 1: site name, 2: site URL */
 				__(
-					'MainWP ne parvient pas à joindre « %1$s » (%2$s). Vérifiez que MainWP Child est installé et actif sur ce site, puis reconnectez le site dans MainWP > Sites. Testez aussi « Synchroniser les statuts » sur ce site.',
+					'MainWP Child introuvable sur « %1$s » (%2$s). Vérifiez que le plugin est installé et actif, puis reconnectez le site dans MainWP > Sites.',
 					'mainwp-giweb'
 				),
-				$label ?: $site['name'],
+				$label,
 				$url
+			);
+		}
+
+		if ( self::message_looks_like_timeout( $raw_error ) ) {
+			return sprintf(
+				/* translators: 1: site name, 2: technical detail */
+				__(
+					'« %1$s » : délai dépassé ou réponse invalide du site enfant (souvent l’appel API Matomo pendant l’import). Détail : %2$s',
+					'mainwp-giweb'
+				),
+				$label,
+				$raw_error
 			);
 		}
 
 		if ( '' === $raw_error ) {
 			return sprintf(
-				__( 'Échec de communication avec « %1$s » (%2$s).', 'mainwp-giweb' ),
-				$label ?: $site['name'],
+				__( 'Échec de l’import sur « %1$s » (%2$s) sans message détaillé.', 'mainwp-giweb' ),
+				$label,
 				$url
 			);
 		}
 
-		return $raw_error;
+		if ( self::message_looks_like_matomo( $raw_error ) ) {
+			return sprintf( '« %1$s » — [Matomo] %2$s', $label, $raw_error );
+		}
+
+		return sprintf( '« %1$s » : %2$s', $label, $raw_error );
+	}
+
+	/**
+	 * @param string $message Message.
+	 * @return bool
+	 */
+	private static function message_looks_like_matomo( $message ) {
+		return false !== stripos( $message, 'matomo' )
+			|| false !== stripos( $message, 'token api' )
+			|| false !== stripos( $message, 'site_id' );
+	}
+
+	/**
+	 * @param string $message Message.
+	 * @return bool
+	 */
+	private static function message_looks_like_timeout( $message ) {
+		return false !== stripos( $message, 'could not be reached' )
+			|| false !== stripos( $message, 'http request failed' )
+			|| false !== stripos( $message, 'timed out' )
+			|| false !== stripos( $message, 'timeout' )
+			|| false !== stripos( $message, 'curl error 28' );
+	}
+
+	/**
+	 * Message court pour les logs de déploiement (modal + historique).
+	 *
+	 * @param int                  $website_id ID site.
+	 * @param string               $label      Libellé site.
+	 * @param array<string, mixed> $result     Réponse import.
+	 * @param bool                 $ok         Import réussi.
+	 * @return string
+	 */
+	public static function format_deploy_result_message( $website_id, $label, $result, $ok ) {
+		if ( $ok ) {
+			$warnings = self::extract_import_errors( $result );
+			if ( ! empty( $warnings ) ) {
+				return 'OK — ' . implode( ' — ', $warnings );
+			}
+			if ( ! empty( $result['data']['matomo']['site_id'] ) ) {
+				return sprintf(
+					/* translators: %d: Matomo site ID */
+					__( 'OK — Matomo site_id %d', 'mainwp-giweb' ),
+					absint( $result['data']['matomo']['site_id'] )
+				);
+			}
+			return __( 'OK', 'mainwp-giweb' );
+		}
+
+		$raw = ! empty( $result['errors'][0] ) ? (string) $result['errors'][0] : __( 'Échec de l’import.', 'mainwp-giweb' );
+		return self::format_site_error( $website_id, $label, $raw, $result );
 	}
 
 	/**

@@ -438,6 +438,39 @@ class Gi_Toolkit_Matomo {
 	}
 
 	/**
+	 * Charge les classes Matomo nécessaires au déploiement (module inactif ou import MainWP).
+	 *
+	 * @return void
+	 */
+	public static function load_deploy_dependencies() {
+		if ( ! defined( 'GI_TOOLKIT_PLUGIN_PATH' ) ) {
+			return;
+		}
+		$base = GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/matomo/';
+		if ( ! class_exists( 'Gi_Toolkit_Matomo_API', false ) && is_readable( $base . 'class-api.php' ) ) {
+			require_once $base . 'class-api.php';
+		}
+		if ( ! class_exists( 'Gi_Toolkit_Matomo_Site', false ) && is_readable( $base . 'class-site.php' ) ) {
+			require_once $base . 'class-site.php';
+		}
+	}
+
+	/**
+	 * @param string $token Token brut.
+	 * @return string
+	 */
+	private static function sanitize_api_token_for_import( $token ) {
+		$token = trim( (string) $token );
+		if ( '' === $token ) {
+			return '';
+		}
+		if ( preg_match( '/^[•*.\s]+$/u', $token ) ) {
+			return '';
+		}
+		return $token;
+	}
+
+	/**
 	 * Prépare les réglages pour un déploiement distant (MainWP / import JSON).
 	 * Ne conserve jamais l’ID site du dashboard source.
 	 *
@@ -445,9 +478,12 @@ class Gi_Toolkit_Matomo {
 	 * @return array<string, mixed>
 	 */
 	public static function prepare_settings_for_remote_deploy( array $settings ) {
+		self::load_deploy_dependencies();
 		$settings = wp_parse_args( is_array( $settings ) ? $settings : array(), self::default_settings() );
-		$settings['matomo_url'] = Gi_Toolkit_Matomo_API::normalize_matomo_url( $settings['matomo_url'] ?? '' );
-		$settings['api_token']  = trim( (string) ( $settings['api_token'] ?? '' ) );
+		$settings['matomo_url'] = class_exists( 'Gi_Toolkit_Matomo_API', false )
+			? Gi_Toolkit_Matomo_API::normalize_matomo_url( $settings['matomo_url'] ?? '' )
+			: esc_url_raw( rtrim( trim( (string) ( $settings['matomo_url'] ?? '' ) ), '/' ) );
+		$settings['api_token']  = self::sanitize_api_token_for_import( $settings['api_token'] ?? '' );
 		$settings['site_id']    = 0;
 		if ( ! isset( $settings['auto_site'] ) || '0' !== (string) $settings['auto_site'] ) {
 			$settings['auto_site'] = '1';
@@ -462,6 +498,7 @@ class Gi_Toolkit_Matomo {
 	 * @return array{success:bool, message?:string, site_id?:int, sync?:array<string,mixed>}
 	 */
 	public static function deploy_from_mainwp( array $settings ) {
+		self::load_deploy_dependencies();
 		$settings = self::prepare_settings_for_remote_deploy( $settings );
 
 		if ( '' === $settings['matomo_url'] || '' === $settings['api_token'] ) {
@@ -471,47 +508,58 @@ class Gi_Toolkit_Matomo {
 			);
 		}
 
-		$settings   = self::bootstrap_settings_after_import( $settings );
-		$sync_error = isset( $settings['_last_sync_error'] ) ? (string) $settings['_last_sync_error'] : '';
-		unset( $settings['_last_sync_error'] );
-
-		if ( absint( $settings['site_id'] ?? 0 ) < 1 && '1' === (string) ( $settings['auto_site'] ?? '1' ) ) {
-			return array(
-				'success' => false,
-				'message' => $sync_error ?: __( 'Connexion Matomo OK mais impossible d’associer ce site WordPress dans Matomo.', 'gi-toolkit' ),
-			);
-		}
-
-		if ( ! self::$instance ) {
-			new self();
-		}
-
-		$result = self::$instance->apply_settings( $settings, false );
-
-		if ( empty( $result['success'] ) ) {
+		$settings['site_id'] = 0;
+		$persist             = self::persist_settings_static( $settings, false );
+		if ( empty( $persist['success'] ) ) {
 			return array(
 				'success' => false,
 				'message' => __( 'Échec de l’enregistrement des réglages Matomo.', 'gi-toolkit' ),
 			);
 		}
 
-		$site_id = absint( $result['site_id'] ?? 0 );
-		$sync    = is_array( $result['sync'] ?? null ) ? $result['sync'] : array();
-
-		if ( $site_id < 1 && '1' === (string) ( $settings['auto_site'] ?? '1' ) ) {
+		if ( '1' !== (string) ( $settings['auto_site'] ?? '1' ) ) {
 			return array(
-				'success' => false,
-				'message' => $sync['message'] ?? __( 'Site Matomo non synchronisé.', 'gi-toolkit' ),
+				'success' => true,
+				'site_id' => 0,
+				'message' => __( 'Réglages Matomo enregistrés (sans synchronisation automatique).', 'gi-toolkit' ),
+			);
+		}
+
+		if ( class_exists( 'Gi_Toolkit_Matomo_API', false ) ) {
+			Gi_Toolkit_Matomo_API::set_request_timeout( 12 );
+		}
+
+		$sync = class_exists( 'Gi_Toolkit_Matomo_Site', false )
+			? Gi_Toolkit_Matomo_Site::ensure_site_id( $settings, true )
+			: array( 'success' => false, 'message' => __( 'Module Matomo indisponible.', 'gi-toolkit' ) );
+
+		if ( class_exists( 'Gi_Toolkit_Matomo_API', false ) ) {
+			Gi_Toolkit_Matomo_API::set_request_timeout( 30 );
+		}
+
+		if ( ! empty( $sync['success'] ) && ! empty( $sync['site_id'] ) ) {
+			$settings['site_id'] = (int) $sync['site_id'];
+			self::persist_settings_static( $settings, false );
+			return array(
+				'success' => true,
+				'site_id' => (int) $settings['site_id'],
+				'message' => ! empty( $sync['created'] )
+					? __( 'Matomo configuré — site créé dans Matomo.', 'gi-toolkit' )
+					: __( 'Matomo configuré — site associé.', 'gi-toolkit' ),
 				'sync'    => $sync,
 			);
 		}
 
+		$sync_msg = $sync['message'] ?? __( 'Synchronisation Matomo impossible.', 'gi-toolkit' );
 		return array(
 			'success' => true,
-			'site_id' => $site_id,
-			'message' => ! empty( $sync['created'] )
-				? __( 'Matomo configuré — site créé dans Matomo.', 'gi-toolkit' )
-				: __( 'Matomo configuré — site associé.', 'gi-toolkit' ),
+			'warning' => $sync_msg,
+			'site_id' => 0,
+			'message' => sprintf(
+				/* translators: %s: Matomo sync error detail */
+				__( 'Réglages Matomo enregistrés. Synchronisation reportée : %s', 'gi-toolkit' ),
+				$sync_msg
+			),
 			'sync'    => $sync,
 		);
 	}
@@ -526,6 +574,45 @@ class Gi_Toolkit_Matomo {
 	}
 
 	/**
+	 * Enregistre les réglages sans instancier le module (import MainWP, module inactif).
+	 *
+	 * @param array<string, mixed> $settings  Réglages.
+	 * @param bool                 $sync_site Synchroniser le site Matomo.
+	 * @return array{success:bool, site_id?:int, sync?:array<string,mixed>}
+	 */
+	public static function persist_settings_static( array $settings, $sync_site = true ) {
+		self::load_deploy_dependencies();
+		$settings['matomo_url'] = class_exists( 'Gi_Toolkit_Matomo_API', false )
+			? Gi_Toolkit_Matomo_API::normalize_matomo_url( $settings['matomo_url'] ?? '' )
+			: esc_url_raw( rtrim( trim( (string) ( $settings['matomo_url'] ?? '' ) ), '/' ) );
+		$settings['site_id'] = absint( $settings['site_id'] ?? 0 );
+
+		$sync_result = null;
+		if ( $sync_site && '1' === (string) ( $settings['auto_site'] ?? '1' ) && class_exists( 'Gi_Toolkit_Matomo_Site', false ) ) {
+			$sync_result = Gi_Toolkit_Matomo_Site::ensure_site_id( $settings, true );
+			if ( ! empty( $sync_result['success'] ) && ! empty( $sync_result['site_id'] ) ) {
+				$settings['site_id'] = (int) $sync_result['site_id'];
+			}
+		}
+
+		if ( class_exists( 'Gi_Toolkit_Matomo_Site', false ) ) {
+			Gi_Toolkit_Matomo_Site::clear_tracking_cache( $settings );
+		}
+		update_option( self::OPTION_SETTINGS, $settings, false );
+
+		$site_id = absint( $settings['site_id'] ?? 0 );
+		if ( $site_id > 0 ) {
+			delete_transient( 'gi_matomo_toolbar_' . $site_id );
+		}
+
+		return array(
+			'success' => true,
+			'site_id' => $site_id,
+			'sync'    => $sync_result,
+		);
+	}
+
+	/**
 	 * Après import MainWP / JSON : synchronise le site Matomo pour l’URL de ce site enfant.
 	 *
 	 * @param array<string, mixed> $settings Réglages importés.
@@ -535,6 +622,7 @@ class Gi_Toolkit_Matomo {
 		if ( ! is_array( $settings ) ) {
 			$settings = array();
 		}
+		self::load_deploy_dependencies();
 		$settings = self::prepare_settings_for_remote_deploy( $settings );
 
 		$api = new Gi_Toolkit_Matomo_API( $settings );

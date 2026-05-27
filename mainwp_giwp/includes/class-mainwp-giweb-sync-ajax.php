@@ -25,6 +25,7 @@ class MainWP_GIWeb_Sync_Ajax {
 		add_action( 'wp_ajax_mainwp_giweb_deploy_init', array( __CLASS__, 'ajax_deploy_init' ) );
 		add_action( 'wp_ajax_mainwp_giweb_deploy_site', array( __CLASS__, 'ajax_deploy_site' ) );
 		add_action( 'wp_ajax_mainwp_giweb_deploy_cleanup', array( __CLASS__, 'ajax_deploy_cleanup' ) );
+		add_action( 'wp_ajax_mainwp_giweb_get_deployment_detail', array( __CLASS__, 'ajax_get_deployment_detail' ) );
 		add_action( 'wp_ajax_mainwp_giweb_plugin_deploy_init', array( __CLASS__, 'ajax_plugin_deploy_init' ) );
 		add_action( 'wp_ajax_mainwp_giweb_plugin_deploy_site', array( __CLASS__, 'ajax_plugin_deploy_site' ) );
 		add_action( 'wp_ajax_mainwp_giweb_plugin_deploy_cleanup', array( __CLASS__, 'ajax_plugin_deploy_cleanup' ) );
@@ -57,6 +58,14 @@ class MainWP_GIWeb_Sync_Ajax {
 		return 'mainwp_giweb_deploy_' . absint( $deployment_id );
 	}
 
+	/**
+	 * Import avec une nouvelle tentative si MainWP ne joint pas le site enfant.
+	 *
+	 * @param int                  $site_id ID site.
+	 * @param array<string, mixed> $bundle  Bundle.
+	 * @param array<string, mixed> $args    Args import.
+	 * @return array<string, mixed>
+	 */
 	/**
 	 * @param string $job_id ID tâche déploiement plugin.
 	 * @return string
@@ -594,15 +603,11 @@ class MainWP_GIWeb_Sync_Ajax {
 			}
 
 			$label  = isset( $_POST['site_label'] ) ? sanitize_text_field( wp_unslash( $_POST['site_label'] ) ) : ( '#' . $site_id );
-			$bundle = $ctx['bundle'];
+			$bundle = MainWP_GIWeb_Matomo::merge_into_bundle( $ctx['bundle'] );
 			$args   = MainWP_GIWeb_Overrides::apply_to_bundle( $bundle, $site_id );
 			$result = MainWP_GIWeb_API::import_site( $site_id, $bundle, $args );
 			$ok     = ! empty( $result['success'] );
-			$msg    = ! empty( $result['errors'][0] ) ? (string) $result['errors'][0] : ( $ok ? __( 'OK', 'mainwp-giweb' ) : __( 'Échec', 'mainwp-giweb' ) );
-
-			if ( ! $ok ) {
-				$msg = MainWP_GIWeb_API::format_site_error( $site_id, $label, $msg );
-			}
+			$msg    = MainWP_GIWeb_API::format_deploy_result_message( $site_id, $label, $result, $ok );
 
 			MainWP_GIWeb_History::log_site_result( $deployment_id, $site_id, $ok ? 'success' : 'error', $msg, $result );
 
@@ -619,6 +624,48 @@ class MainWP_GIWeb_Sync_Ajax {
 					'success' => $ok,
 					'log'     => $log,
 					'message' => $msg,
+				)
+			);
+		} catch ( Throwable $e ) {
+			self::send_exception( $e );
+		} catch ( Exception $e ) {
+			self::send_exception( $e );
+		}
+	}
+
+	/**
+	 * Détail d’un déploiement (évite deployment_id en query string → 403 WAF).
+	 *
+	 * @return void
+	 */
+	public static function ajax_get_deployment_detail() {
+		self::bootstrap_ajax();
+		try {
+			self::verify_request();
+
+			$deployment_id = isset( $_POST['deployment_id'] ) ? absint( $_POST['deployment_id'] ) : 0;
+			if ( ! $deployment_id ) {
+				wp_send_json_error( array( 'message' => __( 'Déploiement invalide.', 'mainwp-giweb' ) ) );
+			}
+
+			$site_rows = MainWP_GIWeb_History::get_deployment_sites( $deployment_id );
+			$sites_out = array();
+
+			foreach ( $site_rows as $sr ) {
+				$site_id = absint( $sr->site_id ?? 0 );
+				$row     = MainWP_GIWeb_Sites::find_by_id( $site_id, self::activator() );
+				$sites_out[] = array(
+					'site_id' => $site_id,
+					'name'    => $row['name'] ?: $row['url'] ?: ( '#' . $site_id ),
+					'status'  => (string) ( $sr->status ?? '' ),
+					'message' => (string) ( $sr->message ?? '' ),
+				);
+			}
+
+			wp_send_json_success(
+				array(
+					'deployment_id' => $deployment_id,
+					'sites'         => $sites_out,
 				)
 			);
 		} catch ( Throwable $e ) {

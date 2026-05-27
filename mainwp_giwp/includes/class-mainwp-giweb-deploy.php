@@ -29,7 +29,7 @@ class MainWP_GIWeb_Deploy {
 			$args   = MainWP_GIWeb_Overrides::apply_to_bundle( $bundle, $site_id );
 			$result = MainWP_GIWeb_API::import_site( $site_id, $bundle, $args );
 			$status = ! empty( $result['success'] ) ? 'success' : 'error';
-			$msg    = ! empty( $result['errors'][0] ) ? $result['errors'][0] : ( 'success' === $status ? __( 'OK', 'mainwp-giweb' ) : __( 'Échec', 'mainwp-giweb' ) );
+			$msg    = MainWP_GIWeb_API::format_deploy_result_message( $site_id, '', $result, 'success' === $status );
 			MainWP_GIWeb_History::log_site_result( $deployment_id, $site_id, $status, $msg, $result );
 			$results[ $site_id ] = $result;
 		}

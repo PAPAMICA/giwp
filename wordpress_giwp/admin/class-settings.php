@@ -538,7 +538,10 @@ class Gi_Toolkit_Settings {
 		$default_settings       = array_keys( gi_toolkit_options() );
 		$sanitized_main_data    = array();
 		$sanitized_items_data   = array();
+		$matomo_pending         = null;
+		$matomo_deploy          = null;
 		$import_errors          = array();
+		$import_warnings        = array();
 		$current_main           = get_option( GI_TOOLKIT_PLUGIN_SETTINGS, array() );
 
 		foreach ( $default_settings as $item ) {
@@ -551,6 +554,10 @@ class Gi_Toolkit_Settings {
 				continue;
 			}
 			if ( isset( $upload_file_json[ $item ]['options'] ) && is_array( $upload_file_json[ $item ]['options'] ) ) {
+				if ( 'Gi_Toolkit_Matomo' === $item ) {
+					$matomo_pending = $upload_file_json[ $item ]['options'];
+					continue;
+				}
 				$can_save = class_exists( $item ) && method_exists( $item, 'save_settings' );
 				if ( ! $can_save && class_exists( 'Gi_Toolkit_Module_Css_Options' ) ) {
 					$can_save = Gi_Toolkit_Module_Css_Options::is_css_module( $item );
@@ -561,18 +568,21 @@ class Gi_Toolkit_Settings {
 			}
 		}
 
-		foreach ( $sanitized_items_data as $item_key => $item_value ) {
-			if ( 'Gi_Toolkit_Matomo' === $item_key && is_array( $item_value ) && class_exists( 'Gi_Toolkit_Matomo' ) ) {
-				$deploy = Gi_Toolkit_Matomo::deploy_from_mainwp( $item_value );
-				if ( empty( $deploy['success'] ) ) {
-					$import_errors[] = $deploy['message'] ?? __( 'Échec du déploiement Matomo.', 'gi-toolkit' );
-				}
-				continue;
+		// Activer les modules avant le déploiement Matomo (sinon le module inactif n’est pas initialisé).
+		self::save_main_settings( $sanitized_main_data );
+
+		if ( is_array( $matomo_pending ) && class_exists( 'Gi_Toolkit_Matomo' ) ) {
+			$matomo_deploy = Gi_Toolkit_Matomo::deploy_from_mainwp( $matomo_pending );
+			if ( empty( $matomo_deploy['success'] ) ) {
+				$import_errors[] = $matomo_deploy['message'] ?? __( 'Échec du déploiement Matomo.', 'gi-toolkit' );
+			} elseif ( ! empty( $matomo_deploy['warning'] ) ) {
+				$import_warnings[] = (string) $matomo_deploy['warning'];
 			}
-			self::invoke_module_save_settings( $item_key, $item_value );
 		}
 
-		self::save_main_settings( $sanitized_main_data );
+		foreach ( $sanitized_items_data as $item_key => $item_value ) {
+			self::invoke_module_save_settings( $item_key, $item_value );
+		}
 
 		if ( isset( $bundle['security'] ) && is_array( $bundle['security'] ) && class_exists( 'Gi_Toolkit_Security' ) ) {
 			update_option( Gi_Toolkit_Security::OPTION_KEY, Gi_Toolkit_Security::sanitize_options( $bundle['security'] ), false );
@@ -590,11 +600,23 @@ class Gi_Toolkit_Settings {
 			update_option( GI_TOOLKIT_PLUGIN_SETTINGS . '_use_wp_submenu', sanitize_text_field( $bundle['use_wp_submenu'] ), false );
 		}
 
+		$data = array(
+			'imported_modules' => count( $sanitized_main_data ),
+		);
+		if ( ! empty( $import_warnings ) ) {
+			$data['warnings'] = $import_warnings;
+		}
+		if ( is_array( $matomo_deploy ) ) {
+			$data['matomo'] = array(
+				'site_id' => absint( $matomo_deploy['site_id'] ?? 0 ),
+				'message' => (string) ( $matomo_deploy['message'] ?? '' ),
+				'warning' => (string) ( $matomo_deploy['warning'] ?? '' ),
+			);
+		}
+
 		return array(
 			'success' => empty( $import_errors ),
-			'data'    => array(
-				'imported_modules' => count( $sanitized_main_data ),
-			),
+			'data'    => $data,
 			'errors'  => $import_errors,
 		);
 	}

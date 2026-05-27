@@ -92,9 +92,9 @@ $logs            = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 		<tr>
 			<th scope="row"><?php esc_html_e( 'Synchronisation', 'mainwp-giweb' ); ?></th>
 			<td>
-				<label for="mainwp_giweb_sync_concurrency"><?php esc_html_e( 'Sites interrogés en parallèle', 'mainwp-giweb' ); ?></label>
+				<label for="mainwp_giweb_sync_concurrency"><?php esc_html_e( 'Sites interrogés en parallèle (sync et déploiement)', 'mainwp-giweb' ); ?></label>
 				<input type="number" min="1" max="15" step="1" class="small-text" id="mainwp_giweb_sync_concurrency" name="sync_concurrency" value="<?php echo esc_attr( (string) (int) ( $settings['sync_concurrency'] ?? 5 ) ); ?>" />
-				<p class="description"><?php esc_html_e( 'Augmentez pour accélérer la sync sur de nombreux sites (recommandé : 5).', 'mainwp-giweb' ); ?></p>
+				<p class="description"><?php esc_html_e( 'Utilisé pour la synchronisation des statuts et le déploiement de configuration (défaut : 5).', 'mainwp-giweb' ); ?></p>
 			</td>
 		</tr>
 		<tr>

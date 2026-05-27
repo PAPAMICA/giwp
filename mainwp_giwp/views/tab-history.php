@@ -3,11 +3,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 $deployments = MainWP_GIWeb_History::get_recent_deployments( 30 );
-$view_id     = isset( $_GET['deployment_id'] ) ? absint( $_GET['deployment_id'] ) : 0;
 ?>
 <h2><?php esc_html_e( 'Historique des déploiements', 'mainwp-giweb' ); ?></h2>
 
-<table class="widefat striped">
+<table class="widefat striped mainwp-giweb-history-table">
 	<thead>
 		<tr>
 			<th>ID</th>
@@ -25,27 +24,33 @@ $view_id     = isset( $_GET['deployment_id'] ) ? absint( $_GET['deployment_id'] 
 					<td><?php echo esc_html( (string) $row->id ); ?></td>
 					<td><?php echo esc_html( $row->template_name ?? '' ); ?></td>
 					<td><?php echo esc_html( $row->created_at ?? '' ); ?></td>
-					<td><a href="<?php echo esc_url( MainWP_GIWeb_UI::admin_page_url( array( 'tab' => 'history', 'deployment_id' => (string) (int) $row->id ) ) ); ?>"><?php esc_html_e( 'Détails', 'mainwp-giweb' ); ?></a></td>
+					<td>
+						<button
+							type="button"
+							class="button button-small mainwp-giweb-history-detail"
+							data-deployment-id="<?php echo esc_attr( (string) (int) $row->id ); ?>"
+						>
+							<?php esc_html_e( 'Détails', 'mainwp-giweb' ); ?>
+						</button>
+					</td>
 				</tr>
 			<?php endforeach; ?>
 		<?php endif; ?>
 	</tbody>
 </table>
 
-<?php if ( $view_id ) :
-	$site_rows = MainWP_GIWeb_History::get_deployment_sites( $view_id );
-	?>
-	<h3><?php esc_html_e( 'Détail du déploiement #', 'mainwp-giweb' ); ?><?php echo esc_html( (string) $view_id ); ?></h3>
-	<table class="widefat striped">
-		<thead><tr><th><?php esc_html_e( 'Site', 'mainwp-giweb' ); ?></th><th><?php esc_html_e( 'Statut', 'mainwp-giweb' ); ?></th><th><?php esc_html_e( 'Message', 'mainwp-giweb' ); ?></th></tr></thead>
-		<tbody>
-			<?php foreach ( $site_rows as $sr ) : ?>
-				<tr>
-					<td><?php echo esc_html( MainWP_GIWeb::site_name( (int) $sr->site_id, $websites ) ); ?></td>
-					<td><span class="mainwp-giweb-badge <?php echo 'success' === $sr->status ? 'ok' : 'err'; ?>"><?php echo esc_html( $sr->status ); ?></span></td>
-					<td><?php echo esc_html( $sr->message ?? '' ); ?></td>
-				</tr>
-			<?php endforeach; ?>
-		</tbody>
+<div id="mainwp-giweb-history-detail" class="mainwp-giweb-history-detail" hidden>
+	<h3 class="mainwp-giweb-history-detail__title"><?php esc_html_e( 'Détail du déploiement', 'mainwp-giweb' ); ?></h3>
+	<p class="mainwp-giweb-history-detail__loading description" hidden><?php esc_html_e( 'Chargement…', 'mainwp-giweb' ); ?></p>
+	<p class="mainwp-giweb-history-detail__error description" hidden></p>
+	<table class="widefat striped mainwp-giweb-history-detail__table" hidden>
+		<thead>
+			<tr>
+				<th><?php esc_html_e( 'Site', 'mainwp-giweb' ); ?></th>
+				<th><?php esc_html_e( 'Statut', 'mainwp-giweb' ); ?></th>
+				<th><?php esc_html_e( 'Message', 'mainwp-giweb' ); ?></th>
+			</tr>
+		</thead>
+		<tbody></tbody>
 	</table>
-<?php endif; ?>
+</div>

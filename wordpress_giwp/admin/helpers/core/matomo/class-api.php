@@ -8,6 +8,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Gi_Toolkit_Matomo_API {
 
+	/** @var int Timeout HTTP (secondes) pour wp_remote_get. */
+	private static $request_timeout = 30;
+
 	/**
 	 * @var array<string, mixed>
 	 */
@@ -23,6 +26,14 @@ class Gi_Toolkit_Matomo_API {
 	 */
 	public function __construct( array $settings ) {
 		$this->settings = $settings;
+	}
+
+	/**
+	 * @param int $seconds Timeout en secondes (3–120).
+	 * @return void
+	 */
+	public static function set_request_timeout( $seconds ) {
+		self::$request_timeout = max( 3, min( 120, absint( $seconds ) ) );
 	}
 
 	/**
@@ -88,7 +99,7 @@ class Gi_Toolkit_Matomo_API {
 
 		$url  = add_query_arg( $query, $this->get_api_endpoint() );
 		$args = array(
-			'timeout'   => 30,
+			'timeout'   => self::$request_timeout,
 			'sslverify' => '1' !== (string) ( $this->settings['disable_ssl_verify'] ?? '0' ),
 			'headers'   => array(
 				'User-Agent' => 'GI-Toolkit-Matomo/' . ( defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '1' ),
