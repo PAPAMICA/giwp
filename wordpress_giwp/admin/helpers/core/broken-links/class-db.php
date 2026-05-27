@@ -84,6 +84,16 @@ class Gi_Toolkit_Broken_Links_DB {
 	}
 
 	/**
+	 * @return bool
+	 */
+	public static function tables_ready() {
+		global $wpdb;
+		$scans = self::scans_table();
+		$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $scans ) );
+		return $found === $scans;
+	}
+
+	/**
 	 * @param string $trigger manual|cron.
 	 * @return int Scan ID.
 	 */
@@ -149,6 +159,9 @@ class Gi_Toolkit_Broken_Links_DB {
 	 */
 	public static function get_recent_scans( $limit = 10 ) {
 		global $wpdb;
+		if ( ! self::tables_ready() ) {
+			return array();
+		}
 		return $wpdb->get_results(
 			$wpdb->prepare(
 				'SELECT * FROM ' . self::scans_table() . ' ORDER BY id DESC LIMIT %d',
@@ -176,7 +189,11 @@ class Gi_Toolkit_Broken_Links_DB {
 	 */
 	public static function get_latest_scan_id() {
 		global $wpdb;
-		return (int) $wpdb->get_var( 'SELECT id FROM ' . self::scans_table() . ' ORDER BY id DESC LIMIT 1' );
+		if ( ! self::tables_ready() ) {
+			return 0;
+		}
+		$id = $wpdb->get_var( 'SELECT id FROM ' . self::scans_table() . ' ORDER BY id DESC LIMIT 1' );
+		return $id ? (int) $id : 0;
 	}
 
 	/**

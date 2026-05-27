@@ -108,6 +108,12 @@ class Gi_Toolkit_Broken_Links_List_Table extends WP_List_Table {
 		$per_page = 25;
 		$page     = $this->get_pagenum();
 		$offset   = ( $page - 1 ) * $per_page;
+		if ( ! Gi_Toolkit_Broken_Links_DB::tables_ready() ) {
+			$this->items = array();
+			$this->set_pagination_args( array( 'total_items' => 0, 'per_page' => 25 ) );
+			return;
+		}
+
 		$table    = Gi_Toolkit_Broken_Links_DB::links_table();
 
 		$total = (int) $wpdb->get_var(
@@ -129,5 +135,16 @@ class Gi_Toolkit_Broken_Links_List_Table extends WP_List_Table {
 				'per_page'    => $per_page,
 			)
 		);
+	}
+
+	/**
+	 * @return void
+	 */
+	public function no_items() {
+		if ( $this->scan_id < 1 ) {
+			esc_html_e( 'Aucun scan pour le moment. Lancez un scan pour détecter les liens cassés.', 'gi-toolkit' );
+			return;
+		}
+		esc_html_e( 'Aucun lien cassé détecté lors du dernier scan.', 'gi-toolkit' );
 	}
 }

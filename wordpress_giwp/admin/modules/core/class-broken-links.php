@@ -130,6 +130,30 @@ class Gi_Toolkit_Broken_Links {
 			wp_send_json_error( array( 'message' => __( 'Permission refusée.', 'gi-toolkit' ) ) );
 		}
 
+		Gi_Toolkit_Broken_Links_DB::maybe_install();
+		if ( ! Gi_Toolkit_Broken_Links_DB::tables_ready() ) {
+			wp_send_json_error( array( 'message' => __( 'Impossible de créer les tables du module.', 'gi-toolkit' ) ) );
+		}
+
+		try {
+			$this->ajax_scan_batch_inner();
+		} catch ( Throwable $e ) {
+			wp_send_json_error(
+				array(
+					'message' => sprintf(
+						/* translators: %s: error message */
+						__( 'Erreur lors du scan : %s', 'gi-toolkit' ),
+						$e->getMessage()
+					),
+				)
+			);
+		}
+	}
+
+	/**
+	 * @return void
+	 */
+	private function ajax_scan_batch_inner() {
 		if ( isset( $_POST['start'] ) && '1' === (string) wp_unslash( $_POST['start'] ) ) {
 			$latest = Gi_Toolkit_Broken_Links_DB::get_latest_scan_id();
 			if ( $latest ) {
@@ -158,6 +182,28 @@ class Gi_Toolkit_Broken_Links {
 	}
 
 	/**
+	 * @param object|null $scan Ligne scan.
+	 * @return array{broken: int, checked: int, status: string, date: string}
+	 */
+	private function get_scan_summary( $scan ) {
+		if ( ! $scan ) {
+			return array(
+				'broken'  => 0,
+				'checked' => 0,
+				'status'  => '',
+				'date'    => '',
+			);
+		}
+		$date = $scan->finished_at ? $scan->finished_at : $scan->started_at;
+		return array(
+			'broken'  => (int) $scan->broken_count,
+			'checked' => (int) $scan->urls_checked,
+			'status'  => (string) $scan->status,
+			'date'    => $date ? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $date ) : '',
+		);
+	}
+
+	/**
 	 * @return void
 	 */
 	public function run_cron_scan() {
@@ -178,6 +224,8 @@ class Gi_Toolkit_Broken_Links {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
+
+		Gi_Toolkit_Broken_Links_DB::maybe_install();
 
 		$version = defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '1.0.0';
 		wp_enqueue_style(
@@ -201,6 +249,7 @@ class Gi_Toolkit_Broken_Links {
 				'nonce'   => wp_create_nonce( 'gi_toolkit_broken_links' ),
 				'i18n'    => array(
 					'scanning' => __( 'Scan en cours…', 'gi-toolkit' ),
+					'done'     => __( 'Scan terminé.', 'gi-toolkit' ),
 					'error'    => __( 'Erreur lors du scan.', 'gi-toolkit' ),
 				),
 			)
@@ -210,94 +259,127 @@ class Gi_Toolkit_Broken_Links {
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'results';
 		$settings = $this->get_settings();
 		$scan_id  = Gi_Toolkit_Broken_Links_DB::get_latest_scan_id();
+		$scan     = $scan_id ? Gi_Toolkit_Broken_Links_DB::get_scan( $scan_id ) : null;
+		$summary  = $this->get_scan_summary( $scan );
 
 		include GI_TOOLKIT_PLUGIN_PATH . 'admin/templates/core/submenu/header.php';
 		?>
-		<div class="gi-toolkit__body" style="padding:1rem 1.5rem 2rem;">
+		<div class="gi-toolkit__body gi-toolkit-broken-links-page">
 			<?php if ( ! empty( $_GET['gi_toolkit_pro_saved'] ) ) : ?>
-				<div class="notice notice-success inline"><p><?php esc_html_e( 'Enregistré.', 'gi-toolkit' ); ?></p></div>
+				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Enregistré.', 'gi-toolkit' ); ?></p></div>
 			<?php endif; ?>
 
-			<nav class="gi-broken-links-tabs">
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . rawurlencode( $this->page_slug ) . '&tab=results' ) ); ?>" class="<?php echo 'results' === $tab ? 'is-active' : ''; ?>">
+			<?php if ( ! Gi_Toolkit_Broken_Links_DB::tables_ready() ) : ?>
+				<div class="notice notice-error"><p><?php esc_html_e( 'Les tables du module n’ont pas pu être créées. Vérifiez les droits MySQL.', 'gi-toolkit' ); ?></p></div>
+			<?php endif; ?>
+
+			<nav class="gi-broken-links-tabs" aria-label="<?php esc_attr_e( 'Navigation liens cassés', 'gi-toolkit' ); ?>">
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . rawurlencode( $this->page_slug ) . '&tab=results' ) ); ?>" class="gi-broken-links-tab <?php echo 'results' === $tab ? 'is-active' : ''; ?>">
 					<?php esc_html_e( 'Résultats', 'gi-toolkit' ); ?>
 				</a>
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . rawurlencode( $this->page_slug ) . '&tab=history' ) ); ?>" class="<?php echo 'history' === $tab ? 'is-active' : ''; ?>">
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . rawurlencode( $this->page_slug ) . '&tab=history' ) ); ?>" class="gi-broken-links-tab <?php echo 'history' === $tab ? 'is-active' : ''; ?>">
 					<?php esc_html_e( 'Historique & planification', 'gi-toolkit' ); ?>
 				</a>
 			</nav>
 
-			<div class="gi-broken-links-scan-bar">
-				<button type="button" class="button button-primary" id="gi-broken-links-start-scan">
-					<?php esc_html_e( 'Lancer un scan maintenant', 'gi-toolkit' ); ?>
-				</button>
-				<progress id="gi-broken-links-scan-progress" max="100" value="0"></progress>
-				<p id="gi-broken-links-scan-status" class="description"></p>
+			<div class="gi-broken-links-toolbar">
+				<div class="gi-broken-links-scan-panel">
+					<button type="button" class="button button-primary button-hero" id="gi-broken-links-start-scan">
+						<?php esc_html_e( 'Lancer un scan', 'gi-toolkit' ); ?>
+					</button>
+					<div class="gi-broken-links-scan-progress-wrap" hidden>
+						<progress id="gi-broken-links-scan-progress" max="100" value="0"></progress>
+						<span id="gi-broken-links-scan-percent" class="gi-broken-links-scan-percent">0%</span>
+					</div>
+					<p id="gi-broken-links-scan-status" class="gi-broken-links-scan-status description"></p>
+				</div>
+				<p class="gi-broken-links-intro description">
+					<?php esc_html_e( 'Analyse les liens dans le contenu des publications (posts, pages et types publics). Les vérifications externes sont limitées à environ une requête par seconde et par domaine.', 'gi-toolkit' ); ?>
+				</p>
 			</div>
 
-			<p class="description">
-				<?php esc_html_e( 'Analyse les liens dans le contenu des publications (posts, pages et types publics). Les vérifications externes sont limitées à environ une requête par seconde et par domaine.', 'gi-toolkit' ); ?>
-			</p>
-
-			<?php if ( 'history' === $tab ) : ?>
-				<h3><?php esc_html_e( 'Historique des scans', 'gi-toolkit' ); ?></h3>
-				<?php
-				$history = new Gi_Toolkit_Broken_Links_Scans_List_Table();
-				$history->prepare_items();
-				$history->display();
-				?>
-
-				<div class="gi-broken-links-settings">
-					<h3><?php esc_html_e( 'Planification automatique', 'gi-toolkit' ); ?></h3>
-					<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=' . rawurlencode( $this->page_slug ) . '&tab=history' ) ); ?>">
-						<?php wp_nonce_field( 'gi_toolkit_broken_links_save' ); ?>
-						<input type="hidden" name="gi_toolkit_pro_save" value="1" />
-						<p>
-							<label>
-								<input type="checkbox" name="cron_enabled" value="1" <?php checked( $settings['cron_enabled'], '1' ); ?> />
-								<?php esc_html_e( 'Activer le scan automatique', 'gi-toolkit' ); ?>
-							</label>
-						</p>
-						<p>
-							<label for="cron_schedule"><?php esc_html_e( 'Fréquence', 'gi-toolkit' ); ?></label>
-							<select name="cron_schedule" id="cron_schedule">
-								<option value="daily" <?php selected( $settings['cron_schedule'], 'daily' ); ?>><?php esc_html_e( 'Quotidien', 'gi-toolkit' ); ?></option>
-								<option value="weekly" <?php selected( $settings['cron_schedule'], 'weekly' ); ?>><?php esc_html_e( 'Hebdomadaire', 'gi-toolkit' ); ?></option>
-							</select>
-						</p>
-						<p>
-							<label for="keep_scans"><?php esc_html_e( 'Conserver les scans (historique)', 'gi-toolkit' ); ?></label>
-							<input type="number" min="3" max="50" name="keep_scans" id="keep_scans" value="<?php echo esc_attr( (string) $settings['keep_scans'] ); ?>" />
-						</p>
-						<?php submit_button( __( 'Enregistrer', 'gi-toolkit' ) ); ?>
-					</form>
+			<?php if ( $scan_id && 'results' === $tab ) : ?>
+				<div class="gi-broken-links-stats">
+					<div class="gi-broken-links-stat gi-broken-links-stat--broken">
+						<span class="gi-broken-links-stat__value"><?php echo esc_html( (string) $summary['broken'] ); ?></span>
+						<span class="gi-broken-links-stat__label"><?php esc_html_e( 'Liens cassés', 'gi-toolkit' ); ?></span>
+					</div>
+					<div class="gi-broken-links-stat">
+						<span class="gi-broken-links-stat__value"><?php echo esc_html( (string) $summary['checked'] ); ?></span>
+						<span class="gi-broken-links-stat__label"><?php esc_html_e( 'URLs vérifiées', 'gi-toolkit' ); ?></span>
+					</div>
+					<div class="gi-broken-links-stat">
+						<span class="gi-broken-links-stat__value">
+							<?php
+							if ( 'done' === $summary['status'] ) {
+								esc_html_e( 'Terminé', 'gi-toolkit' );
+							} elseif ( 'running' === $summary['status'] ) {
+								esc_html_e( 'En cours', 'gi-toolkit' );
+							} elseif ( 'failed' === $summary['status'] ) {
+								esc_html_e( 'Échec', 'gi-toolkit' );
+							} else {
+								echo esc_html( $summary['status'] ?: '—' );
+							}
+							?>
+						</span>
+						<span class="gi-broken-links-stat__label"><?php esc_html_e( 'Statut', 'gi-toolkit' ); ?></span>
+					</div>
+					<?php if ( $summary['date'] ) : ?>
+						<div class="gi-broken-links-stat">
+							<span class="gi-broken-links-stat__value gi-broken-links-stat__value--sm"><?php echo esc_html( $summary['date'] ); ?></span>
+							<span class="gi-broken-links-stat__label"><?php esc_html_e( 'Dernier scan', 'gi-toolkit' ); ?></span>
+						</div>
+					<?php endif; ?>
 				</div>
-			<?php else : ?>
-				<h3><?php esc_html_e( 'Liens cassés (dernier scan)', 'gi-toolkit' ); ?></h3>
-				<?php
-				if ( $scan_id ) {
-					$scan = Gi_Toolkit_Broken_Links_DB::get_scan( $scan_id );
-					if ( $scan ) {
-						printf(
-							'<p class="description">%s</p>',
-							esc_html(
-								sprintf(
-									/* translators: 1: date 2: broken 3: checked */
-									__( 'Scan #%1$d — %2$d liens cassés sur %3$d URLs vérifiées (%4$s).', 'gi-toolkit' ),
-									(int) $scan->id,
-									(int) $scan->broken_count,
-									(int) $scan->urls_checked,
-									'done' === $scan->status ? __( 'terminé', 'gi-toolkit' ) : $scan->status
-								)
-							)
-						);
-					}
-				}
-				$table = new Gi_Toolkit_Broken_Links_List_Table( (int) $scan_id );
-				$table->prepare_items();
-				$table->display();
-				?>
 			<?php endif; ?>
+
+			<div class="gi-broken-links-panel">
+				<?php if ( 'history' === $tab ) : ?>
+					<h2 class="gi-broken-links-panel__title"><?php esc_html_e( 'Historique des scans', 'gi-toolkit' ); ?></h2>
+					<div class="gi-broken-links-table-wrap">
+						<?php
+						$history = new Gi_Toolkit_Broken_Links_Scans_List_Table();
+						$history->prepare_items();
+						$history->display();
+						?>
+					</div>
+
+					<div class="gi-broken-links-settings">
+						<h2 class="gi-broken-links-panel__title"><?php esc_html_e( 'Planification automatique', 'gi-toolkit' ); ?></h2>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=' . rawurlencode( $this->page_slug ) . '&tab=history' ) ); ?>" class="gi-broken-links-settings-form">
+							<?php wp_nonce_field( 'gi_toolkit_broken_links_save' ); ?>
+							<input type="hidden" name="gi_toolkit_pro_save" value="1" />
+							<p>
+								<label class="gi-broken-links-checkbox">
+									<input type="checkbox" name="cron_enabled" value="1" <?php checked( $settings['cron_enabled'], '1' ); ?> />
+									<?php esc_html_e( 'Activer le scan automatique', 'gi-toolkit' ); ?>
+								</label>
+							</p>
+							<p>
+								<label for="cron_schedule"><?php esc_html_e( 'Fréquence', 'gi-toolkit' ); ?></label>
+								<select name="cron_schedule" id="cron_schedule" class="regular-text">
+									<option value="daily" <?php selected( $settings['cron_schedule'], 'daily' ); ?>><?php esc_html_e( 'Quotidien', 'gi-toolkit' ); ?></option>
+									<option value="weekly" <?php selected( $settings['cron_schedule'], 'weekly' ); ?>><?php esc_html_e( 'Hebdomadaire', 'gi-toolkit' ); ?></option>
+								</select>
+							</p>
+							<p>
+								<label for="keep_scans"><?php esc_html_e( 'Conserver les scans (historique)', 'gi-toolkit' ); ?></label>
+								<input type="number" min="3" max="50" class="small-text" name="keep_scans" id="keep_scans" value="<?php echo esc_attr( (string) $settings['keep_scans'] ); ?>" />
+							</p>
+							<?php submit_button( __( 'Enregistrer', 'gi-toolkit' ) ); ?>
+						</form>
+					</div>
+				<?php else : ?>
+					<h2 class="gi-broken-links-panel__title"><?php esc_html_e( 'Liens cassés', 'gi-toolkit' ); ?></h2>
+					<div class="gi-broken-links-table-wrap">
+						<?php
+						$table = new Gi_Toolkit_Broken_Links_List_Table( (int) $scan_id );
+						$table->prepare_items();
+						$table->display();
+						?>
+					</div>
+				<?php endif; ?>
+			</div>
 		</div>
 		<?php
 		echo '</div>';

@@ -59,4 +59,11 @@ class Gi_Toolkit_Broken_Links_Scans_List_Table extends WP_List_Table {
 			)
 		);
 	}
+
+	/**
+	 * @return void
+	 */
+	public function no_items() {
+		esc_html_e( 'Aucun scan enregistré.', 'gi-toolkit' );
+	}
 }

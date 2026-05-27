@@ -232,6 +232,16 @@ class Gi_Toolkit_Broken_Links_Scanner {
 			return self::check_internal( $url );
 		}
 
+		return self::http_check( $url );
+	}
+
+	/**
+	 * Vérification HTTP (HEAD puis GET si besoin).
+	 *
+	 * @param string $url URL.
+	 * @return array{broken: bool, http_status: int, error_message: string}
+	 */
+	private static function http_check( $url ) {
 		$response = wp_remote_head(
 			$url,
 			array(
@@ -261,7 +271,7 @@ class Gi_Toolkit_Broken_Links_Scanner {
 			);
 		}
 
-		$code = (int) wp_remote_retrieve_response_code( $response );
+		$code   = (int) wp_remote_retrieve_response_code( $response );
 		$broken = $code >= 400 || 0 === $code;
 
 		return array(
@@ -294,6 +304,6 @@ class Gi_Toolkit_Broken_Links_Scanner {
 			return array( 'broken' => false, 'http_status' => 200, 'error_message' => '' );
 		}
 
-		return self::check_url( $url );
+		return self::http_check( $url );
 	}
 }

@@ -16,32 +16,45 @@
 
 .gi-media-folders-tree ul {
 	list-style: none;
-	margin: 0 0 8px 0;
-	padding-left: 16px;
+	margin: 0 0 4px 0;
+	padding-left: 0;
 }
 
-.gi-media-folders-tree > ul {
+.gi-media-folders-tree .gi-media-folder-children {
+	padding-left: 0;
+	margin-left: 0;
+	border-left: 1px solid #dcdcde;
+	margin-top: 2px;
+}
+
+.gi-media-folders-tree > ul,
+.gi-media-folders-tree-root {
 	padding-left: 0;
 }
 
 .gi-media-folder-node {
-	margin: 2px 0;
+	margin: 0;
 }
 
-.gi-media-folder-node button {
+.gi-media-folder-btn {
+	display: block;
 	background: none;
 	border: none;
 	cursor: pointer;
 	text-align: left;
-	padding: 4px 8px;
+	padding: 6px 10px;
 	border-radius: 4px;
 	width: 100%;
-	color: inherit;
+	color: #1d2327;
+	font-size: 13px;
+	line-height: 1.35;
+	box-sizing: border-box;
 }
 
-.gi-media-folder-node button:hover,
-.gi-media-folder-node.is-active button {
-	background: rgba(0, 0, 0, 0.06);
+.gi-media-folder-btn:hover,
+.gi-media-folder-node.is-active > .gi-media-folder-btn {
+	background: #2271b1;
+	color: #fff;
 }
 
 .gi-media-folder-attachments {
@@ -81,41 +94,41 @@
 	margin-bottom: 12px;
 }
 
-/* Médiathèque native */
-.gi-media-folders-native-wrap {
-	display: flex;
-	gap: 0;
-	align-items: stretch;
-}
-
-.gi-media-folders-native-sidebar {
-	flex: 0 0 220px;
-	background: #fff;
-	border-right: 1px solid #c3c4c7;
-	padding: 12px;
-	max-height: calc(100vh - 120px);
-	overflow-y: auto;
-}
-
-body.upload-php .wrap {
-	position: relative;
-}
-
-body.upload-php .gi-media-folders-native-sidebar {
-	position: relative;
-	margin: 0 0 16px -12px;
-}
-
-body.upload-php.gi-media-folders-active .wrap > h1,
-body.upload-php.gi-media-folders-active .wrap > .wp-header-end,
-body.upload-php.gi-media-folders-active .wrap > hr {
-	/* contenu principal décalé via flex sur parent injecté */
+/* Médiathèque native (upload.php) */
+body.upload-php.gi-media-folders-active .wrap {
+	max-width: none;
 }
 
 .gi-media-folders-native-layout {
 	display: flex;
-	width: 100%;
+	align-items: flex-start;
 	gap: 0;
+	width: 100%;
+	margin-top: 8px;
+}
+
+.gi-media-folders-native-sidebar {
+	flex: 0 0 240px;
+	width: 240px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 12px 8px;
+	margin-right: 16px;
+	position: sticky;
+	top: 32px;
+	max-height: calc(100vh - 80px);
+	overflow-x: hidden;
+	overflow-y: auto;
+	box-sizing: border-box;
+}
+
+.gi-media-folders-native-title {
+	margin: 0 0 10px 0;
+	padding: 0 8px;
+	font-size: 14px;
+	font-weight: 600;
+	color: #1d2327;
 }
 
 .gi-media-folders-native-layout > .gi-media-folders-native-main {
@@ -123,9 +136,47 @@ body.upload-php.gi-media-folders-active .wrap > hr {
 	min-width: 0;
 }
 
+.gi-media-folders-native-main .wp-filter,
+.gi-media-folders-native-main .media-frame,
+.gi-media-folders-native-main .uploader-inline,
+.gi-media-folders-native-main .attachments-browser {
+	max-width: 100%;
+}
+
 .gi-media-folders-native-bulk {
-	margin: 8px 0;
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid #dcdcde;
 	display: flex;
+	flex-direction: column;
 	gap: 8px;
-	flex-wrap: wrap;
+}
+
+.gi-media-folders-native-bulk select {
+	width: 100%;
+	max-width: 100%;
+}
+
+.gi-media-folders-native-bulk .button {
+	width: 100%;
+	text-align: center;
+}
+
+/* Filtre natif WP redondant avec la barre latérale */
+body.upload-php.gi-media-folders-active #gi-media-folder-filter {
+	display: none;
+}
+
+@media screen and (max-width: 960px) {
+	.gi-media-folders-native-layout {
+		flex-direction: column;
+	}
+
+	.gi-media-folders-native-sidebar {
+		position: static;
+		width: 100%;
+		max-height: 220px;
+		margin-right: 0;
+		margin-bottom: 16px;
+	}
 }

@@ -247,7 +247,7 @@ class Gi_Toolkit_Media_Folders {
 		wp_enqueue_script(
 			'gi-toolkit-media-folders-media',
 			GI_TOOLKIT_PLUGIN_URL . 'admin/assets/js/media-folders-media.js',
-			array( 'jquery' ),
+			array( 'jquery', 'media-models', 'media-views', 'media-grid' ),
 			$version,
 			true
 		);
@@ -267,6 +267,9 @@ class Gi_Toolkit_Media_Folders {
 			'nonce'   => wp_create_nonce( 'gi_toolkit_media_folders' ),
 			'i18n'    => array(
 				'allMedia'      => __( 'Tous les médias', 'gi-toolkit' ),
+				'foldersTitle'  => __( 'Dossiers', 'gi-toolkit' ),
+				'moveTo'        => __( 'Déplacer vers…', 'gi-toolkit' ),
+				'moveSelection' => __( 'Déplacer la sélection', 'gi-toolkit' ),
 				'confirmDelete' => __( 'Supprimer ce dossier ? Les médias ne seront pas supprimés.', 'gi-toolkit' ),
 				'newName'       => __( 'Nouveau nom du dossier :', 'gi-toolkit' ),
 				'selectMedia'   => __( 'Sélectionnez au moins un média.', 'gi-toolkit' ),
@@ -283,18 +286,42 @@ class Gi_Toolkit_Media_Folders {
 	 * @return array<string, mixed>
 	 */
 	public function filter_media_query( $query ) {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$folder = isset( $_REQUEST['gi_media_folder'] ) ? absint( $_REQUEST['gi_media_folder'] ) : 0;
+		$folder = self::get_active_folder_id( $query );
 		if ( $folder > 0 ) {
 			$query['tax_query'] = array(
 				array(
-					'taxonomy' => Gi_Toolkit_Media_Folders_Taxonomy::TAXONOMY,
-					'field'    => 'term_id',
-					'terms'    => $folder,
+					'taxonomy'         => Gi_Toolkit_Media_Folders_Taxonomy::TAXONOMY,
+					'field'            => 'term_id',
+					'terms'            => $folder,
+					'include_children' => true,
 				),
 			);
 		}
 		return $query;
+	}
+
+	/**
+	 * ID dossier actif (médiathèque AJAX ou liste).
+	 *
+	 * @param array<string, mixed> $query Args query-attachments.
+	 * @return int
+	 */
+	private static function get_active_folder_id( array $query = array() ) {
+		if ( ! empty( $query['gi_media_folder'] ) ) {
+			return absint( $query['gi_media_folder'] );
+		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_REQUEST['gi_media_folder'] ) ) {
+			return absint( $_REQUEST['gi_media_folder'] );
+		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$req_query = isset( $_REQUEST['query'] ) && is_array( $_REQUEST['query'] )
+			? wp_unslash( $_REQUEST['query'] )
+			: array();
+		if ( ! empty( $req_query['gi_media_folder'] ) ) {
+			return absint( $req_query['gi_media_folder'] );
+		}
+		return 0;
 	}
 
 	/**
@@ -316,9 +343,10 @@ class Gi_Toolkit_Media_Folders {
 				'tax_query',
 				array(
 					array(
-						'taxonomy' => Gi_Toolkit_Media_Folders_Taxonomy::TAXONOMY,
-						'field'    => 'term_id',
-						'terms'    => $folder,
+						'taxonomy'         => Gi_Toolkit_Media_Folders_Taxonomy::TAXONOMY,
+						'field'            => 'term_id',
+						'terms'            => $folder,
+						'include_children' => true,
 					),
 				)
 			);

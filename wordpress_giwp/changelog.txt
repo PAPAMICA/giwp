@@ -1,5 +1,9 @@
 == Changelog ==
 
+= 2.20.17 =
+Fix: Dossiers média — filtrage médiathèque via wp.media (sans rechargement), overwrite visuel.
+Fix: Liens cassés — correction erreur 500 (récursion interne), tables SQL, affichage admin.
+
 = 2.20.16 =
 Add: Nettoyage médiathèque — analyse des médias non utilisés, liste avec aperçu au survol, suppression en masse.
 Add: Liens cassés — scan du contenu, historique des analyses, planification cron.

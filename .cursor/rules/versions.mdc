@@ -1,0 +1,27 @@
+---
+description: Incrémenter les versions à chaque modification fonctionnelle du monorepo giwp
+alwaysApply: true
+---
+
+# Versions GIWP
+
+À **chaque modification** de code (fix, feature, refactor visible), incrémenter la version du composant touché et documenter le changement.
+
+## Fichiers à mettre à jour
+
+| Composant | Version (header) | Changelog |
+|-----------|------------------|-----------|
+| GI-Toolkit | `wordpress_giwp/gi-toolkit.php` → `Version:` | `wordpress_giwp/changelog.txt` (entrée en tête) |
+| MainWP Manager | `mainwp_giwp/mainwp-giwp.php` **et** `MAINWP_GIWEB_VERSION` dans `mainwp_giwp/mainwp-giweb-extension.php` | `mainwp_giwp/readme.txt` (section Changelog) |
+
+Mettre à jour le tableau des versions dans `README.md` si les numéros changent.
+
+## Numérotation
+
+- **GI-Toolkit** : semver patch `2.20.x` (incrémenter le dernier chiffre).
+- **MainWP GI-Toolkit Manager** : semver patch `1.4.x`.
+
+## Ne pas oublier
+
+- Les deux en-têtes MainWP (`mainwp-giwp.php` et `MAINWP_GIWEB_VERSION`) doivent rester **identiques**.
+- Une seule entrée changelog par version, en français, style des entrées existantes (`Fix:`, `Add:`, `Update:`).
