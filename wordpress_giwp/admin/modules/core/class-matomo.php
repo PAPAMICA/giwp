@@ -438,6 +438,94 @@ class Gi_Toolkit_Matomo {
 	}
 
 	/**
+	 * Prépare les réglages pour un déploiement distant (MainWP / import JSON).
+	 * Ne conserve jamais l’ID site du dashboard source.
+	 *
+	 * @param array<string, mixed> $settings Réglages.
+	 * @return array<string, mixed>
+	 */
+	public static function prepare_settings_for_remote_deploy( array $settings ) {
+		$settings = wp_parse_args( is_array( $settings ) ? $settings : array(), self::default_settings() );
+		$settings['matomo_url'] = Gi_Toolkit_Matomo_API::normalize_matomo_url( $settings['matomo_url'] ?? '' );
+		$settings['api_token']  = trim( (string) ( $settings['api_token'] ?? '' ) );
+		$settings['site_id']    = 0;
+		if ( ! isset( $settings['auto_site'] ) || '0' !== (string) $settings['auto_site'] ) {
+			$settings['auto_site'] = '1';
+		}
+		return $settings;
+	}
+
+	/**
+	 * Import MainWP / JSON : enregistre URL + token, crée ou associe le site Matomo pour cette URL WP.
+	 *
+	 * @param array<string, mixed> $settings Réglages importés.
+	 * @return array{success:bool, message?:string, site_id?:int, sync?:array<string,mixed>}
+	 */
+	public static function deploy_from_mainwp( array $settings ) {
+		$settings = self::prepare_settings_for_remote_deploy( $settings );
+
+		if ( '' === $settings['matomo_url'] || '' === $settings['api_token'] ) {
+			return array(
+				'success' => false,
+				'message' => __( 'URL Matomo et token API requis pour le déploiement.', 'gi-toolkit' ),
+			);
+		}
+
+		$settings   = self::bootstrap_settings_after_import( $settings );
+		$sync_error = isset( $settings['_last_sync_error'] ) ? (string) $settings['_last_sync_error'] : '';
+		unset( $settings['_last_sync_error'] );
+
+		if ( absint( $settings['site_id'] ?? 0 ) < 1 && '1' === (string) ( $settings['auto_site'] ?? '1' ) ) {
+			return array(
+				'success' => false,
+				'message' => $sync_error ?: __( 'Connexion Matomo OK mais impossible d’associer ce site WordPress dans Matomo.', 'gi-toolkit' ),
+			);
+		}
+
+		if ( ! self::$instance ) {
+			new self();
+		}
+
+		$result = self::$instance->apply_settings( $settings, false );
+
+		if ( empty( $result['success'] ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'Échec de l’enregistrement des réglages Matomo.', 'gi-toolkit' ),
+			);
+		}
+
+		$site_id = absint( $result['site_id'] ?? 0 );
+		$sync    = is_array( $result['sync'] ?? null ) ? $result['sync'] : array();
+
+		if ( $site_id < 1 && '1' === (string) ( $settings['auto_site'] ?? '1' ) ) {
+			return array(
+				'success' => false,
+				'message' => $sync['message'] ?? __( 'Site Matomo non synchronisé.', 'gi-toolkit' ),
+				'sync'    => $sync,
+			);
+		}
+
+		return array(
+			'success' => true,
+			'site_id' => $site_id,
+			'message' => ! empty( $sync['created'] )
+				? __( 'Matomo configuré — site créé dans Matomo.', 'gi-toolkit' )
+				: __( 'Matomo configuré — site associé.', 'gi-toolkit' ),
+			'sync'    => $sync,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $settings Réglages.
+	 * @param bool                 $sync_site  Synchroniser le site Matomo.
+	 * @return array{success:bool, site_id?:int, sync?:array<string,mixed>}
+	 */
+	public function apply_settings( array $settings, $sync_site = true ) {
+		return $this->persist_settings( $settings, $sync_site );
+	}
+
+	/**
 	 * Après import MainWP / JSON : synchronise le site Matomo pour l’URL de ce site enfant.
 	 *
 	 * @param array<string, mixed> $settings Réglages importés.
@@ -447,11 +535,11 @@ class Gi_Toolkit_Matomo {
 		if ( ! is_array( $settings ) ) {
 			$settings = array();
 		}
-		$settings = wp_parse_args( $settings, self::default_settings() );
-		$settings['matomo_url'] = Gi_Toolkit_Matomo_API::normalize_matomo_url( $settings['matomo_url'] ?? '' );
+		$settings = self::prepare_settings_for_remote_deploy( $settings );
 
 		$api = new Gi_Toolkit_Matomo_API( $settings );
 		if ( ! $api->is_configured() ) {
+			$settings['_last_sync_error'] = $api->get_last_error() ?: __( 'URL Matomo ou token API manquant.', 'gi-toolkit' );
 			return $settings;
 		}
 
@@ -462,6 +550,9 @@ class Gi_Toolkit_Matomo {
 		$sync = Gi_Toolkit_Matomo_Site::ensure_site_id( $settings, true );
 		if ( ! empty( $sync['success'] ) && ! empty( $sync['site_id'] ) ) {
 			$settings['site_id'] = (int) $sync['site_id'];
+		} else {
+			$settings['site_id']          = 0;
+			$settings['_last_sync_error'] = $sync['message'] ?? __( 'Synchronisation Matomo impossible.', 'gi-toolkit' );
 		}
 
 		return $settings;

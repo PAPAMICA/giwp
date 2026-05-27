@@ -494,8 +494,11 @@ class Gi_Toolkit_Settings {
 		foreach ( $default_settings as $item ) {
 			$status = sanitize_text_field( $old_settings[ $item ] ?? '0' );
 			$modules_data[ $item ] = array( 'active' => $status );
-			$options               = self::invoke_module_get_settings( $item );
+			$options = self::invoke_module_get_settings( $item );
 			if ( null !== $options ) {
+				if ( 'Gi_Toolkit_Matomo' === $item && is_array( $options ) ) {
+					$options['site_id'] = 0;
+				}
 				$modules_data[ $item ]['options'] = $options;
 			}
 		}
@@ -535,6 +538,7 @@ class Gi_Toolkit_Settings {
 		$default_settings       = array_keys( gi_toolkit_options() );
 		$sanitized_main_data    = array();
 		$sanitized_items_data   = array();
+		$import_errors          = array();
 		$current_main           = get_option( GI_TOOLKIT_PLUGIN_SETTINGS, array() );
 
 		foreach ( $default_settings as $item ) {
@@ -559,7 +563,11 @@ class Gi_Toolkit_Settings {
 
 		foreach ( $sanitized_items_data as $item_key => $item_value ) {
 			if ( 'Gi_Toolkit_Matomo' === $item_key && is_array( $item_value ) && class_exists( 'Gi_Toolkit_Matomo' ) ) {
-				$item_value = Gi_Toolkit_Matomo::bootstrap_settings_after_import( $item_value );
+				$deploy = Gi_Toolkit_Matomo::deploy_from_mainwp( $item_value );
+				if ( empty( $deploy['success'] ) ) {
+					$import_errors[] = $deploy['message'] ?? __( 'Échec du déploiement Matomo.', 'gi-toolkit' );
+				}
+				continue;
 			}
 			self::invoke_module_save_settings( $item_key, $item_value );
 		}
@@ -583,9 +591,11 @@ class Gi_Toolkit_Settings {
 		}
 
 		return array(
-			'success' => true,
-			'data'    => array( 'imported_modules' => count( $sanitized_main_data ) ),
-			'errors'  => array(),
+			'success' => empty( $import_errors ),
+			'data'    => array(
+				'imported_modules' => count( $sanitized_main_data ),
+			),
+			'errors'  => $import_errors,
 		);
 	}
 

@@ -46,7 +46,7 @@ class MainWP_GIWeb_Sync_Ajax {
 		if ( empty( $bundle ) || empty( $bundle['modules'] ) ) {
 			return null;
 		}
-		return $bundle;
+		return MainWP_GIWeb_Matomo::merge_into_bundle( $bundle );
 	}
 
 	/**

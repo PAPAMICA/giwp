@@ -118,6 +118,24 @@ class Gi_Toolkit_MainWP_API {
 			$payload['mail_catcher'] = Gi_Toolkit_Mail_Catcher::get_mainwp_status_payload();
 		}
 
+		if ( class_exists( 'Gi_Toolkit_Matomo' ) ) {
+			if ( ! class_exists( 'Gi_Toolkit_Matomo_API', false ) && defined( 'GI_TOOLKIT_PLUGIN_PATH' ) ) {
+				require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/matomo/class-api.php';
+			}
+			$matomo_settings   = Gi_Toolkit_Matomo::get_settings_static();
+			$matomo_url        = class_exists( 'Gi_Toolkit_Matomo_API', false )
+				? Gi_Toolkit_Matomo_API::normalize_matomo_url( $matomo_settings['matomo_url'] ?? '' )
+				: trim( (string) ( $matomo_settings['matomo_url'] ?? '' ) );
+			$payload['matomo'] = array(
+				'configured' => class_exists( 'Gi_Toolkit_Matomo_API', false )
+					? ( new Gi_Toolkit_Matomo_API( $matomo_settings ) )->is_configured()
+					: ( '' !== $matomo_url && '' !== trim( (string) ( $matomo_settings['api_token'] ?? '' ) ) ),
+				'site_id'    => absint( $matomo_settings['site_id'] ?? 0 ),
+				'auto_site'  => (string) ( $matomo_settings['auto_site'] ?? '1' ),
+				'has_url'    => '' !== $matomo_url,
+			);
+		}
+
 		return $payload;
 	}
 
@@ -150,7 +168,19 @@ class Gi_Toolkit_MainWP_API {
 			return self::error( __( 'Ce module ne supporte pas la sauvegarde distante.', 'gi-toolkit' ) );
 		}
 		if ( 'Gi_Toolkit_Matomo' === $class && is_array( $options ) && class_exists( 'Gi_Toolkit_Matomo' ) ) {
-			$options = Gi_Toolkit_Matomo::bootstrap_settings_after_import( $options );
+			$deploy = Gi_Toolkit_Matomo::deploy_from_mainwp( $options );
+			if ( empty( $deploy['success'] ) ) {
+				return self::error( $deploy['message'] ?? __( 'Échec du déploiement Matomo.', 'gi-toolkit' ) );
+			}
+			return self::success(
+				array(
+					'saved'   => true,
+					'matomo'  => array(
+						'site_id' => (int) ( $deploy['site_id'] ?? 0 ),
+						'message' => (string) ( $deploy['message'] ?? '' ),
+					),
+				)
+			);
 		}
 
 		if ( ! Gi_Toolkit_Settings::invoke_module_save_settings( $class, $options ) ) {

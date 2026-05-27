@@ -300,6 +300,8 @@ class MainWP_GIWeb {
 						'mail_alert_email'           => sanitize_email( wp_unslash( $_POST['mail_alert_email'] ?? '' ) ),
 						'client_zip_url'             => isset( $_POST['client_zip_url'] ) ? esc_url_raw( wp_unslash( $_POST['client_zip_url'] ) ) : '',
 						'sync_concurrency'           => absint( $_POST['sync_concurrency'] ?? 5 ),
+						'matomo_url'                 => isset( $_POST['matomo_url'] ) ? esc_url_raw( wp_unslash( $_POST['matomo_url'] ) ) : '',
+						'matomo_api_token'           => isset( $_POST['matomo_api_token'] ) ? sanitize_text_field( wp_unslash( $_POST['matomo_api_token'] ) ) : '',
 					)
 				);
 				MainWP_GIWeb_Notices::add( 'success', __( 'Réglages enregistrés.', 'mainwp-giweb' ) );

@@ -1,5 +1,9 @@
 == Changelog ==
 
+= 2.20.34 =
+Fix: Déploiement MainWP Matomo — URL + token API envoyés à chaque site enfant ; site_id réinitialisé et création/association automatique par URL WordPress.
+Update: Export bundle sans site_id source ; statut MainWP enrichi (configured, site_id).
+
 = 2.20.33 =
 Fix: Compteurs live Matomo (clés API visits/visitors/actions + repli calculé).
 Update: Fiches visiteurs live — icônes navigateur, IP, ID unique, historique des pages.

@@ -71,6 +71,25 @@ $logs            = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 			</td>
 		</tr>
 		<tr>
+			<th scope="row"><?php esc_html_e( 'Matomo (multi-sites)', 'mainwp-giweb' ); ?></th>
+			<td>
+				<p>
+					<label for="mainwp_giweb_matomo_url"><?php esc_html_e( 'URL Matomo', 'mainwp-giweb' ); ?></label><br />
+					<input type="url" class="large-text code" id="mainwp_giweb_matomo_url" name="matomo_url" value="<?php echo esc_attr( (string) ( $settings['matomo_url'] ?? '' ) ); ?>" placeholder="https://matomo.example.com" />
+				</p>
+				<p>
+					<label for="mainwp_giweb_matomo_api_token"><?php esc_html_e( 'Token API Matomo', 'mainwp-giweb' ); ?></label><br />
+					<input type="password" class="large-text code" id="mainwp_giweb_matomo_api_token" name="matomo_api_token" value="" autocomplete="new-password" placeholder="<?php echo ! empty( $settings['matomo_api_token'] ) ? esc_attr__( '•••••••• (laisser vide pour conserver)', 'mainwp-giweb' ) : ''; ?>" />
+				</p>
+				<p class="description">
+					<?php esc_html_e( 'Lors d’un déploiement vers les sites enfants, l’URL et le token sont injectés dans le bundle, le module Connect Matomo est activé, et chaque site enfant crée ou associe automatiquement son site Matomo (site_id propre à l’URL WordPress).', 'mainwp-giweb' ); ?>
+				</p>
+				<?php if ( MainWP_GIWeb_Matomo::is_configured() ) : ?>
+					<p class="description" style="color:#15803d;"><?php esc_html_e( 'Matomo centralisé configuré — sera appliqué à chaque déploiement.', 'mainwp-giweb' ); ?></p>
+				<?php endif; ?>
+			</td>
+		</tr>
+		<tr>
 			<th scope="row"><?php esc_html_e( 'Synchronisation', 'mainwp-giweb' ); ?></th>
 			<td>
 				<label for="mainwp_giweb_sync_concurrency"><?php esc_html_e( 'Sites interrogés en parallèle', 'mainwp-giweb' ); ?></label>

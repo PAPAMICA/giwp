@@ -36,6 +36,8 @@ class MainWP_GIWeb_Settings {
 			'mail_alert_email'              => '',
 			'client_zip_url'                => '',
 			'sync_concurrency'              => 5,
+			'matomo_url'                    => '',
+			'matomo_api_token'              => '',
 		);
 	}
 
@@ -44,7 +46,8 @@ class MainWP_GIWeb_Settings {
 	 * @return bool
 	 */
 	public static function save( array $data ) {
-		$clean = self::defaults();
+		$current = self::get();
+		$clean   = self::defaults();
 
 		if ( isset( $data['default_template_id'] ) ) {
 			$clean['default_template_id'] = sanitize_text_field( (string) $data['default_template_id'] );
@@ -60,7 +63,20 @@ class MainWP_GIWeb_Settings {
 		$zip_url = isset( $data['client_zip_url'] ) ? esc_url_raw( trim( (string) $data['client_zip_url'] ) ) : '';
 		$clean['client_zip_url']               = ( '' !== $zip_url && filter_var( $zip_url, FILTER_VALIDATE_URL ) ) ? $zip_url : '';
 
-		$clean['sync_concurrency']             = max( 1, min( 15, absint( $data['sync_concurrency'] ?? 5 ) ) );
+		$clean['sync_concurrency'] = max( 1, min( 15, absint( $data['sync_concurrency'] ?? 5 ) ) );
+
+		if ( isset( $data['matomo_url'] ) ) {
+			$url = esc_url_raw( rtrim( trim( (string) $data['matomo_url'] ), '/' ) );
+			$clean['matomo_url'] = ( '' !== $url && filter_var( $url, FILTER_VALIDATE_URL ) ) ? $url : '';
+		} else {
+			$clean['matomo_url'] = (string) ( $current['matomo_url'] ?? '' );
+		}
+
+		if ( ! empty( $data['matomo_api_token'] ) ) {
+			$clean['matomo_api_token'] = sanitize_text_field( (string) $data['matomo_api_token'] );
+		} else {
+			$clean['matomo_api_token'] = (string) ( $current['matomo_api_token'] ?? '' );
+		}
 
 		return update_option( self::OPTION_KEY, $clean, false );
 	}
