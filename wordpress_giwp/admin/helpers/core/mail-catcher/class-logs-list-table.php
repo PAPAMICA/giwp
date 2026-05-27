@@ -83,49 +83,10 @@ class Gi_Toolkit_Mail_Catcher_Logs_List_Table extends WP_List_Table {
 	}
 
 	/**
-	 * Suppression / renvoi en masse.
+	 * Suppression / renvoi en masse (traité sur admin_init dans save_submenu).
 	 */
 	protected function process_bulk_action() {
-		$action = $this->current_action();
-		if ( ! in_array( $action, array( 'delete', 'resend' ), true ) ) {
-			return;
-		}
-
-		check_admin_referer( 'bulk-' . $this->_args['plural'] );
-
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$ids = isset( $_REQUEST[ $this->_args['singular'] ] ) ? array_map( 'absint', (array) wp_unslash( $_REQUEST[ $this->_args['singular'] ] ) ) : array();
-		$ids = array_filter( $ids );
-
-		if ( empty( $ids ) ) {
-			return;
-		}
-
-		if ( 'delete' === $action ) {
-			$deleted = $this->mail_catcher->delete_logs( $ids );
-			$this->mail_catcher->redirect_with_notice( 'deleted', $deleted );
-		}
-
-		if ( 'resend' === $action ) {
-			$ok    = 0;
-			$fail  = 0;
-			foreach ( $ids as $id ) {
-				$result = $this->mail_catcher->resend_log( $id );
-				if ( is_wp_error( $result ) ) {
-					++$fail;
-				} else {
-					++$ok;
-				}
-			}
-
-			if ( $fail > 0 && $ok > 0 ) {
-				$this->mail_catcher->redirect_with_notice( 'resend_partial', $ok, (string) $fail );
-			} elseif ( $fail > 0 ) {
-				$this->mail_catcher->redirect_with_notice( 'resend_error', 0, __( 'Aucun e-mail n’a pu être renvoyé.', 'gi-toolkit' ) );
-			} else {
-				$this->mail_catcher->redirect_with_notice( 'resent', $ok );
-			}
-		}
+		// Les actions groupées sont gérées avant le rendu HTML (class-mail-catcher.php).
 	}
 
 	/**

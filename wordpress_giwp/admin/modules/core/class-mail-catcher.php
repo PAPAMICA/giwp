@@ -335,6 +335,8 @@ class Gi_Toolkit_Mail_Catcher {
 	 * @since   2.14.0
 	 */
 	public function render_submenu() {
+		$this->disable_form = true;
+
 		wp_enqueue_style( 'Gi_Toolkit_submenu_fontawesome', GI_TOOLKIT_PLUGIN_URL . 'admin/assets/lib/core/font-awesome.min.css', array(), '4.7.0', 'all' );
 
 		$replace_assets = include( GI_TOOLKIT_PLUGIN_PATH . 'admin/assets/build/core/mail-catcher.asset.php' );
@@ -379,6 +381,18 @@ class Gi_Toolkit_Mail_Catcher {
 	 * @since   2.14.0
 	 */
 	public function save_submenu() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$page = sanitize_text_field( wp_unslash( $_POST['page'] ?? '' ) );
+		if ( $page !== $this->page_id ) {
+			return;
+		}
+
+		$bulk_action = $this->get_list_bulk_action();
+		if ( $bulk_action ) {
+			$this->handle_list_bulk_action( $bulk_action );
+			return;
+		}
+
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		if ( empty( $_POST[ $this->nonce_name ] ) ) {
 			return;
@@ -409,6 +423,72 @@ class Gi_Toolkit_Mail_Catcher {
 				} else {
 					$this->redirect_with_notice( 'resent', 1 );
 				}
+			}
+		}
+	}
+
+	/**
+	 * Action groupée demandée (select en haut/bas du tableau).
+	 *
+	 * @return string
+	 */
+	private function get_list_bulk_action() {
+		$action = '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( isset( $_POST['action'] ) && '-1' !== $_POST['action'] ) {
+			$action = sanitize_key( wp_unslash( $_POST['action'] ) );
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		} elseif ( isset( $_POST['action2'] ) && '-1' !== $_POST['action2'] ) {
+			$action = sanitize_key( wp_unslash( $_POST['action2'] ) );
+		}
+
+		if ( ! in_array( $action, array( 'delete', 'resend' ), true ) ) {
+			return '';
+		}
+
+		return $action;
+	}
+
+	/**
+	 * Suppression / renvoi en masse (admin_init, avant tout HTML).
+	 *
+	 * @param string $action delete|resend.
+	 * @return void
+	 */
+	public function handle_list_bulk_action( $action ) {
+		check_admin_referer( 'bulk-gi_toolkit-mail-catcher-logs' );
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$ids = isset( $_POST['gi_toolkit-mail-catcher-log'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['gi_toolkit-mail-catcher-log'] ) ) : array();
+		$ids = array_values( array_filter( $ids ) );
+
+		if ( empty( $ids ) ) {
+			return;
+		}
+
+		if ( 'delete' === $action ) {
+			$deleted = $this->delete_logs( $ids );
+			$this->redirect_with_notice( 'deleted', $deleted );
+		}
+
+		if ( 'resend' === $action ) {
+			$ok   = 0;
+			$fail = 0;
+			foreach ( $ids as $id ) {
+				$result = $this->resend_log( $id );
+				if ( is_wp_error( $result ) ) {
+					++$fail;
+				} else {
+					++$ok;
+				}
+			}
+
+			if ( $fail > 0 && $ok > 0 ) {
+				$this->redirect_with_notice( 'resend_partial', $ok, (string) $fail );
+			} elseif ( $fail > 0 ) {
+				$this->redirect_with_notice( 'resend_error', 0, __( 'Aucun e-mail n’a pu être renvoyé.', 'gi-toolkit' ) );
+			} else {
+				$this->redirect_with_notice( 'resent', $ok );
 			}
 		}
 	}
@@ -969,42 +1049,72 @@ class Gi_Toolkit_Mail_Catcher {
 	}
 
 	/**
-	 * Redirection avec notice admin.
+	 * Construit l’URL de redirection avec notice.
 	 *
 	 * @param string $code    Code notice.
 	 * @param int    $count   Nombre d’éléments concernés.
 	 * @param string $message Message optionnel.
+	 * @return string
 	 */
-	public function redirect_with_notice( $code, $count = 0, $message = '' ) {
+	private function build_notice_redirect_url( $code, $count = 0, $message = '' ) {
 		$url = add_query_arg(
 			array(
-				'page'              => $this->page_id,
-				'gi_mc_notice'      => $code,
-				'gi_mc_notice_count'=> max( 0, (int) $count ),
-				'gi_mc_notice_msg'  => rawurlencode( $message ),
+				'page'               => $this->page_id,
+				'gi_mc_notice'       => $code,
+				'gi_mc_notice_count' => max( 0, (int) $count ),
+				'gi_mc_notice_msg'   => rawurlencode( $message ),
 			),
 			admin_url( 'admin.php' )
 		);
 
-		// Conserver filtres liste.
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		// Conserver filtres liste (POST ou GET).
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing
+		$source = array_merge( $_GET, $_POST );
 		foreach ( array( 'status', 'orderby', 'order', 'paged', 's' ) as $key ) {
-			if ( ! empty( $_GET[ $key ] ) ) {
-				$url = add_query_arg( $key, sanitize_text_field( wp_unslash( $_GET[ $key ] ) ), $url );
+			if ( ! empty( $source[ $key ] ) ) {
+				$url = add_query_arg( $key, sanitize_text_field( wp_unslash( $source[ $key ] ) ), $url );
 			}
 		}
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( ! empty( $_REQUEST['search']['term'] ) ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing
+		if ( ! empty( $source['search']['term'] ) ) {
 			$url = add_query_arg(
 				array(
-					'search[place]' => sanitize_key( wp_unslash( $_REQUEST['search']['place'] ?? 'receiver' ) ),
-					'search[term]'  => sanitize_text_field( wp_unslash( $_REQUEST['search']['term'] ) ),
+					'search[place]' => sanitize_key( wp_unslash( $source['search']['place'] ?? 'receiver' ) ),
+					'search[term]'  => sanitize_text_field( wp_unslash( $source['search']['term'] ) ),
 				),
 				$url
 			);
 		}
 
-		wp_safe_redirect( $url );
+		return $url;
+	}
+
+	/**
+	 * Redirection PRG avec notice admin.
+	 *
+	 * @param string $code    Code notice.
+	 * @param int    $count   Nombre d’éléments concernés.
+	 * @param string $message Message optionnel.
+	 * @return void
+	 */
+	public function redirect_with_notice( $code, $count = 0, $message = '' ) {
+		$url = $this->build_notice_redirect_url( $code, $count, $message );
+
+		if ( ! headers_sent() ) {
+			wp_safe_redirect( $url );
+			exit;
+		}
+
+		// Secours si du HTML a déjà été envoyé (évite les warnings PHP).
+		nocache_headers();
+		$title        = esc_html__( 'Mail catcher', 'gi-toolkit' );
+		$body_message = esc_html__( 'Action effectuée. Redirection…', 'gi-toolkit' );
+		$link         = esc_html__( 'Continuer', 'gi-toolkit' );
+		echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' . $title . '</title>';
+		echo '<meta http-equiv="refresh" content="0;url=' . esc_url( $url ) . '">';
+		echo '<script>window.location.replace(' . wp_json_encode( $url ) . ');</script>';
+		echo '</head><body><p>' . $body_message . '</p>';
+		echo '<p><a href="' . esc_url( $url ) . '">' . $link . '</a></p></body></html>';
 		exit;
 	}
 
