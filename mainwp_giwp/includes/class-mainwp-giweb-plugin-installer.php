@@ -8,7 +8,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class MainWP_GIWeb_Plugin_Installer {
 
-	const REMOTE_FUNCTION = 'install_plugin_theme';
+	/** Identifiant MainWP Child (callableFunctions), pas le nom de méthode PHP. */
+	const REMOTE_FUNCTION = 'installplugintheme';
 
 	/**
 	 * Vérifie que l’URL ZIP de déploiement est utilisable.
