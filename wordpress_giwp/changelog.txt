@@ -1,5 +1,9 @@
 == Changelog ==
 
+= 2.20.29 =
+Fix: Connect Matomo — sauvegarde du formulaire (champ gi_toolkit_pro_save manquant).
+Add: Après test de connexion réussi, synchronisation / création automatique du site Matomo et enregistrement (MainWP / import JSON inclus).
+
 = 2.20.28 =
 Fix: Erreur 500 sur /wp-admin/ — enregistrement correct du hook de tri du menu GI-Toolkit (Gi_Toolkit_Loader incompatible avec les fonctions globales).
 

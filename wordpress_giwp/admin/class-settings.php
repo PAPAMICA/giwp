@@ -558,6 +558,9 @@ class Gi_Toolkit_Settings {
 		}
 
 		foreach ( $sanitized_items_data as $item_key => $item_value ) {
+			if ( 'Gi_Toolkit_Matomo' === $item_key && is_array( $item_value ) && class_exists( 'Gi_Toolkit_Matomo' ) ) {
+				$item_value = Gi_Toolkit_Matomo::bootstrap_settings_after_import( $item_value );
+			}
 			self::invoke_module_save_settings( $item_key, $item_value );
 		}
 

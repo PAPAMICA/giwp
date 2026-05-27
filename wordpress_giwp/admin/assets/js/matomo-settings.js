@@ -9,6 +9,7 @@
 			nonce: cfg.nonce,
 			matomo_url: $( '#matomo_url' ).val(),
 			api_token: $( '#api_token' ).val(),
+			auto_site: $( 'input[name="auto_site"]' ).is( ':checked' ) ? '1' : '0',
 		};
 		return $.post( cfg.ajaxUrl, $.extend( data, extra || {} ) );
 	}
@@ -29,8 +30,14 @@
 
 		post( 'gi_toolkit_matomo_test_connection' )
 			.done( function ( res ) {
-				if ( res.success ) {
+				if ( res.success && res.data ) {
 					$out.addClass( 'is-ok' ).text( res.data.message || 'OK' );
+					if ( res.data.site_id ) {
+						$( '#site_id' ).val( res.data.site_id );
+					}
+					if ( res.data.saved ) {
+						$( '#api_token' ).val( '' );
+					}
 				} else {
 					$out.addClass( 'is-err' ).text( ( res.data && res.data.message ) || cfg.i18n.error );
 				}

@@ -90,33 +90,52 @@ class Gi_Toolkit_Matomo {
 	}
 
 	/**
+	 * Réglages du module (export JSON / MainWP).
+	 *
 	 * @return array<string, mixed>
 	 */
-	private function get_settings() {
+	public function get_settings() {
 		$stored = get_option( self::OPTION_SETTINGS, array() );
 		return wp_parse_args( is_array( $stored ) ? $stored : array(), self::default_settings() );
 	}
 
 	/**
+	 * Enregistre les réglages (formulaire admin, MainWP, import JSON).
+	 *
+	 * @param array<string, mixed> $settings  Réglages.
+	 * @param bool                 $sync_site Synchroniser / créer le site Matomo si auto_site.
+	 * @return bool
+	 */
+	public function save_settings( array $settings, $sync_site = true ) {
+		$result = $this->persist_settings( $settings, $sync_site );
+		return ! empty( $result['success'] );
+	}
+
+	/**
 	 * @param array<string, mixed> $settings Réglages.
 	 * @param bool                 $sync_site Appeler ensure_site_id.
-	 * @return array{success:bool, message?:string}
+	 * @return array{success:bool, message?:string, site_id?:int, sync?:array<string,mixed>}
 	 */
-	private function save_settings( array $settings, $sync_site = true ) {
+	private function persist_settings( array $settings, $sync_site = true ) {
 		$settings['matomo_url'] = Gi_Toolkit_Matomo_API::normalize_matomo_url( $settings['matomo_url'] ?? '' );
 		$settings['site_id']    = absint( $settings['site_id'] ?? 0 );
 
+		$sync_result = null;
 		if ( $sync_site && '1' === (string) ( $settings['auto_site'] ?? '1' ) ) {
-			$result = Gi_Toolkit_Matomo_Site::ensure_site_id( $settings, true );
-			if ( ! empty( $result['success'] ) && ! empty( $result['site_id'] ) ) {
-				$settings['site_id'] = (int) $result['site_id'];
+			$sync_result = Gi_Toolkit_Matomo_Site::ensure_site_id( $settings, true );
+			if ( ! empty( $sync_result['success'] ) && ! empty( $sync_result['site_id'] ) ) {
+				$settings['site_id'] = (int) $sync_result['site_id'];
 			}
 		}
 
 		Gi_Toolkit_Matomo_Site::clear_tracking_cache( $settings );
 		update_option( self::OPTION_SETTINGS, $settings, false );
 
-		return array( 'success' => true );
+		return array(
+			'success' => true,
+			'site_id' => absint( $settings['site_id'] ?? 0 ),
+			'sync'    => $sync_result,
+		);
 	}
 
 	/**
@@ -251,7 +270,7 @@ class Gi_Toolkit_Matomo {
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$settings['disable_ssl_verify'] = isset( $_POST['disable_ssl_verify'] ) ? '1' : '0';
 
-		$save = $this->save_settings( $settings, true );
+		$save = $this->persist_settings( $settings, true );
 
 		$redirect = add_query_arg(
 			array(
@@ -282,16 +301,47 @@ class Gi_Toolkit_Matomo {
 			wp_send_json_error( array( 'message' => $result['message'] ?? '' ) );
 		}
 
-		wp_send_json_success(
-			array(
-				'version' => $result['version'] ?? '',
-				'message' => sprintf(
-					/* translators: %s: Matomo version */
-					__( 'Connexion OK (Matomo %s).', 'gi-toolkit' ),
-					$result['version'] ?? ''
-				),
-			)
+		$messages = array(
+			sprintf(
+				/* translators: %s: Matomo version */
+				__( 'Connexion OK (Matomo %s).', 'gi-toolkit' ),
+				$result['version'] ?? ''
+			),
 		);
+
+		$response = array(
+			'version' => $result['version'] ?? '',
+			'message' => '',
+			'saved'   => false,
+			'site_id' => absint( $settings['site_id'] ?? 0 ),
+		);
+
+		$auto_site = '1' === (string) ( $settings['auto_site'] ?? '1' );
+		$do_sync   = $auto_site || empty( $response['site_id'] );
+
+		if ( $do_sync && $auto_site ) {
+			$sync = Gi_Toolkit_Matomo_Site::ensure_site_id( $settings, true );
+			if ( ! empty( $sync['success'] ) && ! empty( $sync['site_id'] ) ) {
+				$settings['site_id'] = (int) $sync['site_id'];
+				$response['site_id'] = (int) $sync['site_id'];
+				$messages[]        = ! empty( $sync['created'] )
+					? __( 'Site Matomo créé et associé à ce WordPress.', 'gi-toolkit' )
+					: __( 'Site Matomo associé à ce WordPress.', 'gi-toolkit' );
+			} elseif ( empty( $sync['success'] ) ) {
+				$messages[] = $sync['message'] ?? __( 'Connexion OK, mais la synchronisation du site a échoué.', 'gi-toolkit' );
+			}
+		}
+
+		$persist = $this->persist_settings( $settings, false );
+		if ( ! empty( $persist['success'] ) ) {
+			$response['saved']   = true;
+			$response['site_id'] = absint( $persist['site_id'] ?? $response['site_id'] );
+			$messages[]          = __( 'Configuration enregistrée.', 'gi-toolkit' );
+		}
+
+		$response['message'] = implode( ' ', $messages );
+
+		wp_send_json_success( $response );
 	}
 
 	/**
@@ -311,7 +361,7 @@ class Gi_Toolkit_Matomo {
 		}
 
 		$settings['site_id'] = (int) $result['site_id'];
-		$this->save_settings( $settings, false );
+		$this->persist_settings( $settings, false );
 
 		wp_send_json_success(
 			array(
@@ -367,6 +417,40 @@ class Gi_Toolkit_Matomo {
 		if ( ! empty( $_POST['api_token'] ) ) {
 			$settings['api_token'] = sanitize_text_field( wp_unslash( $_POST['api_token'] ) );
 		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( isset( $_POST['auto_site'] ) ) {
+			$settings['auto_site'] = '1' === sanitize_text_field( wp_unslash( $_POST['auto_site'] ) ) ? '1' : '0';
+		}
+		return $settings;
+	}
+
+	/**
+	 * Après import MainWP / JSON : synchronise le site Matomo pour l’URL de ce site enfant.
+	 *
+	 * @param array<string, mixed> $settings Réglages importés.
+	 * @return array<string, mixed>
+	 */
+	public static function bootstrap_settings_after_import( array $settings ) {
+		if ( ! is_array( $settings ) ) {
+			$settings = array();
+		}
+		$settings = wp_parse_args( $settings, self::default_settings() );
+		$settings['matomo_url'] = Gi_Toolkit_Matomo_API::normalize_matomo_url( $settings['matomo_url'] ?? '' );
+
+		$api = new Gi_Toolkit_Matomo_API( $settings );
+		if ( ! $api->is_configured() ) {
+			return $settings;
+		}
+
+		if ( '1' !== (string) ( $settings['auto_site'] ?? '1' ) ) {
+			return $settings;
+		}
+
+		$sync = Gi_Toolkit_Matomo_Site::ensure_site_id( $settings, true );
+		if ( ! empty( $sync['success'] ) && ! empty( $sync['site_id'] ) ) {
+			$settings['site_id'] = (int) $sync['site_id'];
+		}
+
 		return $settings;
 	}
 
@@ -401,6 +485,7 @@ class Gi_Toolkit_Matomo {
 				'i18n'    => array(
 					'testing'  => __( 'Test en cours…', 'gi-toolkit' ),
 					'syncing'  => __( 'Synchronisation…', 'gi-toolkit' ),
+					'saving'   => __( 'Enregistrement…', 'gi-toolkit' ),
 					'error'    => __( 'Erreur', 'gi-toolkit' ),
 				),
 			)
@@ -415,6 +500,7 @@ class Gi_Toolkit_Matomo {
 		include GI_TOOLKIT_PLUGIN_PATH . 'admin/templates/core/submenu/header.php';
 		?>
 		<div class="gi-toolkit__body gi-toolkit-matomo-settings-page">
+			<input type="hidden" name="gi_toolkit_pro_save" value="1" />
 			<?php if ( ! empty( $_GET['gi_toolkit_pro_saved'] ) ) : ?>
 				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Enregistré.', 'gi-toolkit' ); ?></p></div>
 			<?php endif; ?>

@@ -149,6 +149,10 @@ class Gi_Toolkit_MainWP_API {
 		if ( ! $can_save ) {
 			return self::error( __( 'Ce module ne supporte pas la sauvegarde distante.', 'gi-toolkit' ) );
 		}
+		if ( 'Gi_Toolkit_Matomo' === $class && is_array( $options ) && class_exists( 'Gi_Toolkit_Matomo' ) ) {
+			$options = Gi_Toolkit_Matomo::bootstrap_settings_after_import( $options );
+		}
+
 		if ( ! Gi_Toolkit_Settings::invoke_module_save_settings( $class, $options ) ) {
 			return self::error( __( 'Échec de la sauvegarde des réglages du module.', 'gi-toolkit' ) );
 		}
