@@ -985,12 +985,19 @@ class Gi_Toolkit_Matomo {
 		</div>
 
 		<div class="gi-matomo-charts-grid">
-			<div class="gi-matomo-charts-left">
-				<div class="gi-matomo-chart-panel gi-matomo-chart-panel--timeline">
-					<h2><?php esc_html_e( 'Évolution du trafic', 'gi-toolkit' ); ?></h2>
-					<div class="gi-matomo-chart-canvas-wrap">
-						<canvas id="gi-matomo-chart-timeline" role="img" aria-label="<?php esc_attr_e( 'Évolution du trafic', 'gi-toolkit' ); ?>"></canvas>
+			<div class="gi-matomo-chart-panel gi-matomo-chart-panel--timeline gi-matomo-chart-panel--full">
+				<h2><?php esc_html_e( 'Évolution du trafic', 'gi-toolkit' ); ?></h2>
+				<div class="gi-matomo-chart-canvas-wrap">
+					<canvas id="gi-matomo-chart-timeline" role="img" aria-label="<?php esc_attr_e( 'Évolution du trafic', 'gi-toolkit' ); ?>"></canvas>
+				</div>
+			</div>
+			<div class="gi-matomo-charts-bottom">
+				<div class="gi-matomo-chart-panel gi-matomo-chart-panel--map">
+					<h2><?php esc_html_e( 'Origine des visiteurs', 'gi-toolkit' ); ?></h2>
+					<div class="gi-matomo-map-square">
+						<div id="gi-matomo-world-map" class="gi-matomo-world-map" role="img" aria-label="<?php esc_attr_e( 'Carte mondiale des visites', 'gi-toolkit' ); ?>"></div>
 					</div>
+					<p class="gi-matomo-map-legend description"><?php esc_html_e( 'Intensité = visites par pays.', 'gi-toolkit' ); ?></p>
 				</div>
 				<div class="gi-matomo-charts-donuts">
 					<div class="gi-matomo-chart-panel">
@@ -1012,13 +1019,6 @@ class Gi_Toolkit_Matomo {
 						</div>
 					</div>
 				</div>
-			</div>
-			<div class="gi-matomo-chart-panel gi-matomo-chart-panel--map">
-				<h2><?php esc_html_e( 'Origine des visiteurs', 'gi-toolkit' ); ?></h2>
-				<div class="gi-matomo-map-square">
-					<div id="gi-matomo-world-map" class="gi-matomo-world-map" role="img" aria-label="<?php esc_attr_e( 'Carte mondiale des visites', 'gi-toolkit' ); ?>"></div>
-				</div>
-				<p class="gi-matomo-map-legend description"><?php esc_html_e( 'Intensité de couleur = nombre de visites par pays.', 'gi-toolkit' ); ?></p>
 			</div>
 		</div>
 		<script type="application/json" id="gi-matomo-charts-data"><?php echo wp_json_encode( $dashboard['charts'] ?? array() ); ?></script>
@@ -1096,20 +1096,52 @@ class Gi_Toolkit_Matomo {
 					<ul class="gi-matomo-live-list">
 						<?php foreach ( $visits as $visit ) : ?>
 							<li class="gi-matomo-live-visit<?php echo ! empty( $visit['is_new'] ) ? ' is-new' : ''; ?>">
-								<span class="gi-matomo-live-visit__dot" aria-hidden="true"></span>
+								<div class="gi-matomo-live-visit__icons" aria-hidden="true">
+									<?php if ( ! empty( $visit['browser_icon'] ) ) : ?>
+										<img class="gi-matomo-live-visit__browser" src="<?php echo esc_url( $visit['browser_icon'] ); ?>" alt="" width="22" height="22" loading="lazy" />
+									<?php else : ?>
+										<span class="gi-matomo-live-visit__browser gi-matomo-live-visit__browser--fallback" title="<?php echo esc_attr( $visit['browser'] ?? '' ); ?>"></span>
+									<?php endif; ?>
+									<?php if ( ! empty( $visit['device_icon'] ) ) : ?>
+										<img class="gi-matomo-live-visit__device" src="<?php echo esc_url( $visit['device_icon'] ); ?>" alt="" width="18" height="18" loading="lazy" />
+									<?php endif; ?>
+								</div>
 								<div class="gi-matomo-live-visit__body">
 									<div class="gi-matomo-live-visit__row">
-										<strong class="gi-matomo-live-visit__location"><?php echo esc_html( $visit['location'] ?? '' ); ?></strong>
+										<div>
+											<strong class="gi-matomo-live-visit__location"><?php echo esc_html( $visit['location'] ?? '' ); ?></strong>
+											<span class="gi-matomo-live-visit__browser-name"><?php echo esc_html( $visit['browser'] ?? '' ); ?></span>
+											<?php if ( ! empty( $visit['device'] ) ) : ?>
+												<span class="gi-matomo-live-visit__device-name"><?php echo esc_html( $visit['device'] ); ?></span>
+											<?php endif; ?>
+										</div>
 										<time class="gi-matomo-live-visit__time"><?php echo esc_html( $visit['time'] ?? '' ); ?></time>
 									</div>
-									<div class="gi-matomo-live-visit__page" title="<?php echo esc_attr( $visit['page'] ?? '' ); ?>">
-										<?php echo esc_html( $visit['page'] ?? '' ); ?>
+									<div class="gi-matomo-live-visit__ids">
+										<?php if ( ! empty( $visit['ip'] ) ) : ?>
+											<code class="gi-matomo-live-visit__ip" title="<?php esc_attr_e( 'Adresse IP', 'gi-toolkit' ); ?>"><?php echo esc_html( $visit['ip'] ); ?></code>
+										<?php endif; ?>
+										<?php if ( ! empty( $visit['visitor_id'] ) ) : ?>
+											<code class="gi-matomo-live-visit__vid" title="<?php esc_attr_e( 'ID visiteur Matomo', 'gi-toolkit' ); ?>"><?php echo esc_html( $visit['visitor_id'] ); ?></code>
+										<?php endif; ?>
 									</div>
 									<div class="gi-matomo-live-visit__meta">
-										<span><?php echo esc_html( $visit['device'] ?? '' ); ?></span>
-										<span class="gi-matomo-live-visit__sep">·</span>
 										<span><?php echo esc_html( $visit['referrer'] ?? '' ); ?></span>
 									</div>
+									<?php if ( ! empty( $visit['pages'] ) ) : ?>
+										<ol class="gi-matomo-live-pages">
+											<?php foreach ( $visit['pages'] as $page ) : ?>
+												<li class="gi-matomo-live-page">
+													<?php if ( ! empty( $page['time'] ) ) : ?>
+														<span class="gi-matomo-live-page__time"><?php echo esc_html( $page['time'] ); ?></span>
+													<?php endif; ?>
+													<span class="gi-matomo-live-page__title" title="<?php echo esc_attr( $page['url'] ?? '' ); ?>">
+														<?php echo esc_html( $page['title'] ?? '' ); ?>
+													</span>
+												</li>
+											<?php endforeach; ?>
+										</ol>
+									<?php endif; ?>
 								</div>
 							</li>
 						<?php endforeach; ?>

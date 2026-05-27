@@ -1,5 +1,10 @@
 == Changelog ==
 
+= 2.20.33 =
+Fix: Compteurs live Matomo (clés API visits/visitors/actions + repli calculé).
+Update: Fiches visiteurs live — icônes navigateur, IP, ID unique, historique des pages.
+Update: Mise en page — évolution du trafic pleine largeur ; carte + donuts sur une ligne.
+
 = 2.20.32 =
 Add: Onglet « En direct » — visiteurs live (API Matomo Live) avec rafraîchissement auto toutes les 10 s.
 Update: Carte mondiale à droite de l’évolution du trafic et des camemberts (format carré).

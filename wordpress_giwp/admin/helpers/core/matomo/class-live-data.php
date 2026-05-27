@@ -26,29 +26,41 @@ class Gi_Toolkit_Matomo_Live_Data {
 		$api  = new Gi_Toolkit_Matomo_API( $settings );
 		$base = array( 'idSite' => $site_id );
 
-		$counters_3  = $api->request( 'Live.getCounters', array_merge( $base, array( 'lastMinutes' => 3 ) ) );
-		$counters_30 = $api->request( 'Live.getCounters', array_merge( $base, array( 'lastMinutes' => 30 ) ) );
-
-		$visits = $api->request(
+		$visits_raw = $api->request(
 			'Live.getLastVisitsDetails',
 			array_merge(
 				$base,
 				array(
-					'period'              => 'day',
-					'date'                => 'today',
-					'filter_limit'        => 15,
-					'filter_sort_column'  => 'lastActionTimestamp',
-					'filter_sort_order'   => 'desc',
-					'doNotFetchActions'   => 1,
+					'period'             => 'day',
+					'date'               => 'today',
+					'filter_limit'       => 12,
+					'filter_sort_column' => 'lastActionTimestamp',
+					'filter_sort_order'  => 'desc',
+					'doNotFetchActions'  => 0,
 				)
 			)
 		);
 
-		if ( null === $counters_30 && null === $visits ) {
+		$counters_3  = $api->request( 'Live.getCounters', array_merge( $base, array( 'lastMinutes' => '3' ) ) );
+		$counters_30 = $api->request( 'Live.getCounters', array_merge( $base, array( 'lastMinutes' => '30' ) ) );
+
+		if ( null === $visits_raw && null === $counters_30 ) {
 			return array(
 				'success' => false,
 				'message' => $api->get_last_error() ?: __( 'Impossible de récupérer les données en direct.', 'gi-toolkit' ),
 			);
+		}
+
+		$c3  = self::normalize_counters( $counters_3 );
+		$c30 = self::normalize_counters( $counters_30 );
+
+		if ( is_array( $visits_raw ) ) {
+			if ( 0 === $c3['visitors'] && 0 === $c3['visits'] ) {
+				$c3 = self::derive_counters_from_visits( $visits_raw, 3 );
+			}
+			if ( 0 === $c30['visitors'] && 0 === $c30['visits'] ) {
+				$c30 = self::derive_counters_from_visits( $visits_raw, 30 );
+			}
 		}
 
 		return array(
@@ -63,34 +75,80 @@ class Gi_Toolkit_Matomo_Live_Data {
 			'refresh_seconds' => self::REFRESH_SECONDS,
 			'live'            => array(
 				'counters'   => array(
-					'3'  => self::normalize_counters( $counters_3 ),
-					'30' => self::normalize_counters( $counters_30 ),
+					'3'  => $c3,
+					'30' => $c30,
 				),
-				'visits'     => self::normalize_visits( $visits ),
+				'visits'     => self::normalize_visits( $visits_raw, $settings ),
 				'updated_at' => time(),
 			),
 		);
 	}
 
 	/**
+	 * Matomo renvoie visits/visitors/actions (sans préfixe nb_).
+	 *
 	 * @param mixed $raw Réponse API.
 	 * @return array{visits:int, visitors:int, actions:int}
 	 */
 	private static function normalize_counters( $raw ) {
-		$row = is_array( $raw ) && isset( $raw[0] ) && is_array( $raw[0] ) ? $raw[0] : ( is_array( $raw ) ? $raw : array() );
+		$row = array();
+		if ( is_array( $raw ) ) {
+			if ( isset( $raw[0] ) && is_array( $raw[0] ) ) {
+				$row = $raw[0];
+			} elseif ( isset( $raw['visits'] ) || isset( $raw['nb_visits'] ) || isset( $raw['visitors'] ) ) {
+				$row = $raw;
+			}
+		}
 
 		return array(
-			'visits'   => (int) ( $row['nb_visits'] ?? 0 ),
-			'visitors' => (int) ( $row['nb_visitors'] ?? 0 ),
-			'actions'  => (int) ( $row['nb_actions'] ?? 0 ),
+			'visits'   => (int) ( $row['nb_visits'] ?? $row['visits'] ?? 0 ),
+			'visitors' => (int) ( $row['nb_visitors'] ?? $row['visitors'] ?? 0 ),
+			'actions'  => (int) ( $row['nb_actions'] ?? $row['actions'] ?? 0 ),
 		);
 	}
 
 	/**
-	 * @param mixed $visits Liste de visites API.
-	 * @return array<int, array<string, string>>
+	 * Repli si Live.getCounters renvoie 0 alors que des visites existent.
+	 *
+	 * @param array<int, array<string, mixed>> $visits   Visites brutes API.
+	 * @param int                              $minutes Fenêtre en minutes.
+	 * @return array{visits:int, visitors:int, actions:int}
 	 */
-	private static function normalize_visits( $visits ) {
+	private static function derive_counters_from_visits( array $visits, $minutes ) {
+		$cutoff        = time() - ( $minutes * 60 );
+		$visits_count  = 0;
+		$actions       = 0;
+		$visitor_ids   = array();
+
+		foreach ( $visits as $visit ) {
+			if ( ! is_array( $visit ) ) {
+				continue;
+			}
+			$ts = self::visit_timestamp( $visit );
+			if ( ! $ts || $ts < $cutoff ) {
+				continue;
+			}
+			++$visits_count;
+			$actions += (int) ( $visit['actions'] ?? count( $visit['actionDetails'] ?? array() ) );
+			$vid      = self::visitor_id( $visit );
+			if ( '' !== $vid ) {
+				$visitor_ids[ $vid ] = true;
+			}
+		}
+
+		return array(
+			'visits'   => $visits_count,
+			'visitors' => count( $visitor_ids ),
+			'actions'  => $actions,
+		);
+	}
+
+	/**
+	 * @param mixed                $visits   Liste API.
+	 * @param array<string, mixed> $settings Réglages.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function normalize_visits( $visits, array $settings ) {
 		$out = array();
 		if ( ! is_array( $visits ) ) {
 			return $out;
@@ -101,38 +159,124 @@ class Gi_Toolkit_Matomo_Live_Data {
 				continue;
 			}
 
-			$last_action = (string) ( $visit['lastActionDateTime'] ?? $visit['lastActionTimestamp'] ?? '' );
-			$location    = self::format_location( $visit );
-			$page        = self::format_last_page( $visit );
+			$last_action = (string) ( $visit['lastActionDateTime'] ?? '' );
 			$referrer    = (string) ( $visit['referrerName'] ?? '' );
 			if ( '' === $referrer ) {
 				$referrer = (string) ( $visit['referrerTypeName'] ?? __( 'Accès direct', 'gi-toolkit' ) );
 			}
 
-			$device = trim(
-				implode(
-					' · ',
-					array_filter(
-						array(
-							(string) ( $visit['browserName'] ?? '' ),
-							(string) ( $visit['deviceType'] ?? '' ),
-						)
-					)
-				)
-			);
+			$visitor_id = self::visitor_id( $visit );
+			$browser    = (string) ( $visit['browserName'] ?? __( 'Inconnu', 'gi-toolkit' ) );
 
 			$out[] = array(
-				'id'       => substr( md5( wp_json_encode( $visit ) ), 0, 12 ),
-				'location' => $location,
-				'device'   => $device ?: '—',
-				'page'     => $page,
-				'referrer' => $referrer,
-				'time'     => self::format_time_ago( $last_action ),
-				'is_new'   => self::is_recent( $last_action, 60 ),
+				'id'           => $visitor_id ? substr( $visitor_id, 0, 8 ) : substr( md5( wp_json_encode( $visit ) ), 0, 8 ),
+				'visitor_id'   => $visitor_id,
+				'ip'           => (string) ( $visit['visitIp'] ?? $visit['locationIp'] ?? '' ),
+				'location'     => self::format_location( $visit ),
+				'browser'      => $browser,
+				'browser_icon' => self::matomo_asset_url( $visit['browserIcon'] ?? '', $settings ),
+				'device'       => (string) ( $visit['deviceType'] ?? '' ),
+				'device_icon'  => self::matomo_asset_url( $visit['deviceTypeIcon'] ?? '', $settings ),
+				'referrer'     => $referrer,
+				'time'         => self::format_time_ago( $last_action ),
+				'is_new'       => self::is_recent( $last_action, 60 ),
+				'pages'        => self::normalize_page_history( $visit ),
 			);
 		}
 
 		return $out;
+	}
+
+	/**
+	 * @param array<string, mixed> $visit Visite.
+	 * @return int
+	 */
+	private static function visit_timestamp( array $visit ) {
+		$dt = (string) ( $visit['lastActionDateTime'] ?? '' );
+		$ts = strtotime( $dt );
+		return $ts ? $ts : 0;
+	}
+
+	/**
+	 * @param array<string, mixed> $visit Visite.
+	 * @return string
+	 */
+	private static function visitor_id( array $visit ) {
+		$id = (string) ( $visit['idVisitor'] ?? $visit['visitorId'] ?? '' );
+		return $id;
+	}
+
+	/**
+	 * @param string               $path     Chemin relatif Matomo.
+	 * @param array<string, mixed> $settings Réglages.
+	 * @return string
+	 */
+	private static function matomo_asset_url( $path, array $settings ) {
+		$path = trim( (string) $path );
+		if ( '' === $path ) {
+			return '';
+		}
+		if ( preg_match( '#^https?://#i', $path ) ) {
+			return esc_url_raw( $path );
+		}
+		$base = Gi_Toolkit_Matomo_API::normalize_matomo_url( $settings['matomo_url'] ?? '' );
+		return $base ? esc_url_raw( $base . '/' . ltrim( $path, '/' ) ) : '';
+	}
+
+	/**
+	 * @param array<string, mixed> $visit Visite.
+	 * @return array<int, array{title:string, url:string, time:string}>
+	 */
+	private static function normalize_page_history( array $visit ) {
+		$pages = array();
+		$raw   = $visit['actionDetails'] ?? array();
+		if ( ! is_array( $raw ) ) {
+			return $pages;
+		}
+
+		foreach ( $raw as $action ) {
+			if ( ! is_array( $action ) ) {
+				continue;
+			}
+			$type = (string) ( $action['type'] ?? '' );
+			if ( ! in_array( $type, array( 'action', 'outlink', 'download' ), true ) ) {
+				continue;
+			}
+
+			$title = (string) ( $action['pageTitle'] ?? '' );
+			$url   = (string) ( $action['url'] ?? '' );
+			if ( '' === $title && '' !== $url ) {
+				$title = self::short_url( $url );
+			}
+			if ( '' === $title ) {
+				$title = '—';
+			}
+
+			$time_str = '';
+			if ( ! empty( $action['timestamp'] ) ) {
+				$ats = (int) $action['timestamp'];
+				$diff = time() - $ats;
+				if ( $diff < 60 ) {
+					$time_str = sprintf(
+						/* translators: %d: seconds */
+						__( '%ds', 'gi-toolkit' ),
+						max( 0, $diff )
+					);
+				} else {
+					$time_str = human_time_diff( $ats, time() );
+				}
+			} elseif ( ! empty( $action['pageviewPosition'] ) ) {
+				$time_str = '#' . (int) $action['pageviewPosition'];
+			}
+
+			$pages[] = array(
+				'title' => $title,
+				'url'   => $url,
+				'time'  => $time_str,
+			);
+		}
+
+		return array_slice( $pages, -8 );
 	}
 
 	/**
@@ -147,28 +291,6 @@ class Gi_Toolkit_Matomo_Live_Data {
 			)
 		);
 		return $parts ? implode( ', ', $parts ) : __( 'Inconnu', 'gi-toolkit' );
-	}
-
-	/**
-	 * @param array<string, mixed> $visit Visite.
-	 * @return string
-	 */
-	private static function format_last_page( array $visit ) {
-		if ( ! empty( $visit['actionDetails'] ) && is_array( $visit['actionDetails'] ) ) {
-			$last = end( $visit['actionDetails'] );
-			if ( is_array( $last ) ) {
-				if ( ! empty( $last['pageTitle'] ) ) {
-					return (string) $last['pageTitle'];
-				}
-				if ( ! empty( $last['url'] ) ) {
-					return self::short_url( (string) $last['url'] );
-				}
-			}
-		}
-		if ( ! empty( $visit['landingPagePath'] ) ) {
-			return (string) $visit['landingPagePath'];
-		}
-		return '—';
 	}
 
 	/**
