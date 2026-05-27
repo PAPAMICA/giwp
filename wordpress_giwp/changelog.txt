@@ -1,5 +1,9 @@
 == Changelog ==
 
+= 2.20.24 =
+Fix: Connect Matomo — suppression de l’enregistrement menu parent null (URL /wp-admin/{slug} → 404, admin.php?page= → 403).
+Fix: Redirection précoce des anciennes URLs Matomo ; pages admin GI-Toolkit exclues du filtre Disallow bad requests.
+
 = 2.20.23 =
 Fix: Connect Matomo — page réglages accessible (admin.php?page=), redirection URL incorrecte, menu Statistiques en tête.
 Update: Panneau de configuration affiché sur Statistiques si Matomo n’est pas prêt.

@@ -24,10 +24,38 @@ class Gi_Toolkit_Disallow_Bad_Requests {
      */
     public function init() {
 
+        if ( $this->should_skip_gi_toolkit_admin_request() ) {
+            return;
+        }
+
         $this->check_request_uri();
         $this->check_query_string();
         $this->check_http_user_agent();
         $this->check_http_referrer();
+    }
+
+    /**
+     * Ne pas bloquer les écrans admin GI-Toolkit (query string contient page=gi-toolkit-…).
+     *
+     * @return bool
+     */
+    private function should_skip_gi_toolkit_admin_request() {
+
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        $uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+        if ( '' === $uri || false === strpos( $uri, '/wp-admin/' ) ) {
+            return false;
+        }
+
+        if ( preg_match( '/[?&]page=gi-toolkit/i', $uri ) ) {
+            return true;
+        }
+
+        if ( preg_match( '#/wp-admin/gi-toolkit#i', $uri ) ) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

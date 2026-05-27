@@ -40,7 +40,7 @@ class Gi_Toolkit_Matomo {
 		require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/matomo/class-dashboard-data.php';
 
 		add_action( 'admin_menu', array( $this, 'register_menus' ), 9 );
-		add_action( 'admin_init', array( $this, 'maybe_redirect_legacy_admin_url' ), 1 );
+		add_action( 'plugins_loaded', array( $this, 'maybe_redirect_legacy_admin_url' ), 0 );
 		add_action( 'admin_init', array( $this, 'save_submenu' ) );
 
 		add_action( 'wp_ajax_gi_toolkit_matomo_test_connection', array( $this, 'ajax_test_connection' ) );
@@ -137,9 +137,6 @@ class Gi_Toolkit_Matomo {
 	 * @return void
 	 */
 	public function maybe_redirect_legacy_admin_url() {
-		if ( ! is_admin() ) {
-			return;
-		}
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
 		if ( '' === $uri ) {
@@ -149,7 +146,8 @@ class Gi_Toolkit_Matomo {
 		if ( ! is_string( $path ) ) {
 			return;
 		}
-		if ( preg_match( '#/wp-admin/gi-toolkit-settings-matomo/?$#', $path ) ) {
+		// Ancienne URL générée par add_submenu_page( null, … ) : /wp-admin/{slug} sans admin.php.
+		if ( preg_match( '#/wp-admin/' . preg_quote( $this->settings_page_slug, '#' ) . '/?$#', $path ) ) {
 			wp_safe_redirect( self::get_settings_admin_url() );
 			exit;
 		}
@@ -178,20 +176,11 @@ class Gi_Toolkit_Matomo {
 			array( $this, 'render_settings_page' )
 		);
 
+		// Même slug sous Statistiques (comme Connexion temporaire sous Utilisateurs + GI-Toolkit).
 		add_submenu_page(
 			self::STATS_PAGE_SLUG,
 			$this->header_title,
 			__( 'Réglages Matomo', 'gi-toolkit' ),
-			'manage_options',
-			$this->settings_page_slug,
-			array( $this, 'render_settings_page' )
-		);
-
-		// En dernier : enregistrement « orphelin » pour garantir admin.php?page=gi-toolkit-settings-matomo.
-		add_submenu_page(
-			null,
-			$this->header_title,
-			$this->header_title,
 			'manage_options',
 			$this->settings_page_slug,
 			array( $this, 'render_settings_page' )
