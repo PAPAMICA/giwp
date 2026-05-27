@@ -457,17 +457,13 @@ class Gi_Toolkit_Mail_Catcher {
 	 * @return bool
 	 */
 	private function is_html_mail( $item ) {
-		$headers = (string) ( $item['headers'] ?? '' );
-		if ( '' !== $headers && false !== stripos( $headers, 'text/html' ) ) {
-			return true;
-		}
-
 		$message = (string) ( $item['message'] ?? '' );
 		if ( '' === trim( $message ) ) {
 			return false;
 		}
 
-		return (bool) preg_match( '/<\s*(html|body|table|div|p|br|center|!DOCTYPE)\b/i', $message );
+		// HTML si le corps contient au moins un paragraphe <p>.
+		return (bool) preg_match( '/<p[\s>]/i', $message );
 	}
 
 	/**
@@ -525,6 +521,47 @@ class Gi_Toolkit_Mail_Catcher {
 			esc_attr( $value_class ),
 			$value
 		);
+	}
+
+	/**
+	 * Bloc métadonnées (Jour, destinataire, sujet, etc.) pour les onglets HTML / RAW.
+	 *
+	 * @param array<string, mixed> $item             Ligne mail.
+	 * @param string               $time_str         Date formatée.
+	 * @param string               $receiver_html    Destinataire (HTML).
+	 * @param string               $headers_html     En-têtes (HTML).
+	 * @param string               $attachments_html Pièces jointes (HTML).
+	 * @param string               $plain_message    Message texte échappé.
+	 * @param bool                 $include_message  Inclure le corps du message.
+	 * @return string
+	 */
+	private function render_preview_meta_fields( $item, $time_str, $receiver_html, $headers_html, $attachments_html, $plain_message, $include_message = true ) {
+		$html  = $this->render_preview_field( __( 'Jour', 'gi-toolkit' ), esc_html( $time_str ) );
+		$html .= $this->render_preview_field( __( 'Destinataire', 'gi-toolkit' ), $receiver_html );
+		$html .= $this->render_preview_field( __( 'Sujet', 'gi-toolkit' ), esc_html( $item['subject'] ?? '' ) );
+		$html .= $this->render_preview_field( __( 'En-têtes', 'gi-toolkit' ), $headers_html );
+
+		if ( ! empty( $item['error'] ) ) {
+			$html .= $this->render_preview_field(
+				__( 'Erreur', 'gi-toolkit' ),
+				esc_html( $item['error'] ),
+				'gi-toolkit-email-preview__content__item__content__error'
+			);
+		}
+
+		if ( $include_message ) {
+			$html .= $this->render_preview_field(
+				__( 'Message', 'gi-toolkit' ),
+				'<pre class="gi-toolkit-email-preview__plaintext">' . $plain_message . '</pre>',
+				'gi-toolkit-email-preview__content__item__content__message'
+			);
+		}
+
+		if ( $attachments_html ) {
+			$html .= $this->render_preview_field( __( 'Pièces jointes', 'gi-toolkit' ), wp_kses_post( $attachments_html ) );
+		}
+
+		return $html;
 	}
 
 
@@ -1329,7 +1366,8 @@ class Gi_Toolkit_Mail_Catcher {
 		$receiver_html    = wp_kses_post( nl2br( str_replace( '\n', "\n", $item['receiver'] ?? '' ) ) );
 		$headers_html     = wp_kses_post( nl2br( str_replace( '\n', "\n", $item['headers'] ?? '' ) ) );
 		$plain_message    = esc_html( $this->get_plain_mail_text( $item['message'] ?? '' ) );
-		$iframe_src       = $this->get_iframe_src( $item );
+		$iframe_src       = $is_html ? $this->get_iframe_src( $item ) : '';
+		$meta_raw         = $this->render_preview_meta_fields( $item, $time_str, $receiver_html, $headers_html, $attachments_html, $plain_message, true );
 		$json             = wp_json_encode(
 			$this->get_preview_export_item( $item ),
 			JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
@@ -1346,33 +1384,24 @@ class Gi_Toolkit_Mail_Catcher {
 
 			<div class="gi-toolkit-mail-preview__panels">
 				<div class="gi-toolkit-mail-preview__panel<?php echo 'html' === $default_tab ? ' is-active' : ''; ?>" data-preview-panel="html" role="tabpanel">
-					<div class="gi-toolkit-email-preview__content gi-toolkit-email-preview__content--html">
-						<iframe class="gi-toolkit-email-preview__iframe" src="<?php echo esc_url( $iframe_src ); ?>" frameborder="0" title="<?php esc_attr_e( 'Aperçu HTML', 'gi-toolkit' ); ?>"></iframe>
+					<div class="gi-toolkit-email-preview__content gi-toolkit-email-preview__content--fields gi-toolkit-email-preview__content--html">
+						<?php
+						echo $this->render_preview_meta_fields( $item, $time_str, $receiver_html, $headers_html, $attachments_html, $plain_message, ! $is_html ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+						if ( $is_html && $iframe_src ) :
+							?>
+							<div class="gi-toolkit-email-preview__content__item gi-toolkit-email-preview__content__item--message-html">
+								<div class="gi-toolkit-email-preview__content__item__title"><?php esc_html_e( 'Message', 'gi-toolkit' ); ?></div>
+								<div class="gi-toolkit-email-preview__content__item__content">
+									<iframe class="gi-toolkit-email-preview__iframe" data-src="<?php echo esc_url( $iframe_src ); ?>" frameborder="0" title="<?php esc_attr_e( 'Aperçu HTML', 'gi-toolkit' ); ?>"></iframe>
+								</div>
+							</div>
+						<?php endif; ?>
 					</div>
 				</div>
 
 				<div class="gi-toolkit-mail-preview__panel<?php echo 'raw' === $default_tab ? ' is-active' : ''; ?>" data-preview-panel="raw" role="tabpanel">
-					<div class="gi-toolkit-email-preview__content gi-toolkit-email-preview__content--raw">
-						<?php
-						echo $this->render_preview_field( __( 'Jour', 'gi-toolkit' ), esc_html( $time_str ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-						echo $this->render_preview_field( __( 'Destinataire', 'gi-toolkit' ), $receiver_html ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-						echo $this->render_preview_field( __( 'Sujet', 'gi-toolkit' ), esc_html( $item['subject'] ?? '' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-						echo $this->render_preview_field( __( 'En-têtes', 'gi-toolkit' ), $headers_html ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-
-						if ( ! empty( $item['error'] ) ) {
-							echo $this->render_preview_field( __( 'Erreur', 'gi-toolkit' ), esc_html( $item['error'] ), 'gi-toolkit-email-preview__content__item__content__error' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-						}
-
-						echo $this->render_preview_field(
-							__( 'Message', 'gi-toolkit' ),
-							'<pre class="gi-toolkit-email-preview__plaintext">' . $plain_message . '</pre>',
-							'gi-toolkit-email-preview__content__item__content__message'
-						); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-
-						if ( $attachments_html ) {
-							echo $this->render_preview_field( __( 'Pièces jointes', 'gi-toolkit' ), wp_kses_post( $attachments_html ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-						}
-						?>
+					<div class="gi-toolkit-email-preview__content gi-toolkit-email-preview__content--fields gi-toolkit-email-preview__content--raw">
+						<?php echo $meta_raw; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 					</div>
 				</div>
 

@@ -412,6 +412,31 @@
 			} );
 	}
 
+	function runSitesParallel( sites, worker, concurrency, done ) {
+		var total = sites.length;
+		var index = 0;
+		var running = 0;
+		var finished = 0;
+
+		function pump() {
+			while ( running < concurrency && index < total ) {
+				var site = sites[ index ];
+				index += 1;
+				running += 1;
+				worker( site, function () {
+					running -= 1;
+					finished += 1;
+					pump();
+				} );
+			}
+			if ( finished >= total ) {
+				done();
+			}
+		}
+
+		pump();
+	}
+
 	function runSync( modal ) {
 		var $btn = $( '#mainwp-giweb-sync-start' );
 		$btn.prop( 'disabled', true );
@@ -432,6 +457,7 @@
 
 				var sites = response.data.sites || [];
 				var total = response.data.total || sites.length;
+				var concurrency = Math.max( 1, parseInt( cfg.syncConcurrency, 10 ) || 5 );
 
 				if ( ! total ) {
 					modal.appendLog( i18n( 'syncNoSites', 'Aucun site' ), false );
@@ -440,59 +466,78 @@
 					return;
 				}
 
-				var index = 0;
+				var completed = 0;
 				var lastMailSummary = null;
 
-				function next() {
-					if ( index >= sites.length ) {
+				runSitesParallel(
+					sites,
+					function ( site, siteDone ) {
+						modal.appendLog( i18n( 'syncConnecting', 'Interrogation de %s…' ).replace( '%s', site.name ) );
+
+						postAjax( 'mainwp_giweb_sync_site', {
+							site_id: site.id,
+							site_label: site.name,
+						} )
+							.done( function ( siteResponse ) {
+								if ( siteResponse && siteResponse.success && siteResponse.data ) {
+									modal.appendLog( siteResponse.data.log, siteResponse.data.success );
+									updateTableRow( site.id, siteResponse.data );
+									if ( siteResponse.data.mail_summary ) {
+										lastMailSummary = siteResponse.data.mail_summary;
+									}
+								} else {
+									modal.appendLog(
+										( siteResponse && siteResponse.data && siteResponse.data.message ) ||
+											i18n( 'syncError', 'Erreur' ),
+										false
+									);
+								}
+							} )
+							.fail( function () {
+								modal.appendLog( site.name + ' — ' + i18n( 'syncError', 'Erreur réseau' ), false );
+							} )
+							.always( function () {
+								completed += 1;
+								modal.setProgress( completed, total );
+								siteDone();
+							} );
+					},
+					concurrency,
+					function () {
 						modal.setProgress( total, total );
 						modal.appendLog( i18n( 'syncDone', 'Terminé.' ), true );
 						showMailSyncAlert( lastMailSummary );
 						modal.enableClose();
 						$btn.prop( 'disabled', false );
-						return;
 					}
-
-					var site = sites[ index ];
-					modal.appendLog( i18n( 'syncConnecting', 'Interrogation de %s…' ).replace( '%s', site.name ) );
-					modal.setProgress( index, total );
-
-					postAjax( 'mainwp_giweb_sync_site', {
-						site_id: site.id,
-						site_label: site.name,
-					} )
-						.done( function ( siteResponse ) {
-							if ( siteResponse && siteResponse.success && siteResponse.data ) {
-								modal.appendLog( siteResponse.data.log, siteResponse.data.success );
-								updateTableRow( site.id, siteResponse.data );
-								if ( siteResponse.data.mail_summary ) {
-									lastMailSummary = siteResponse.data.mail_summary;
-								}
-							} else {
-								modal.appendLog(
-									( siteResponse && siteResponse.data && siteResponse.data.message ) ||
-										i18n( 'syncError', 'Erreur' ),
-									false
-								);
-							}
-							index += 1;
-							modal.setProgress( index, total );
-							next();
-						} )
-						.fail( function () {
-							modal.appendLog( site.name + ' — ' + i18n( 'syncError', 'Erreur réseau' ), false );
-							index += 1;
-							next();
-						} );
-				}
-
-				next();
+				);
 			} )
 			.fail( function () {
 				modal.appendLog( i18n( 'syncError', 'Erreur réseau' ), false );
 				modal.enableClose();
 				$btn.prop( 'disabled', false );
 			} );
+	}
+
+	function switchGiwebTab( tabKey ) {
+		if ( ! tabKey ) {
+			return;
+		}
+
+		$( '.mainwp-giweb-tab' ).removeClass( 'nav-tab-active' );
+		$( '.mainwp-giweb-tab[data-mainwp-giweb-tab="' + tabKey + '"]' ).addClass( 'nav-tab-active' );
+		$( '.mainwp-giweb-panel[data-giweb-panel]' ).attr( 'hidden', 'hidden' );
+		$( '#mainwp-giweb-panel-' + tabKey ).removeAttr( 'hidden' );
+
+		if ( window.history && window.history.replaceState ) {
+			try {
+				var url = new URL( window.location.href );
+				url.searchParams.set( 'tab', tabKey );
+				window.history.replaceState( {}, '', url.toString() );
+			} catch ( err ) {
+				log( 'switchGiwebTab url', err );
+			}
+		}
 	}
 
 	function onReady() {
@@ -543,22 +588,21 @@
 		}
 
 		$( document ).on( 'click', '.mainwp-giweb-tab', function ( e ) {
-			var href = this.getAttribute( 'href' );
-			if ( ! href ) {
-				return;
-			}
-			try {
-				var target = new URL( href, window.location.href );
-				if ( target.href === window.location.href ) {
-					return;
-				}
-			} catch ( err ) {
-				return;
-			}
 			e.preventDefault();
-			e.stopImmediatePropagation();
-			window.location.assign( href );
+			var tab = $( this ).data( 'mainwpGiwebTab' ) || $( this ).attr( 'data-mainwp-giweb-tab' );
+			switchGiwebTab( tab );
 		} );
+
+		var initialTab = ( function () {
+			try {
+				return new URL( window.location.href ).searchParams.get( 'tab' );
+			} catch ( err ) {
+				return null;
+			}
+		} )();
+		if ( initialTab && $( '#mainwp-giweb-panel-' + initialTab ).length ) {
+			switchGiwebTab( initialTab );
+		}
 
 		$( document ).on( 'click', '.mainwp-giweb-pull-config', function ( e ) {
 			log( 'jQuery click pull', this.dataset );

@@ -49,7 +49,7 @@ class MainWP_GIWeb_Onboarding {
 		$settings     = MainWP_GIWeb_Settings::get();
 		$templates    = MainWP_GIWeb_Templates::all();
 		$default_id   = MainWP_GIWeb_Templates::get_default_template_id();
-		$zip_ready    = (bool) MainWP_GIWeb_Zip::get_public_url();
+		$zip_ready    = (bool) MainWP_GIWeb_Zip::get_install_url();
 		$install_on   = '1' === ( $settings['install_checked_by_default'] ?? '1' );
 		$profile_on   = '1' === ( $settings['apply_profile_by_default'] ?? '1' );
 		?>

@@ -45,6 +45,21 @@ class MainWP_GIWeb_Zip {
 	}
 
 	/**
+	 * URL utilisée pour installer GI-Toolkit sur les sites enfants (personnalisable).
+	 *
+	 * @return string|false
+	 */
+	public static function get_install_url() {
+		$settings = MainWP_GIWeb_Settings::get();
+		$custom   = trim( (string) ( $settings['client_zip_url'] ?? '' ) );
+		if ( '' !== $custom && filter_var( $custom, FILTER_VALIDATE_URL ) ) {
+			return $custom;
+		}
+
+		return self::get_public_url();
+	}
+
+	/**
 	 * @return string
 	 */
 	private static function zip_storage_path() {

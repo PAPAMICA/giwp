@@ -243,7 +243,7 @@ class Gi_Toolkit_Mail_Catcher_Logs_List_Table extends WP_List_Table {
 	 * @return string
 	 */
 	protected function get_primary_column_name() {
-		return 'subject';
+		return 'time';
 	}
 
 	/**

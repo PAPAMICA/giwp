@@ -34,6 +34,8 @@ class MainWP_GIWeb_Settings {
 			'mail_alert_enabled'            => '1',
 			'mail_alert_min_failed'         => 1,
 			'mail_alert_email'              => '',
+			'client_zip_url'                => '',
+			'sync_concurrency'              => 5,
 		);
 	}
 
@@ -54,6 +56,11 @@ class MainWP_GIWeb_Settings {
 		$clean['mail_alert_min_failed']        = max( 1, absint( $data['mail_alert_min_failed'] ?? 1 ) );
 		$email                                 = isset( $data['mail_alert_email'] ) ? sanitize_email( (string) $data['mail_alert_email'] ) : '';
 		$clean['mail_alert_email']             = is_email( $email ) ? $email : '';
+
+		$zip_url = isset( $data['client_zip_url'] ) ? esc_url_raw( trim( (string) $data['client_zip_url'] ) ) : '';
+		$clean['client_zip_url']               = ( '' !== $zip_url && filter_var( $zip_url, FILTER_VALIDATE_URL ) ) ? $zip_url : '';
+
+		$clean['sync_concurrency']             = max( 1, min( 15, absint( $data['sync_concurrency'] ?? 5 ) ) );
 
 		return update_option( self::OPTION_KEY, $clean, false );
 	}

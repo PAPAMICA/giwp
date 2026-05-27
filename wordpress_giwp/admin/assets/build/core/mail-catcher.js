@@ -2,18 +2,30 @@
 	'use strict';
 
 	function initMailCatcher() {
-		var popup = document.querySelector( '.gi-toolkit-popup' );
+		var popup = document.querySelector( '.gi-toolkit-popup--mail-catcher, .gi-toolkit-popup' );
 		var closeBtn = document.querySelector( '#JS-close-popup' );
 		var overlay = document.querySelector( '#JS-popup-overlay' );
 		var preview = document.querySelector( '#JS-gi-toolkit-email-preview' );
 		var loader = document.querySelector( '#JS-gi-toolkit-email-loader' );
 		var form = document.querySelector( '#email-list' );
+		var table = document.querySelector( '.gi-toolkit-mail-catcher-table--log .wp-list-table' );
 		var i18n = ( window.Gi_ToolkitSubmenu && window.Gi_ToolkitSubmenu.i18n ) ? window.Gi_ToolkitSubmenu.i18n : {};
 
 		function closePopup() {
 			if ( popup ) {
 				popup.classList.remove( 'show' );
 			}
+		}
+
+		function loadHtmlIframe( root ) {
+			if ( ! root ) {
+				return;
+			}
+			var iframe = root.querySelector( '.gi-toolkit-email-preview__iframe[data-src]' );
+			if ( ! iframe || iframe.getAttribute( 'src' ) ) {
+				return;
+			}
+			iframe.setAttribute( 'src', iframe.getAttribute( 'data-src' ) );
 		}
 
 		function initPreviewTabs( root ) {
@@ -34,6 +46,9 @@
 				panels.forEach( function ( panel ) {
 					panel.classList.toggle( 'is-active', panel.getAttribute( 'data-preview-panel' ) === name );
 				} );
+				if ( 'html' === name ) {
+					loadHtmlIframe( root );
+				}
 			}
 
 			tabs.forEach( function ( tab ) {
@@ -50,9 +65,13 @@
 				return;
 			}
 
-			var emailId = trigger.dataset.emailId || trigger.value;
+			var emailId = trigger.getAttribute( 'data-email-id' ) || trigger.value;
 			if ( ! emailId || ! window.Gi_ToolkitSubmenu ) {
 				return;
+			}
+
+			if ( popup ) {
+				popup.classList.add( 'show' );
 			}
 
 			preview.innerHTML = '';
@@ -66,6 +85,7 @@
 			fetch( window.Gi_ToolkitSubmenu.ajaxUrl, {
 				method: 'POST',
 				body: body,
+				credentials: 'same-origin',
 			} )
 				.then( function ( response ) {
 					return response.json();
@@ -91,15 +111,34 @@
 			overlay.addEventListener( 'click', closePopup );
 		}
 
-		document.querySelectorAll( '.gi-toolkit-view' ).forEach( function ( btn ) {
-			btn.addEventListener( 'click', function ( event ) {
+		document.addEventListener( 'click', function ( event ) {
+			var viewBtn = event.target.closest( '.gi-toolkit-view, .gi-toolkit-mail-catcher-action--view' );
+			if ( viewBtn ) {
 				event.preventDefault();
 				event.stopPropagation();
-				if ( popup ) {
-					popup.classList.add( 'show' );
-				}
-				openPreview( event.currentTarget );
-			} );
+				openPreview( viewBtn );
+				return;
+			}
+
+			var cell = event.target.closest( 'th.check-column, td.check-column' );
+			if ( ! cell || ! table || ! table.contains( cell ) ) {
+				return;
+			}
+
+			if ( event.target.closest( 'a, button, .gi-toolkit-mail-catcher-actions' ) ) {
+				return;
+			}
+
+			var checkbox = cell.querySelector( 'input[type="checkbox"]' );
+			if ( ! checkbox ) {
+				return;
+			}
+
+			if ( event.target !== checkbox ) {
+				checkbox.checked = ! checkbox.checked;
+				checkbox.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+				event.preventDefault();
+			}
 		} );
 
 		document.querySelectorAll( '.gi-toolkit-delete' ).forEach( function ( btn ) {
@@ -126,20 +165,31 @@
 			return document.getElementById( 'cb-select-all-1' ) || document.getElementById( 'cb-select-all-2' );
 		}
 
+		function syncRowSelectedState( checkbox ) {
+			var row = checkbox.closest( 'tr' );
+			if ( row ) {
+				row.classList.toggle( 'is-selected', checkbox.checked );
+			}
+		}
+
+		function bindRowCheckbox( checkbox ) {
+			syncRowSelectedState( checkbox );
+			checkbox.addEventListener( 'change', function () {
+				syncRowSelectedState( checkbox );
+			} );
+		}
+
+		rowCheckboxes().forEach( bindRowCheckbox );
+
 		var selectAll = headerCheckbox();
 		if ( selectAll ) {
 			selectAll.addEventListener( 'change', function () {
 				rowCheckboxes().forEach( function ( cb ) {
 					cb.checked = selectAll.checked;
+					syncRowSelectedState( cb );
 				} );
 			} );
 		}
-
-		rowCheckboxes().forEach( function ( cb ) {
-			cb.addEventListener( 'click', function ( event ) {
-				event.stopPropagation();
-			} );
-		} );
 
 		if ( form ) {
 			form.addEventListener( 'submit', function ( event ) {

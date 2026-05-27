@@ -110,7 +110,7 @@ class MainWP_GIWeb_Sync_Ajax {
 	}
 
 	/**
-	 * Prépare la liste des sites et vide le cache de statuts.
+	 * Prépare la liste des sites pour une resynchronisation (conserve le cache existant).
 	 *
 	 * @return void
 	 */
@@ -139,7 +139,7 @@ class MainWP_GIWeb_Sync_Ajax {
 				);
 			}
 
-			set_transient( 'mainwp_giweb_status_cache', array(), 15 * MINUTE_IN_SECONDS );
+			MainWP_GIWeb_Status_Cache::mark_sync_started();
 			update_option( MainWP_GIWeb_Mail_Stats::AGGREGATE_OPTION, array( 'sites' => array(), 'network' => MainWP_GIWeb_Mail_Stats::compute_network( array() ), 'updated_at' => 0 ), false );
 			MainWP_GIWeb_Mail_Stats::clear_alert();
 
@@ -176,12 +176,7 @@ class MainWP_GIWeb_Sync_Ajax {
 			$label  = isset( $_POST['site_label'] ) ? sanitize_text_field( wp_unslash( $_POST['site_label'] ) ) : ( '#' . $site_id );
 			$result = MainWP_GIWeb_Deploy::sync_site_status( $site_id, $label );
 
-			$cache = get_transient( 'mainwp_giweb_status_cache' );
-			if ( ! is_array( $cache ) ) {
-				$cache = array();
-			}
-			$cache[ $site_id ] = $result['api'];
-			set_transient( 'mainwp_giweb_status_cache', $cache, 15 * MINUTE_IN_SECONDS );
+			MainWP_GIWeb_Status_Cache::set_site( $site_id, $result['api'] );
 
 			$row = MainWP_GIWeb_Sites::find_by_id( $site_id, self::activator() );
 			$url = is_array( $row ) ? (string) ( $row['url'] ?? '' ) : '';

@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'MAINWP_GIWEB_VERSION' ) ) {
-	define( 'MAINWP_GIWEB_VERSION', '1.3.5' );
+	define( 'MAINWP_GIWEB_VERSION', '1.3.7' );
 }
 if ( ! defined( 'MAINWP_GIWEB_PLUGIN_FILE' ) ) {
 	define( 'MAINWP_GIWEB_PLUGIN_FILE', __DIR__ . '/mainwp-giwp.php' );
@@ -42,6 +42,7 @@ require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-api.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-deploy.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-notices.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-mail-stats.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-status-cache.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-mainwp-sync.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-dashboard-widget.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-sync-ajax.php';
@@ -158,11 +159,11 @@ class MainWP_GIWeb_Extension_Activator {
 	 */
 	public function add_submenu( $subpages ) {
 		$subpages[] = array(
-			'title'      => MainWP_GIWeb_UI::page_title(),
-			'slug'       => 'Mainwp-Gi-Toolkit-Manager',
-			'sitetab'    => false,
+			'title'       => MainWP_GIWeb_UI::page_title(),
+			'slug'        => 'Mainwp-Gi-Toolkit-Manager',
+			'sitetab'     => false,
 			'menu_hidden' => false,
-			'callback'   => array( 'MainWP_GIWeb', 'render_page' ),
+			'callback'    => array( $this, 'settings_page' ),
 		);
 		return $subpages;
 	}

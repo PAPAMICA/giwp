@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.20.10 =
+Fix: Mail catcher — cases à cocher (colonne th WP_List_Table), aperçu plus rapide, détection HTML via balise &lt;p&gt;, métadonnées dans l’onglet HTML.
+
 = 2.20.9 =
 Update: Mail catcher — tableau type journal (Jour, Destinataire, Sujet, Erreur) et aperçu avec onglets HTML / RAW / JSON.
 

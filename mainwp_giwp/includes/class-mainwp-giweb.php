@@ -18,10 +18,7 @@ class MainWP_GIWeb {
 			return;
 		}
 
-		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'overview';
-		if ( 'modules' === $tab ) {
-			MainWP_GIWeb_Modules_UI::enqueue_assets();
-		}
+		MainWP_GIWeb_Modules_UI::enqueue_assets();
 
 		wp_enqueue_style(
 			'mainwp-giweb-admin',
@@ -54,11 +51,14 @@ class MainWP_GIWeb {
 	 * @return array<string, mixed>
 	 */
 	public static function script_config() {
+		$settings = MainWP_GIWeb_Settings::get();
+
 		return array(
-			'debug'   => true,
-			'version' => MAINWP_GIWEB_VERSION,
-			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-			'nonce'   => wp_create_nonce( MainWP_GIWeb_Sync_Ajax::NONCE_ACTION ),
+			'debug'            => true,
+			'version'          => MAINWP_GIWEB_VERSION,
+			'ajaxUrl'          => admin_url( 'admin-ajax.php' ),
+			'nonce'            => wp_create_nonce( MainWP_GIWeb_Sync_Ajax::NONCE_ACTION ),
+			'syncConcurrency'  => max( 1, min( 15, absint( $settings['sync_concurrency'] ?? 5 ) ) ),
 			'i18n'    => array(
 				'syncTitle'      => __( 'Synchronisation des statuts', 'mainwp-giweb' ),
 				'syncStarting'   => __( 'Préparation de la synchronisation…', 'mainwp-giweb' ),
@@ -130,16 +130,18 @@ class MainWP_GIWeb {
 
 		self::handle_post();
 
-		$tab         = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'overview';
+		$tab          = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'overview';
+		$allowed_tabs  = array( 'overview', 'modules', 'templates', 'deploy', 'excludes', 'history', 'settings' );
+		if ( ! in_array( $tab, $allowed_tabs, true ) ) {
+			$tab = 'overview';
+		}
 		$current_page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : MainWP_GIWeb_UI::PAGE_SLUG;
 		$act = self::activator();
 
 		$websites = MainWP_GIWeb_Sites::fetch_all( $act );
 
-		$status_cache = get_transient( 'mainwp_giweb_status_cache' );
-		if ( ! is_array( $status_cache ) ) {
-			$status_cache = array();
-		}
+		$status_cache     = MainWP_GIWeb_Status_Cache::get_all();
+		$status_updated_at = MainWP_GIWeb_Status_Cache::get_updated_at();
 
 		$working_bundle = MainWP_GIWeb_Bundle::get();
 
@@ -243,6 +245,8 @@ class MainWP_GIWeb {
 						'mail_alert_enabled'         => ! empty( $_POST['mail_alert_enabled'] ),
 						'mail_alert_min_failed'      => absint( $_POST['mail_alert_min_failed'] ?? 1 ),
 						'mail_alert_email'           => sanitize_email( wp_unslash( $_POST['mail_alert_email'] ?? '' ) ),
+						'client_zip_url'             => isset( $_POST['client_zip_url'] ) ? esc_url_raw( wp_unslash( $_POST['client_zip_url'] ) ) : '',
+						'sync_concurrency'           => absint( $_POST['sync_concurrency'] ?? 5 ),
 					)
 				);
 				MainWP_GIWeb_Notices::add( 'success', __( 'Réglages enregistrés.', 'mainwp-giweb' ) );

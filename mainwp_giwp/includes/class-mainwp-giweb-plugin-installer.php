@@ -22,11 +22,11 @@ class MainWP_GIWeb_Plugin_Installer {
 			return self::result( false, __( 'ID site invalide.', 'mainwp-giweb' ) );
 		}
 
-		$url = MainWP_GIWeb_Zip::get_public_url();
+		$url = MainWP_GIWeb_Zip::get_install_url();
 		if ( ! $url ) {
 			return self::result(
 				false,
-				__( 'Impossible de générer le ZIP GI-Toolkit. Vérifiez ZipArchive et le dossier wordpress_giwp.', 'mainwp-giweb' )
+				__( 'URL ZIP GI-Toolkit indisponible. Définissez une URL dans Réglages ou vérifiez ZipArchive et wordpress_giwp.', 'mainwp-giweb' )
 			);
 		}
 

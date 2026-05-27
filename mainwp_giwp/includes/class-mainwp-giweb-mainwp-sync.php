@@ -52,12 +52,7 @@ class MainWP_GIWeb_MainWP_Sync {
 		$url    = ! empty( $website->url ) ? (string) $website->url : '';
 		$result = MainWP_GIWeb_Deploy::sync_site_status( $site_id, $label );
 
-		$cache = get_transient( 'mainwp_giweb_status_cache' );
-		if ( ! is_array( $cache ) ) {
-			$cache = array();
-		}
-		$cache[ $site_id ] = $result['api'];
-		set_transient( 'mainwp_giweb_status_cache', $cache, 15 * MINUTE_IN_SECONDS );
+		MainWP_GIWeb_Status_Cache::set_site( $site_id, $result['api'] );
 
 		MainWP_GIWeb_Mail_Stats::record_site_sync( $site_id, $label, $url, $result['api'] );
 	}

@@ -3,11 +3,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$settings   = MainWP_GIWeb_Settings::get();
-$templates  = MainWP_GIWeb_Templates::all();
-$default_id = MainWP_GIWeb_Templates::get_default_template_id();
-$zip_url    = MainWP_GIWeb_Zip::get_public_url();
-$logs       = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
+$settings        = MainWP_GIWeb_Settings::get();
+$templates       = MainWP_GIWeb_Templates::all();
+$default_id      = MainWP_GIWeb_Templates::get_default_template_id();
+$auto_zip_url    = MainWP_GIWeb_Zip::get_public_url();
+$install_zip_url = MainWP_GIWeb_Zip::get_install_url();
+$logs            = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 ?>
 <h2><?php esc_html_e( 'Réglages GI-Toolkit Manager', 'mainwp-giweb' ); ?></h2>
 
@@ -70,15 +71,46 @@ $logs       = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 			</td>
 		</tr>
 		<tr>
-			<th scope="row"><?php esc_html_e( 'Package ZIP', 'mainwp-giweb' ); ?></th>
+			<th scope="row"><?php esc_html_e( 'Synchronisation', 'mainwp-giweb' ); ?></th>
 			<td>
-				<?php if ( $zip_url ) : ?>
-					<p>
-						<code><?php echo esc_html( $zip_url ); ?></code>
+				<label for="mainwp_giweb_sync_concurrency"><?php esc_html_e( 'Sites interrogés en parallèle', 'mainwp-giweb' ); ?></label>
+				<input type="number" min="1" max="15" step="1" class="small-text" id="mainwp_giweb_sync_concurrency" name="sync_concurrency" value="<?php echo esc_attr( (string) (int) ( $settings['sync_concurrency'] ?? 5 ) ); ?>" />
+				<p class="description"><?php esc_html_e( 'Augmentez pour accélérer la sync sur de nombreux sites (recommandé : 5).', 'mainwp-giweb' ); ?></p>
+			</td>
+		</tr>
+		<tr>
+			<th scope="row"><label for="mainwp_giweb_client_zip_url"><?php esc_html_e( 'URL ZIP client', 'mainwp-giweb' ); ?></label></th>
+			<td>
+				<input type="url" class="large-text code" id="mainwp_giweb_client_zip_url" name="client_zip_url" value="<?php echo esc_attr( (string) ( $settings['client_zip_url'] ?? '' ) ); ?>" placeholder="<?php echo esc_attr( is_string( $auto_zip_url ) ? $auto_zip_url : '' ); ?>" />
+				<p class="description">
+					<?php esc_html_e( 'URL téléchargeable par les sites enfants pour installer GI-Toolkit. Laissez vide pour utiliser le ZIP généré automatiquement sur ce dashboard.', 'mainwp-giweb' ); ?>
+				</p>
+				<?php if ( $auto_zip_url ) : ?>
+					<p class="description">
+						<?php esc_html_e( 'ZIP auto-généré :', 'mainwp-giweb' ); ?>
+						<code><?php echo esc_html( $auto_zip_url ); ?></code>
 					</p>
-					<p class="description"><?php esc_html_e( 'Le site enfant doit pouvoir télécharger cette URL (HTTPS). Le ZIP est régénéré si wordpress_giwp a été modifié.', 'mainwp-giweb' ); ?></p>
+				<?php endif; ?>
+				<?php if ( $install_zip_url ) : ?>
+					<p class="description">
+						<?php esc_html_e( 'URL utilisée à l’installation :', 'mainwp-giweb' ); ?>
+						<code><?php echo esc_html( $install_zip_url ); ?></code>
+					</p>
 				<?php else : ?>
-					<p class="description" style="color:#b45309;"><?php esc_html_e( 'ZIP indisponible — vérifiez ZipArchive et le chemin wordpress_giwp.', 'mainwp-giweb' ); ?></p>
+					<p class="description" style="color:#b45309;"><?php esc_html_e( 'Aucune URL ZIP disponible — définissez une URL personnalisée ou vérifiez ZipArchive et wordpress_giwp.', 'mainwp-giweb' ); ?></p>
+				<?php endif; ?>
+			</td>
+		</tr>
+		<tr>
+			<th scope="row"><?php esc_html_e( 'Package ZIP local', 'mainwp-giweb' ); ?></th>
+			<td>
+				<?php if ( $auto_zip_url ) : ?>
+					<p>
+						<code><?php echo esc_html( $auto_zip_url ); ?></code>
+					</p>
+					<p class="description"><?php esc_html_e( 'Régénéré automatiquement si wordpress_giwp a été modifié (utilisé lorsque l’URL personnalisée est vide).', 'mainwp-giweb' ); ?></p>
+				<?php else : ?>
+					<p class="description" style="color:#b45309;"><?php esc_html_e( 'ZIP local indisponible — vérifiez ZipArchive et le chemin wordpress_giwp.', 'mainwp-giweb' ); ?></p>
 				<?php endif; ?>
 			</td>
 		</tr>

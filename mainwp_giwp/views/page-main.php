@@ -36,23 +36,27 @@ $giweb_cfg = isset( $giweb_script_config ) && is_array( $giweb_script_config ) ?
 
 	<nav class="nav-tab-wrapper mainwp-giweb-tabs">
 		<?php foreach ( $tabs as $key => $label ) : ?>
-		<a href="<?php echo esc_url( MainWP_GIWeb_UI::admin_page_url( array( 'tab' => $key ) ) ); ?>" class="nav-tab mainwp-giweb-tab<?php echo $tab === $key ? ' nav-tab-active' : ''; ?>" data-mainwp-giweb-tab="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></a>
+		<a href="#" class="nav-tab mainwp-giweb-tab<?php echo $tab === $key ? ' nav-tab-active' : ''; ?>" data-mainwp-giweb-tab="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></a>
 		<?php endforeach; ?>
 	</nav>
 
-	<div class="mainwp-giweb-panel">
+	<?php foreach ( $tabs as $key => $label ) : ?>
+	<div
+		class="mainwp-giweb-panel"
+		id="mainwp-giweb-panel-<?php echo esc_attr( $key ); ?>"
+		data-giweb-panel="<?php echo esc_attr( $key ); ?>"
+		<?php echo $tab !== $key ? ' hidden' : ''; ?>
+	>
 		<?php
-		switch ( $tab ) {
+		switch ( $key ) {
 			case 'modules':
 				include MAINWP_GIWEB_PLUGIN_PATH . 'views/tab-modules.php';
-				include MAINWP_GIWEB_PLUGIN_PATH . 'views/modal-module-options.php';
 				break;
 			case 'templates':
 				include MAINWP_GIWEB_PLUGIN_PATH . 'views/tab-templates.php';
 				break;
 			case 'deploy':
 				include MAINWP_GIWEB_PLUGIN_PATH . 'views/tab-deploy.php';
-				include MAINWP_GIWEB_PLUGIN_PATH . 'views/modal-deploy.php';
 				break;
 			case 'excludes':
 				include MAINWP_GIWEB_PLUGIN_PATH . 'views/tab-excludes.php';
@@ -68,8 +72,12 @@ $giweb_cfg = isset( $giweb_script_config ) && is_array( $giweb_script_config ) ?
 		}
 		?>
 	</div>
-	<?php if ( 'overview' === $tab ) : ?>
-		<?php include MAINWP_GIWEB_PLUGIN_PATH . 'views/modal-sync.php'; ?>
-	<?php endif; ?>
+	<?php endforeach; ?>
+
+	<?php
+	include MAINWP_GIWEB_PLUGIN_PATH . 'views/modal-sync.php';
+	include MAINWP_GIWEB_PLUGIN_PATH . 'views/modal-module-options.php';
+	include MAINWP_GIWEB_PLUGIN_PATH . 'views/modal-deploy.php';
+	?>
 </div>
 <?php include MAINWP_GIWEB_PLUGIN_PATH . 'views/partials/inline-boot.php'; ?>

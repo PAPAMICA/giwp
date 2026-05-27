@@ -18,6 +18,19 @@ if ( is_array( $bundle_modules ) ) {
 	<button type="button" class="button button-primary" id="mainwp-giweb-sync-start">
 		<?php esc_html_e( 'Synchroniser les statuts', 'mainwp-giweb' ); ?>
 	</button>
+	<?php if ( ! empty( $status_updated_at ) ) : ?>
+		<span class="mainwp-giweb-sync-meta description">
+			<?php
+			echo esc_html(
+				sprintf(
+					/* translators: %s: localized date/time */
+					__( 'Dernière synchronisation enregistrée : %s', 'mainwp-giweb' ),
+					wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $status_updated_at )
+				)
+			);
+			?>
+		</span>
+	<?php endif; ?>
 </div>
 
 <table class="widefat striped mainwp-giweb-table" id="mainwp-giweb-sites-table">
