@@ -153,6 +153,11 @@
 
 		destroyWorldMap();
 
+		var mapEl = document.getElementById( 'gi-matomo-world-map' );
+		if ( mapEl && mapEl.parentElement ) {
+			mapEl.style.height = mapEl.parentElement.clientHeight + 'px';
+		}
+
 		worldMapInstance = new window.jsVectorMap( {
 			selector: '#gi-matomo-world-map',
 			map: 'world',
@@ -381,5 +386,19 @@
 		} );
 
 		$( window ).on( 'beforeunload', stopLiveRefresh );
+
+		var resizeTimer;
+		$( window ).on( 'resize', function () {
+			clearTimeout( resizeTimer );
+			resizeTimer = setTimeout( function () {
+				if ( worldMapInstance && typeof worldMapInstance.updateSize === 'function' ) {
+					var mapNode = document.getElementById( 'gi-matomo-world-map' );
+					if ( mapNode && mapNode.parentElement ) {
+						mapNode.style.height = mapNode.parentElement.clientHeight + 'px';
+					}
+					worldMapInstance.updateSize();
+				}
+			}, 150 );
+		} );
 	} );
 } )( jQuery );

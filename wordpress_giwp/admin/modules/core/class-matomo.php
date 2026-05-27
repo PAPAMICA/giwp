@@ -994,7 +994,7 @@ class Gi_Toolkit_Matomo {
 			<div class="gi-matomo-charts-bottom">
 				<div class="gi-matomo-chart-panel gi-matomo-chart-panel--map">
 					<h2><?php esc_html_e( 'Origine des visiteurs', 'gi-toolkit' ); ?></h2>
-					<div class="gi-matomo-map-square">
+					<div class="gi-matomo-map-wrap">
 						<div id="gi-matomo-world-map" class="gi-matomo-world-map" role="img" aria-label="<?php esc_attr_e( 'Carte mondiale des visites', 'gi-toolkit' ); ?>"></div>
 					</div>
 					<p class="gi-matomo-map-legend description"><?php esc_html_e( 'Intensité = visites par pays.', 'gi-toolkit' ); ?></p>

@@ -330,24 +330,27 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 .gi-matomo-chart-panel--map {
 	display: flex;
 	flex-direction: column;
+	min-height: 0;
 }
 
-.gi-matomo-map-square {
-	aspect-ratio: 1;
+.gi-matomo-map-wrap {
 	flex: 1;
-	min-height: 280px;
+	height: 100%;
+	min-height: 240px;
 	position: relative;
 	width: 100%;
 }
 
-.gi-matomo-map-square .gi-matomo-world-map,
-.gi-matomo-map-square #gi-matomo-world-map {
+.gi-matomo-map-wrap .gi-matomo-world-map,
+.gi-matomo-map-wrap #gi-matomo-world-map {
 	height: 100% !important;
-	width: 100%;
+	min-height: 240px;
+	width: 100% !important;
 }
 
-.gi-matomo-map-square .jvm-container {
+.gi-matomo-map-wrap .jvm-container {
 	height: 100% !important;
+	min-height: 240px;
 	width: 100% !important;
 }
 
@@ -836,8 +839,8 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 		grid-template-columns: 1fr;
 	}
 
-	.gi-matomo-chart-panel--map {
-		max-width: 420px;
+	.gi-matomo-map-wrap {
+		min-height: 280px;
 	}
 }
 
