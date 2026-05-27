@@ -1,5 +1,5 @@
 /**
- * Widget MainWP — mails GI-Toolkit (light / dark via variables MainWP).
+ * Widget MainWP — mails GI-Toolkit (responsive, light / dark).
  */
 .mainwp-giweb-mail-widget {
 	--giweb-w-bg: var(--background-color-3, #fff);
@@ -10,9 +10,12 @@
 	--giweb-w-accent: var(--accent-color, #316bff);
 	--giweb-w-ok: #027a48;
 	--giweb-w-fail: #b42318;
+	--giweb-w-donut-hole: var(--giweb-w-bg);
 	color: var(--giweb-w-text);
+	container-type: inline-size;
 	font-size: 12px;
 	line-height: 1.45;
+	max-width: 100%;
 }
 
 .mainwp-giweb-mail-widget--dark,
@@ -25,32 +28,64 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget {
 	--giweb-w-accent: var(--accent-color, #5b8cff);
 	--giweb-w-ok: #6ee7a8;
 	--giweb-w-fail: #fca5a5;
+	--giweb-w-donut-hole: var(--giweb-w-bg);
 }
 
-.mainwp-giweb-mail-widget__meta,
-.mainwp-giweb-mail-widget__empty {
+.mainwp-giweb-mail-widget__header {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 10px;
+	justify-content: space-between;
+	margin-bottom: 12px;
+}
+
+.mainwp-giweb-mail-widget__pill {
+	background: var(--giweb-w-surface);
+	border: 1px solid var(--giweb-w-border);
+	border-radius: 999px;
+	color: var(--giweb-w-text);
+	font-size: 11px;
+	font-weight: 600;
+	padding: 3px 10px;
+	white-space: nowrap;
+}
+
+.mainwp-giweb-mail-widget__sync {
 	color: var(--giweb-w-muted);
-	margin: 0 0 10px;
+	font-size: 11px;
+	text-align: right;
+}
+
+.mainwp-giweb-mail-widget__sync--empty {
+	flex: 1 1 100%;
+	text-align: left;
+}
+
+.mainwp-giweb-mail-widget__layout {
+	display: grid;
+	gap: 12px;
+	grid-template-columns: minmax(0, 1fr);
 }
 
 .mainwp-giweb-mail-widget__grid {
 	display: grid;
 	gap: 6px;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-	margin-bottom: 12px;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .mainwp-giweb-mail-widget__kpi {
 	background: var(--giweb-w-surface);
 	border: 1px solid var(--giweb-w-border);
 	border-radius: 8px;
-	padding: 8px 4px;
+	min-width: 0;
+	padding: 8px 6px;
 	text-align: center;
 }
 
 .mainwp-giweb-mail-widget__kpi-value {
 	display: block;
-	font-size: 16px;
+	font-size: clamp(14px, 4cqi, 18px);
 	font-weight: 700;
 	line-height: 1.2;
 }
@@ -59,9 +94,9 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget {
 	color: var(--giweb-w-muted);
 	display: block;
 	font-size: 10px;
+	letter-spacing: 0.02em;
 	margin-top: 2px;
 	text-transform: uppercase;
-	letter-spacing: 0.02em;
 }
 
 .mainwp-giweb-mail-widget__kpi--ok .mainwp-giweb-mail-widget__kpi-value {
@@ -72,34 +107,141 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget {
 	color: var(--giweb-w-fail);
 }
 
-.mainwp-giweb-mail-widget__chart {
+.mainwp-giweb-mail-widget__donut-block,
+.mainwp-giweb-mail-widget__chart,
+.mainwp-giweb-mail-widget__sites {
 	border-top: 1px solid var(--giweb-w-border);
-	margin-top: 4px;
+	min-width: 0;
 	padding-top: 10px;
+}
+
+.mainwp-giweb-mail-widget__donut-title,
+.mainwp-giweb-mail-widget__chart-title {
+	color: var(--giweb-w-muted);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	margin: 0 0 8px;
+	text-transform: uppercase;
+}
+
+.mainwp-giweb-mail-widget__donut-row {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	justify-content: center;
+}
+
+.mainwp-giweb-mail-widget__donut {
+	aspect-ratio: 1;
+	border-radius: 50%;
+	flex: 0 0 auto;
+	height: auto;
+	max-width: 120px;
+	position: relative;
+	width: min(38cqi, 120px);
+}
+
+.mainwp-giweb-mail-widget__donut-hole {
+	align-items: center;
+	background: var(--giweb-w-donut-hole);
+	border-radius: 50%;
+	display: flex;
+	flex-direction: column;
+	height: 62%;
+	justify-content: center;
+	left: 50%;
+	position: absolute;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	width: 62%;
+}
+
+.mainwp-giweb-mail-widget__donut-sum {
+	font-size: clamp(13px, 3.5cqi, 16px);
+	font-weight: 700;
+	line-height: 1.1;
+}
+
+.mainwp-giweb-mail-widget__donut-sum-label {
+	color: var(--giweb-w-muted);
+	font-size: 9px;
+	text-transform: uppercase;
+}
+
+.mainwp-giweb-mail-widget__donut-legend {
+	flex: 1 1 140px;
+	list-style: none;
+	margin: 0;
+	max-height: 140px;
+	min-width: 0;
+	overflow: auto;
+	padding: 0;
+}
+
+.mainwp-giweb-mail-widget__donut-legend-item {
+	align-items: flex-start;
+	display: flex;
+	gap: 8px;
+	margin-bottom: 6px;
+}
+
+.mainwp-giweb-mail-widget__donut-swatch {
+	border-radius: 3px;
+	flex: 0 0 10px;
+	height: 10px;
+	margin-top: 3px;
+	width: 10px;
+}
+
+.mainwp-giweb-mail-widget__donut-legend-text {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	min-width: 0;
+}
+
+.mainwp-giweb-mail-widget__donut-legend-name {
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.mainwp-giweb-mail-widget__donut-legend-meta {
+	color: var(--giweb-w-muted);
+	font-size: 10px;
+}
+
+.mainwp-giweb-mail-widget__donut-fail {
+	color: var(--giweb-w-fail);
 }
 
 .mainwp-giweb-mail-widget__chart-bars {
 	align-items: flex-end;
 	display: flex;
-	gap: 4px;
-	height: 72px;
+	gap: 3px;
+	height: clamp(56px, 18cqi, 80px);
 	justify-content: space-between;
+	overflow-x: auto;
+	padding-bottom: 2px;
 }
 
 .mainwp-giweb-mail-widget__bar-col {
 	align-items: center;
 	display: flex;
-	flex: 1;
+	flex: 1 1 0;
 	flex-direction: column;
 	gap: 4px;
-	min-width: 0;
+	min-width: 22px;
 }
 
 .mainwp-giweb-mail-widget__bar-stack {
 	align-items: flex-end;
 	display: flex;
 	flex-direction: column-reverse;
-	height: 56px;
+	height: 100%;
 	justify-content: flex-start;
 	width: 100%;
 }
@@ -123,18 +265,19 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget {
 
 .mainwp-giweb-mail-widget__bar-label {
 	color: var(--giweb-w-muted);
-	font-size: 9px;
+	font-size: 8px;
 	overflow: hidden;
+	text-align: center;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	width: 100%;
-	text-align: center;
 }
 
 .mainwp-giweb-mail-widget__legend {
 	color: var(--giweb-w-muted);
 	display: flex;
-	gap: 12px;
+	flex-wrap: wrap;
+	gap: 8px 12px;
 	justify-content: center;
 	margin-top: 8px;
 }
@@ -156,12 +299,6 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget {
 	background: var(--giweb-w-fail);
 }
 
-.mainwp-giweb-mail-widget__sites {
-	border-top: 1px solid var(--giweb-w-border);
-	margin-top: 10px;
-	padding-top: 8px;
-}
-
 .mainwp-giweb-mail-widget__sites ul {
 	list-style: none;
 	margin: 6px 0 0;
@@ -177,6 +314,8 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget {
 }
 
 .mainwp-giweb-mail-widget__site-name {
+	flex: 1;
+	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -186,6 +325,7 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget {
 	background: rgba(180, 35, 24, 0.12);
 	border-radius: 999px;
 	color: var(--giweb-w-fail);
+	flex-shrink: 0;
 	font-weight: 700;
 	padding: 1px 8px;
 }
@@ -195,18 +335,46 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget__site-fail {
 	background: rgba(252, 165, 165, 0.12);
 }
 
-.mainwp-giweb-mail-widget__footer {
-	align-items: center;
-	border-top: 1px solid var(--giweb-w-border);
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-	margin-top: 10px;
-	padding-top: 10px;
+@container (min-width: 280px) {
+	.mainwp-giweb-mail-widget__grid {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
 }
 
-.mainwp-giweb-mail-widget__sites-count {
-	color: var(--giweb-w-muted);
+@container (min-width: 420px) {
+	.mainwp-giweb-mail-widget__layout {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	}
+
+	.mainwp-giweb-mail-widget__grid {
+		grid-column: 1 / -1;
+	}
+
+	.mainwp-giweb-mail-widget__donut-block {
+		grid-column: 1;
+	}
+
+	.mainwp-giweb-mail-widget__chart {
+		grid-column: 2;
+	}
+
+	.mainwp-giweb-mail-widget__sites {
+		grid-column: 1 / -1;
+	}
+
+	.mainwp-giweb-mail-widget__donut-row {
+		justify-content: flex-start;
+	}
+}
+
+@container (min-width: 560px) {
+	.mainwp-giweb-mail-widget__donut {
+		width: min(28cqi, 132px);
+	}
+
+	.mainwp-giweb-mail-widget__donut-legend {
+		max-height: 160px;
+	}
 }
 
 /* Vue d’ensemble extension — cellule mail par site */
