@@ -9,6 +9,46 @@ if ( ! defined( 'ABSPATH' ) ) {
 class MainWP_GIWeb {
 
 	/**
+	 * Hooks admin.
+	 *
+	 * @return void
+	 */
+	public static function init() {
+		add_action( 'admin_init', array( __CLASS__, 'maybe_handle_post' ), 5 );
+	}
+
+	/**
+	 * Traite les POST avant tout rendu HTML (PRG).
+	 *
+	 * @return void
+	 */
+	public static function maybe_handle_post() {
+		if ( ! MainWP_GIWeb_Capabilities::can_access() ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( empty( $_POST['mainwp_giweb_nonce'] ) ) {
+			return;
+		}
+
+		$page = '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing
+		if ( ! empty( $_POST['page'] ) ) {
+			$page = sanitize_text_field( wp_unslash( $_POST['page'] ) );
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		} elseif ( ! empty( $_GET['page'] ) ) {
+			$page = sanitize_text_field( wp_unslash( $_GET['page'] ) );
+		}
+
+		if ( ! MainWP_GIWeb_UI::is_extension_admin_page( $page ) ) {
+			return;
+		}
+
+		self::handle_post();
+	}
+
+	/**
 	 * Enregistre CSS/JS (hook admin_enqueue_scripts).
 	 *
 	 * @return void
@@ -127,8 +167,6 @@ class MainWP_GIWeb {
 			echo '</p></div></div>';
 			return;
 		}
-
-		self::handle_post();
 
 		$tab          = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'overview';
 		$allowed_tabs  = array( 'overview', 'modules', 'templates', 'deploy', 'excludes', 'history', 'settings' );
@@ -338,7 +376,20 @@ class MainWP_GIWeb {
 			$url = add_query_arg( 'site_id', absint( $_POST['override_site_id'] ), $url );
 		}
 
-		wp_safe_redirect( $url );
+		if ( ! headers_sent() ) {
+			wp_safe_redirect( $url );
+			exit;
+		}
+
+		nocache_headers();
+		$title        = esc_html__( 'GI-Toolkit Manager', 'mainwp-giweb' );
+		$body_message = esc_html__( 'Action effectuée. Redirection…', 'mainwp-giweb' );
+		$link         = esc_html__( 'Continuer', 'mainwp-giweb' );
+		echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' . $title . '</title>';
+		echo '<meta http-equiv="refresh" content="0;url=' . esc_url( $url ) . '">';
+		echo '<script>window.location.replace(' . wp_json_encode( $url ) . ');</script>';
+		echo '</head><body><p>' . $body_message . '</p>';
+		echo '<p><a href="' . esc_url( $url ) . '">' . $link . '</a></p></body></html>';
 		exit;
 	}
 
@@ -356,3 +407,5 @@ class MainWP_GIWeb {
 		return '#' . $site_id;
 	}
 }
+
+MainWP_GIWeb::init();

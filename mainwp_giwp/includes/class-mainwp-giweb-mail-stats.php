@@ -357,7 +357,18 @@ class MainWP_GIWeb_Mail_Stats {
 		if ( ! $redirect ) {
 			$redirect = MainWP_GIWeb_UI::admin_page_url();
 		}
-		wp_safe_redirect( remove_query_arg( array( 'mainwp_giweb_dismiss_mail', '_wpnonce' ), $redirect ) );
+		$redirect = remove_query_arg( array( 'mainwp_giweb_dismiss_mail', '_wpnonce' ), $redirect );
+
+		if ( ! headers_sent() ) {
+			wp_safe_redirect( $redirect );
+			exit;
+		}
+
+		nocache_headers();
+		echo '<!DOCTYPE html><html><head><meta charset="utf-8">';
+		echo '<meta http-equiv="refresh" content="0;url=' . esc_url( $redirect ) . '">';
+		echo '<script>window.location.replace(' . wp_json_encode( $redirect ) . ');</script>';
+		echo '</head><body><p><a href="' . esc_url( $redirect ) . '">' . esc_html__( 'Continuer', 'mainwp-giweb' ) . '</a></p></body></html>';
 		exit;
 	}
 }
