@@ -77,6 +77,7 @@ class MainWP_GIWeb_Uptime_Kuma {
 			return;
 		}
 		require_once $base . 'admin/helpers/core/uptime-kuma/class-socket-client.php';
+		require_once $base . 'admin/helpers/core/uptime-kuma/class-monitor-payload.php';
 		require_once $base . 'admin/helpers/core/uptime-kuma/class-api.php';
 		require_once $base . 'admin/helpers/core/uptime-kuma/class-status-data.php';
 	}

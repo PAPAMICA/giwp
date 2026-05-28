@@ -1,5 +1,12 @@
 == Changelog ==
 
+= 2.21.6 =
+Update: Payload création monitor aligné sur Uptime Kuma 2.3.2 (upsideDown, champs JSON requis : conditions, kafka, rabbitmq).
+Update: Textes d’aide et messages — cible Uptime Kuma 2.3.x.
+
+= 2.21.5 =
+Fix: Création monitor Uptime Kuma — retrait du champ upsidedown (incompatible anciennes versions SQLite).
+
 = 2.21.4 =
 Fix: Client Socket.IO — lecture de l’ACK login via GET polling (réponse POST « ok » seule) et paquets séparés par 0x1e.
 

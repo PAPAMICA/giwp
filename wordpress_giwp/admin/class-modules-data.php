@@ -1242,7 +1242,7 @@ class Gi_Toolkit_Modules_Data {
 			),
 			'Gi_Toolkit_Uptime_Kuma' => array(
 				'name' => esc_html_x( 'Connect Uptime Kuma', 'Module name', 'gi-toolkit' ),
-				'desc' => esc_html_x( 'Connexion à Uptime Kuma, monitor automatique par URL WordPress, barre admin 24 h et export des réglages.', 'Module description', 'gi-toolkit' ),
+				'desc' => esc_html_x( 'Connexion à Uptime Kuma 2.3.x, monitor automatique par URL WordPress, barre admin 24 h et export des réglages.', 'Module description', 'gi-toolkit' ),
 			),
 			'Gi_Toolkit_Paste_Image_In_Media' => array(
 				'name' => esc_html_x( "Paste Image In Media", "Module name", 'gi-toolkit' ),

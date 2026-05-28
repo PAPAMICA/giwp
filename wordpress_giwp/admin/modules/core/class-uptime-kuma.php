@@ -263,7 +263,7 @@ class Gi_Toolkit_Uptime_Kuma {
 						<th scope="row"><label for="gi_uptime_kuma_url"><?php esc_html_e( 'URL Uptime Kuma', 'gi-toolkit' ); ?></label></th>
 						<td>
 							<input type="url" class="large-text code" id="gi_uptime_kuma_url" name="kuma_url" value="<?php echo esc_attr( (string) $settings['kuma_url'] ); ?>" placeholder="https://status.example.com" />
-							<p class="description"><?php esc_html_e( 'URL racine du serveur Uptime Kuma (sans /dashboard).', 'gi-toolkit' ); ?></p>
+							<p class="description"><?php esc_html_e( 'URL racine du serveur Uptime Kuma 2.3.x (sans /dashboard).', 'gi-toolkit' ); ?></p>
 						</td>
 					</tr>
 					<tr>
@@ -273,7 +273,7 @@ class Gi_Toolkit_Uptime_Kuma {
 							<p><input type="text" class="regular-text" id="gi_uptime_kuma_username" name="kuma_username" value="<?php echo esc_attr( (string) $settings['kuma_username'] ); ?>" autocomplete="username" /></p>
 							<p><label for="gi_uptime_kuma_password"><strong><?php esc_html_e( 'Mot de passe', 'gi-toolkit' ); ?></strong></label></p>
 							<p><input type="password" class="regular-text" id="gi_uptime_kuma_password" name="kuma_password" value="" autocomplete="current-password" placeholder="<?php esc_attr_e( 'Laisser vide pour conserver', 'gi-toolkit' ); ?>" /></p>
-							<p class="description"><?php esc_html_e( 'Compte administrateur Uptime Kuma (Socket.IO). Les clés API « uk… » ne sont pas utilisées ici.', 'gi-toolkit' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Compte administrateur Uptime Kuma 2.3.x (Socket.IO). Les clés API « uk… » (Prometheus) ne sont pas utilisées ici.', 'gi-toolkit' ); ?></p>
 						</td>
 					</tr>
 					<tr>
@@ -419,6 +419,7 @@ class Gi_Toolkit_Uptime_Kuma {
 			return;
 		}
 		require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/uptime-kuma/class-socket-client.php';
+		require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/uptime-kuma/class-monitor-payload.php';
 		require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/uptime-kuma/class-api.php';
 		require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/uptime-kuma/class-monitor.php';
 		require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/uptime-kuma/class-status-data.php';

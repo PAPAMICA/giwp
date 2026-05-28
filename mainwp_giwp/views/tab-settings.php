@@ -105,7 +105,7 @@ $logs            = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 					<input type="password" class="large-text code" id="mainwp_giweb_kuma_password" name="kuma_password" value="" autocomplete="new-password" placeholder="<?php echo ! empty( $settings['kuma_password'] ) ? esc_attr__( '•••••••• (laisser vide pour conserver)', 'mainwp-giweb' ) : ''; ?>" />
 				</p>
 				<p class="description">
-					<?php esc_html_e( 'Identifiants administrateur Uptime Kuma (Socket.IO). Lors du déploiement, chaque site enfant crée ou associe automatiquement un monitor pour son URL WordPress.', 'mainwp-giweb' ); ?>
+					<?php esc_html_e( 'Uptime Kuma 2.3.x — identifiants administrateur (Socket.IO). Lors du déploiement, chaque site enfant crée ou associe automatiquement un monitor HTTP pour son URL WordPress.', 'mainwp-giweb' ); ?>
 				</p>
 				<?php if ( MainWP_GIWeb_Uptime_Kuma::is_configured() ) : ?>
 					<p class="description" style="color:#15803d;"><?php esc_html_e( 'Uptime Kuma centralisé configuré — sera appliqué à chaque déploiement. Widget dashboard mis à jour toutes les 5 minutes.', 'mainwp-giweb' ); ?></p>

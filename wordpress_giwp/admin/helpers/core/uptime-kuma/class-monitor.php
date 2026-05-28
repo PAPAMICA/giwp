@@ -25,7 +25,7 @@ class Gi_Toolkit_Uptime_Kuma_Monitor {
 		if ( ! $api->is_configured() ) {
 			return array(
 				'success' => false,
-				'message' => __( 'Configurez l’URL Uptime Kuma et le token API.', 'gi-toolkit' ),
+				'message' => __( 'Configurez l’URL, l’utilisateur et le mot de passe Uptime Kuma.', 'gi-toolkit' ),
 			);
 		}
 

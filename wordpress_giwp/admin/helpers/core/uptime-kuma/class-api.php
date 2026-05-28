@@ -5,6 +5,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * API Uptime Kuma (Socket.IO) — authentification par utilisateur / mot de passe.
+ *
+ * Cible : Uptime Kuma 2.3.x (testé avec {@see Gi_Toolkit_Uptime_Kuma_Monitor_Payload::TARGET_VERSION}).
  */
 class Gi_Toolkit_Uptime_Kuma_API {
 
@@ -203,22 +205,8 @@ class Gi_Toolkit_Uptime_Kuma_API {
 					);
 				}
 
-				$monitor = array(
-					'type'                 => 'http',
-					'name'                 => $name,
-					'url'                  => $url,
-					'method'               => 'GET',
-					'interval'             => 60,
-					'retryInterval'        => 60,
-					'resendInterval'       => 0,
-					'maxretries'           => 0,
-					'upsidedown'           => false,
-					'ignoreTls'            => false,
-					'maxredirects'         => 10,
-					'accepted_statuscodes' => array( '200-299' ),
-					'active'               => true,
-					'notificationIDList'   => array(),
-				);
+				require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/uptime-kuma/class-monitor-payload.php';
+				$monitor = Gi_Toolkit_Uptime_Kuma_Monitor_Payload::http_monitor( $name, $url, $this->settings );
 
 				$response = $client->emit( 'add', $monitor );
 				if ( ! is_array( $response ) || empty( $response['ok'] ) ) {
