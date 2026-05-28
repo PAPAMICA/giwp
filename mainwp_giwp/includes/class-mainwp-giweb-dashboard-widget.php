@@ -15,33 +15,12 @@ class MainWP_GIWeb_Dashboard_Widget {
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function register_metabox( $metaboxes ) {
-		global $mainwp_giweb_activator;
-
-		if ( ! $mainwp_giweb_activator || empty( $mainwp_giweb_activator->childEnabled ) ) {
-			return $metaboxes;
-		}
-
-		if ( ! MainWP_GIWeb_Capabilities::can_access() ) {
-			return $metaboxes;
-		}
-
-		if ( ! is_array( $metaboxes ) ) {
-			$metaboxes = array();
-		}
-
-		$key = is_array( $mainwp_giweb_activator->childEnabled ) && ! empty( $mainwp_giweb_activator->childEnabled['key'] )
-			? $mainwp_giweb_activator->childEnabled['key']
-			: $mainwp_giweb_activator->childKey;
-
-		$metaboxes[] = array(
-			'id'            => self::WIDGET_ID,
-			'plugin'        => MAINWP_GIWEB_PLUGIN_FILE,
-			'key'           => $key,
-			'metabox_title' => __( 'GI-Toolkit — Mails', 'mainwp-giweb' ),
-			'callback'      => array( __CLASS__, 'render_metabox' ),
+		return MainWP_GIWeb_Metabox::append(
+			$metaboxes,
+			self::WIDGET_ID,
+			__( 'GI-Toolkit — Mails', 'mainwp-giweb' ),
+			array( __CLASS__, 'render_metabox' )
 		);
-
-		return $metaboxes;
 	}
 
 	/**
@@ -51,11 +30,11 @@ class MainWP_GIWeb_Dashboard_Widget {
 	 * @return array<string, string>
 	 */
 	public static function widgets_screen_options( $options ) {
-		if ( ! is_array( $options ) ) {
-			$options = array();
-		}
-		$options[ self::WIDGET_ID ] = __( 'GI-Toolkit — Mails', 'mainwp-giweb' );
-		return $options;
+		return MainWP_GIWeb_Metabox::append_screen_option(
+			$options,
+			self::WIDGET_ID,
+			__( 'GI-Toolkit — Mails', 'mainwp-giweb' )
+		);
 	}
 
 	/**

@@ -1,0 +1,156 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Enregistrement commun des metaboxes / widgets MainWP Overview.
+ */
+class MainWP_GIWeb_Metabox {
+
+	/** @var string[] */
+	private static $widget_ids = array(
+		'mainwp-giweb-mail-widget',
+		'mainwp-giweb-uptime-kuma-widget',
+	);
+
+	/**
+	 * @return void
+	 */
+	public static function init() {
+		add_filter( 'mainwp_getmetaboxes', array( __CLASS__, 'normalize_metaboxes' ), 99, 1 );
+	}
+
+	/**
+	 * @return bool
+	 */
+	public static function can_register() {
+		global $mainwp_giweb_activator;
+
+		if ( ! $mainwp_giweb_activator || empty( $mainwp_giweb_activator->childEnabled ) ) {
+			return false;
+		}
+
+		return MainWP_GIWeb_Capabilities::can_access();
+	}
+
+	/**
+	 * @return string
+	 */
+	public static function plugin_file() {
+		global $mainwp_giweb_activator;
+
+		if ( $mainwp_giweb_activator && method_exists( $mainwp_giweb_activator, 'getChildFile' ) ) {
+			$file = (string) $mainwp_giweb_activator->getChildFile();
+			if ( '' !== $file ) {
+				return $file;
+			}
+		}
+
+		return defined( 'MAINWP_GIWEB_PLUGIN_FILE' ) ? MAINWP_GIWEB_PLUGIN_FILE : '';
+	}
+
+	/**
+	 * @return string
+	 */
+	public static function child_key() {
+		global $mainwp_giweb_activator;
+
+		if ( ! $mainwp_giweb_activator ) {
+			return '';
+		}
+
+		if ( is_array( $mainwp_giweb_activator->childEnabled ) && ! empty( $mainwp_giweb_activator->childEnabled['key'] ) ) {
+			return (string) $mainwp_giweb_activator->childEnabled['key'];
+		}
+
+		return (string) ( $mainwp_giweb_activator->childKey ?? '' );
+	}
+
+	/**
+	 * @param array<int, array<string, mixed>>|mixed $metaboxes Liste existante.
+	 * @param string                                   $id        ID widget.
+	 * @param string                                   $title     Titre.
+	 * @param callable|array<int, mixed>               $callback  Callback rendu.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function append( $metaboxes, $id, $title, $callback ) {
+		if ( ! self::can_register() ) {
+			return is_array( $metaboxes ) ? $metaboxes : array();
+		}
+
+		if ( ! is_array( $metaboxes ) ) {
+			$metaboxes = array();
+		}
+
+		$plugin = self::plugin_file();
+		if ( '' === $plugin ) {
+			return $metaboxes;
+		}
+
+		$metaboxes[] = array(
+			'id'            => $id,
+			'plugin'        => $plugin,
+			'key'           => self::child_key(),
+			'metabox_title' => $title,
+			'callback'      => $callback,
+			'layout'        => array( -1, -1, 6, 30 ),
+		);
+
+		return $metaboxes;
+	}
+
+	/**
+	 * @param array<string, string>|mixed $options Options widgets.
+	 * @param string                      $id      ID widget.
+	 * @param string                      $title   Libellé.
+	 * @return array<string, string>
+	 */
+	public static function append_screen_option( $options, $id, $title ) {
+		if ( ! self::can_register() ) {
+			return is_array( $options ) ? $options : array();
+		}
+
+		if ( ! is_array( $options ) ) {
+			$options = array();
+		}
+
+		$options[ $id ] = $title;
+		return $options;
+	}
+
+	/**
+	 * Garantit la clé « plugin » sur nos metaboxes (évite WP_List_Util::pluck sur stdClass incomplets).
+	 *
+	 * @param mixed $metaboxes Metaboxes.
+	 * @return mixed
+	 */
+	public static function normalize_metaboxes( $metaboxes ) {
+		if ( ! is_array( $metaboxes ) ) {
+			return $metaboxes;
+		}
+
+		$plugin = self::plugin_file();
+		if ( '' === $plugin ) {
+			return $metaboxes;
+		}
+
+		foreach ( $metaboxes as $idx => $box ) {
+			if ( is_object( $box ) ) {
+				$metaboxes[ $idx ] = (array) $box;
+				$box               = $metaboxes[ $idx ];
+			}
+
+			if ( ! is_array( $box ) ) {
+				continue;
+			}
+
+			$box_id = isset( $box['id'] ) ? (string) $box['id'] : '';
+			if ( in_array( $box_id, self::$widget_ids, true ) && empty( $box['plugin'] ) ) {
+				$metaboxes[ $idx ]['plugin'] = $plugin;
+			}
+		}
+
+		return $metaboxes;
+	}
+}

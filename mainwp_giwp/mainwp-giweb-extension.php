@@ -32,6 +32,7 @@ require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-catalog.php
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-settings.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-matomo.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-uptime-kuma.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-metabox.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-uptime-kuma-widget.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-overrides.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-templates.php';
@@ -131,8 +132,17 @@ class MainWP_GIWeb_Extension_Activator {
 	 * @return array<int, array<string, mixed>>
 	 */
 	public function get_this_extension( $extensions ) {
+		if ( ! is_array( $extensions ) ) {
+			$extensions = array();
+		}
+
+		$plugin_file = MainWP_GIWeb_Metabox::plugin_file();
+		if ( '' === $plugin_file ) {
+			return $extensions;
+		}
+
 		$extensions[] = array(
-			'plugin'   => MAINWP_GIWEB_PLUGIN_FILE,
+			'plugin'   => $plugin_file,
 			'api'      => $this->plugin_handle,
 			'name'     => MainWP_GIWeb_UI::page_title(),
 			'mainwp'   => true,
@@ -152,9 +162,14 @@ class MainWP_GIWeb_Extension_Activator {
 		}
 
 		add_filter( 'mainwp_getsubpages_extensions', array( $this, 'add_submenu' ), 10, 1 );
+		MainWP_GIWeb_Metabox::init();
+
 		add_filter( 'mainwp_getmetaboxes', array( 'MainWP_GIWeb_Dashboard_Widget', 'register_metabox' ), 20, 1 );
+		add_filter( 'mainwp_getmetaboxes', array( 'MainWP_GIWeb_Uptime_Kuma_Widget', 'register_metabox' ), 25, 1 );
 		add_filter( 'mainwp_widgets_screen_options', array( 'MainWP_GIWeb_Dashboard_Widget', 'widgets_screen_options' ), 10, 1 );
+		add_filter( 'mainwp_widgets_screen_options', array( 'MainWP_GIWeb_Uptime_Kuma_Widget', 'widgets_screen_options' ), 10, 1 );
 		add_action( 'admin_enqueue_scripts', array( 'MainWP_GIWeb_Dashboard_Widget', 'enqueue_assets' ) );
+		add_action( 'admin_enqueue_scripts', array( 'MainWP_GIWeb_Uptime_Kuma_Widget', 'enqueue_assets' ) );
 
 		MainWP_GIWeb_Uptime_Kuma_Widget::activate_cron();
 	}
