@@ -305,7 +305,8 @@ class MainWP_GIWeb {
 						'matomo_url'                 => isset( $_POST['matomo_url'] ) ? esc_url_raw( wp_unslash( $_POST['matomo_url'] ) ) : '',
 						'matomo_api_token'           => isset( $_POST['matomo_api_token'] ) ? sanitize_text_field( wp_unslash( $_POST['matomo_api_token'] ) ) : '',
 						'kuma_url'                   => isset( $_POST['kuma_url'] ) ? esc_url_raw( wp_unslash( $_POST['kuma_url'] ) ) : '',
-						'kuma_api_token'             => isset( $_POST['kuma_api_token'] ) ? sanitize_text_field( wp_unslash( $_POST['kuma_api_token'] ) ) : '',
+						'kuma_username'              => isset( $_POST['kuma_username'] ) ? sanitize_text_field( wp_unslash( $_POST['kuma_username'] ) ) : '',
+						'kuma_password'              => isset( $_POST['kuma_password'] ) ? sanitize_text_field( wp_unslash( $_POST['kuma_password'] ) ) : '',
 					)
 				);
 				MainWP_GIWeb_Notices::add( 'success', __( 'Réglages enregistrés.', 'mainwp-giweb' ) );

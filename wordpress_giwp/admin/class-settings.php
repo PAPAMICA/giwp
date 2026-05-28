@@ -499,8 +499,8 @@ class Gi_Toolkit_Settings {
 				if ( 'Gi_Toolkit_Matomo' === $item && is_array( $options ) ) {
 					$options['site_id'] = 0;
 				}
-				if ( 'Gi_Toolkit_Uptime_Kuma' === $item && is_array( $options ) ) {
-					$options['monitor_id'] = 0;
+				if ( 'Gi_Toolkit_Uptime_Kuma' === $item && is_array( $options ) && class_exists( 'Gi_Toolkit_Uptime_Kuma' ) ) {
+					$options = Gi_Toolkit_Uptime_Kuma::sanitize_settings_for_export( $options );
 				}
 				$modules_data[ $item ]['options'] = $options;
 			}

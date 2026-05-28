@@ -97,11 +97,15 @@ $logs            = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 					<input type="url" class="large-text code" id="mainwp_giweb_kuma_url" name="kuma_url" value="<?php echo esc_attr( (string) ( $settings['kuma_url'] ?? '' ) ); ?>" placeholder="https://status.example.com" />
 				</p>
 				<p>
-					<label for="mainwp_giweb_kuma_api_token"><?php esc_html_e( 'Token JWT Uptime Kuma', 'mainwp-giweb' ); ?></label><br />
-					<input type="password" class="large-text code" id="mainwp_giweb_kuma_api_token" name="kuma_api_token" value="" autocomplete="new-password" placeholder="<?php echo ! empty( $settings['kuma_api_token'] ) ? esc_attr__( '•••••••• (laisser vide pour conserver)', 'mainwp-giweb' ) : ''; ?>" />
+					<label for="mainwp_giweb_kuma_username"><?php esc_html_e( 'Utilisateur Uptime Kuma', 'mainwp-giweb' ); ?></label><br />
+					<input type="text" class="regular-text" id="mainwp_giweb_kuma_username" name="kuma_username" value="<?php echo esc_attr( (string) ( $settings['kuma_username'] ?? '' ) ); ?>" autocomplete="username" />
+				</p>
+				<p>
+					<label for="mainwp_giweb_kuma_password"><?php esc_html_e( 'Mot de passe Uptime Kuma', 'mainwp-giweb' ); ?></label><br />
+					<input type="password" class="large-text code" id="mainwp_giweb_kuma_password" name="kuma_password" value="" autocomplete="new-password" placeholder="<?php echo ! empty( $settings['kuma_password'] ) ? esc_attr__( '•••••••• (laisser vide pour conserver)', 'mainwp-giweb' ) : ''; ?>" />
 				</p>
 				<p class="description">
-					<?php esc_html_e( 'Token JWT (événement loginByToken), pas la clé API HTTP « uk… ». Lors d’un déploiement, l’URL et le token sont injectés sur chaque site enfant ; le module crée ou associe un monitor pour l’URL WordPress.', 'mainwp-giweb' ); ?>
+					<?php esc_html_e( 'Identifiants administrateur Uptime Kuma (Socket.IO). Lors du déploiement, chaque site enfant crée ou associe automatiquement un monitor pour son URL WordPress.', 'mainwp-giweb' ); ?>
 				</p>
 				<?php if ( MainWP_GIWeb_Uptime_Kuma::is_configured() ) : ?>
 					<p class="description" style="color:#15803d;"><?php esc_html_e( 'Uptime Kuma centralisé configuré — sera appliqué à chaque déploiement. Widget dashboard mis à jour toutes les 5 minutes.', 'mainwp-giweb' ); ?></p>

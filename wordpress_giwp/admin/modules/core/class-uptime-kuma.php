@@ -59,14 +59,30 @@ class Gi_Toolkit_Uptime_Kuma {
 	 */
 	private static function default_settings() {
 		return array(
-			'kuma_url'            => '',
-			'api_token'           => '',
-			'kuma_username'       => '',
-			'kuma_password'       => '',
-			'auto_monitor'        => '1',
-			'monitor_id'          => 0,
-			'disable_ssl_verify'  => '0',
+			'kuma_url'           => '',
+			'kuma_username'      => '',
+			'kuma_password'      => '',
+			'auto_monitor'       => '1',
+			'monitor_id'         => 0,
+			'disable_ssl_verify' => '0',
 		);
+	}
+
+	/**
+	 * Options exportables dans le bundle JSON (sans secrets).
+	 *
+	 * @param array<string, mixed> $settings Réglages bruts.
+	 * @return array<string, mixed>
+	 */
+	public static function sanitize_settings_for_export( array $settings ) {
+		$settings = wp_parse_args( $settings, self::default_settings() );
+		$settings['kuma_url']           = Gi_Toolkit_Uptime_Kuma_API::normalize_kuma_url( $settings['kuma_url'] ?? '' );
+		$settings['kuma_username']      = sanitize_text_field( (string) ( $settings['kuma_username'] ?? '' ) );
+		$settings['auto_monitor']       = '1' === (string) ( $settings['auto_monitor'] ?? '1' ) ? '1' : '0';
+		$settings['disable_ssl_verify'] = '1' === (string) ( $settings['disable_ssl_verify'] ?? '0' ) ? '1' : '0';
+		$settings['monitor_id']         = 0;
+		unset( $settings['kuma_password'], $settings['api_token'], $settings['kuma_api_key'] );
+		return $settings;
 	}
 
 	/**
@@ -99,6 +115,7 @@ class Gi_Toolkit_Uptime_Kuma {
 	 * @return array{success:bool, monitor_id?:int, sync?:array<string,mixed>}
 	 */
 	private function persist_settings( array $settings, $sync_monitor = true ) {
+		$settings = self::strip_legacy_auth_keys( $settings );
 		$settings['kuma_url']   = Gi_Toolkit_Uptime_Kuma_API::normalize_kuma_url( $settings['kuma_url'] ?? '' );
 		$settings['monitor_id'] = absint( $settings['monitor_id'] ?? 0 );
 
@@ -155,13 +172,6 @@ class Gi_Toolkit_Uptime_Kuma {
 		$settings['kuma_url'] = isset( $_POST['kuma_url'] )
 			? Gi_Toolkit_Uptime_Kuma_API::normalize_kuma_url( sanitize_text_field( wp_unslash( $_POST['kuma_url'] ) ) )
 			: $settings['kuma_url'];
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		if ( ! empty( $_POST['api_token'] ) ) {
-			$token = sanitize_text_field( wp_unslash( $_POST['api_token'] ) );
-			if ( '' !== $token && ! preg_match( '/^[•*.\s]+$/u', $token ) ) {
-				$settings['api_token'] = $token;
-			}
-		}
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$settings['kuma_username'] = isset( $_POST['kuma_username'] ) ? sanitize_text_field( wp_unslash( $_POST['kuma_username'] ) ) : $settings['kuma_username'];
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -257,17 +267,13 @@ class Gi_Toolkit_Uptime_Kuma {
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="gi_uptime_kuma_token"><?php esc_html_e( 'Token JWT', 'gi-toolkit' ); ?></label></th>
+						<th scope="row"><?php esc_html_e( 'Identifiants admin', 'gi-toolkit' ); ?></th>
 						<td>
-							<input type="password" class="large-text code" id="gi_uptime_kuma_token" name="api_token" value="" autocomplete="new-password" placeholder="<?php echo esc_attr( $settings['api_token'] ? '••••••••' : '' ); ?>" />
-							<p class="description"><?php esc_html_e( 'Token JWT obtenu après connexion à Uptime Kuma (événement login). Laissez vide pour conserver le token actuel.', 'gi-toolkit' ); ?></p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Ou identifiants', 'gi-toolkit' ); ?></th>
-						<td>
-							<p><input type="text" class="regular-text" name="kuma_username" value="<?php echo esc_attr( (string) $settings['kuma_username'] ); ?>" placeholder="<?php esc_attr_e( 'Utilisateur', 'gi-toolkit' ); ?>" /></p>
-							<p><input type="password" class="regular-text" name="kuma_password" value="" autocomplete="new-password" placeholder="<?php esc_attr_e( 'Mot de passe (laisser vide pour conserver)', 'gi-toolkit' ); ?>" /></p>
+							<p><label for="gi_uptime_kuma_username"><strong><?php esc_html_e( 'Utilisateur', 'gi-toolkit' ); ?></strong></label></p>
+							<p><input type="text" class="regular-text" id="gi_uptime_kuma_username" name="kuma_username" value="<?php echo esc_attr( (string) $settings['kuma_username'] ); ?>" autocomplete="username" /></p>
+							<p><label for="gi_uptime_kuma_password"><strong><?php esc_html_e( 'Mot de passe', 'gi-toolkit' ); ?></strong></label></p>
+							<p><input type="password" class="regular-text" id="gi_uptime_kuma_password" name="kuma_password" value="" autocomplete="current-password" placeholder="<?php esc_attr_e( 'Laisser vide pour conserver', 'gi-toolkit' ); ?>" /></p>
+							<p class="description"><?php esc_html_e( 'Compte administrateur Uptime Kuma (Socket.IO). Les clés API « uk… » ne sont pas utilisées ici.', 'gi-toolkit' ); ?></p>
 						</td>
 					</tr>
 					<tr>
@@ -304,7 +310,12 @@ class Gi_Toolkit_Uptime_Kuma {
 		if ( ! $api->test_connection() ) {
 			wp_send_json_error( array( 'message' => $api->get_last_error() ?: __( 'Échec de connexion.', 'gi-toolkit' ) ) );
 		}
-		wp_send_json_success( array( 'message' => __( 'Connexion Uptime Kuma OK.', 'gi-toolkit' ) ) );
+		$this->persist_settings( $settings, false );
+		wp_send_json_success(
+			array(
+				'message' => __( 'Connexion Uptime Kuma OK.', 'gi-toolkit' ),
+			)
+		);
 	}
 
 	public function ajax_sync_monitor() {
@@ -313,7 +324,11 @@ class Gi_Toolkit_Uptime_Kuma {
 			wp_send_json_error( array( 'message' => __( 'Accès refusé.', 'gi-toolkit' ) ) );
 		}
 		$settings = $this->get_settings_from_request();
-		$result   = Gi_Toolkit_Uptime_Kuma_Monitor::ensure_monitor_id( $settings, true );
+		$api      = new Gi_Toolkit_Uptime_Kuma_API( $settings );
+		if ( ! $api->test_connection() ) {
+			wp_send_json_error( array( 'message' => $api->get_last_error() ?: __( 'Connexion impossible.', 'gi-toolkit' ) ) );
+		}
+		$result = Gi_Toolkit_Uptime_Kuma_Monitor::ensure_monitor_id( $settings, true );
 		if ( empty( $result['success'] ) ) {
 			wp_send_json_error( array( 'message' => $result['message'] ?? '' ) );
 		}
@@ -339,13 +354,6 @@ class Gi_Toolkit_Uptime_Kuma {
 			$settings['kuma_url'] = Gi_Toolkit_Uptime_Kuma_API::normalize_kuma_url(
 				sanitize_text_field( wp_unslash( $_POST['kuma_url'] ) )
 			);
-		}
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		if ( ! empty( $_POST['api_token'] ) ) {
-			$token = sanitize_text_field( wp_unslash( $_POST['api_token'] ) );
-			if ( '' !== $token && ! preg_match( '/^[•*.\s]+$/u', $token ) ) {
-				$settings['api_token'] = $token;
-			}
 		}
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		if ( isset( $_POST['kuma_username'] ) ) {
@@ -418,24 +426,46 @@ class Gi_Toolkit_Uptime_Kuma {
 
 	public static function prepare_settings_for_remote_deploy( array $settings ) {
 		self::load_deploy_dependencies();
+		$existing = get_option( self::OPTION_SETTINGS, array() );
+		if ( ! is_array( $existing ) ) {
+			$existing = array();
+		}
 		$settings = wp_parse_args( is_array( $settings ) ? $settings : array(), self::default_settings() );
-		$settings['kuma_url']    = Gi_Toolkit_Uptime_Kuma_API::normalize_kuma_url( $settings['kuma_url'] ?? '' );
-		$settings['api_token']   = self::sanitize_token_for_import( $settings['api_token'] ?? '' );
-		$settings['monitor_id']  = 0;
+		$settings = self::strip_legacy_auth_keys( $settings );
+		$settings['kuma_url']      = Gi_Toolkit_Uptime_Kuma_API::normalize_kuma_url( $settings['kuma_url'] ?? '' );
+		$settings['kuma_username'] = sanitize_text_field( (string) ( $settings['kuma_username'] ?? '' ) );
+		$settings['kuma_password'] = self::sanitize_secret_for_import(
+			$settings['kuma_password'] ?? '',
+			(string) ( $existing['kuma_password'] ?? '' )
+		);
+		$settings['monitor_id']   = 0;
 		$settings['auto_monitor'] = '1';
+		if ( '' === $settings['kuma_username'] && ! empty( $existing['kuma_username'] ) ) {
+			$settings['kuma_username'] = sanitize_text_field( (string) $existing['kuma_username'] );
+		}
 		return $settings;
 	}
 
 	/**
-	 * @param mixed $token Token.
+	 * @param mixed  $value    Valeur importée.
+	 * @param string $fallback Valeur locale si vide ou masquée.
 	 * @return string
 	 */
-	private static function sanitize_token_for_import( $token ) {
-		$token = trim( (string) $token );
-		if ( '' === $token || preg_match( '/^[•*.\s]+$/u', $token ) ) {
-			return '';
+	private static function sanitize_secret_for_import( $value, $fallback = '' ) {
+		$value = trim( (string) $value );
+		if ( '' === $value || preg_match( '/^[•*.\s]+$/u', $value ) ) {
+			return (string) $fallback;
 		}
-		return $token;
+		return $value;
+	}
+
+	/**
+	 * @param array<string, mixed> $settings Réglages.
+	 * @return array<string, mixed>
+	 */
+	private static function strip_legacy_auth_keys( array $settings ) {
+		unset( $settings['api_token'], $settings['kuma_api_key'] );
+		return $settings;
 	}
 
 	public static function deploy_from_mainwp( array $settings ) {
@@ -446,7 +476,7 @@ class Gi_Toolkit_Uptime_Kuma {
 		if ( ! $api->is_configured() ) {
 			return array(
 				'success' => false,
-				'message' => __( 'URL Uptime Kuma et token JWT (ou identifiants) requis pour le déploiement.', 'gi-toolkit' ),
+				'message' => __( 'URL, utilisateur et mot de passe Uptime Kuma requis pour le déploiement.', 'gi-toolkit' ),
 			);
 		}
 
@@ -504,6 +534,7 @@ class Gi_Toolkit_Uptime_Kuma {
 	 * @return array{success:bool, monitor_id?:int}
 	 */
 	public static function persist_settings_static( array $settings, $sync_monitor = true ) {
+		$settings = self::strip_legacy_auth_keys( $settings );
 		$settings['kuma_url']   = Gi_Toolkit_Uptime_Kuma_API::normalize_kuma_url( $settings['kuma_url'] ?? '' );
 		$settings['monitor_id'] = absint( $settings['monitor_id'] ?? 0 );
 		update_option( self::OPTION_SETTINGS, $settings, false );

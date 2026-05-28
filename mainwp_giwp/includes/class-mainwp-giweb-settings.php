@@ -39,7 +39,8 @@ class MainWP_GIWeb_Settings {
 			'matomo_url'                    => '',
 			'matomo_api_token'              => '',
 			'kuma_url'                      => '',
-			'kuma_api_token'                => '',
+			'kuma_username'                 => '',
+			'kuma_password'                 => '',
 		);
 	}
 
@@ -87,10 +88,16 @@ class MainWP_GIWeb_Settings {
 			$clean['kuma_url'] = (string) ( $current['kuma_url'] ?? '' );
 		}
 
-		if ( ! empty( $data['kuma_api_token'] ) ) {
-			$clean['kuma_api_token'] = sanitize_text_field( (string) $data['kuma_api_token'] );
+		if ( isset( $data['kuma_username'] ) ) {
+			$clean['kuma_username'] = sanitize_text_field( (string) $data['kuma_username'] );
 		} else {
-			$clean['kuma_api_token'] = (string) ( $current['kuma_api_token'] ?? '' );
+			$clean['kuma_username'] = (string) ( $current['kuma_username'] ?? '' );
+		}
+
+		if ( ! empty( $data['kuma_password'] ) ) {
+			$clean['kuma_password'] = sanitize_text_field( (string) $data['kuma_password'] );
+		} else {
+			$clean['kuma_password'] = (string) ( $current['kuma_password'] ?? '' );
 		}
 
 		return update_option( self::OPTION_KEY, $clean, false );

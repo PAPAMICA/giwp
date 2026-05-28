@@ -1,5 +1,13 @@
 == Changelog ==
 
+= 2.21.3 =
+Update: Connect Uptime Kuma — authentification uniquement par utilisateur / mot de passe (plus de JWT ni clé uk… dans l’UI).
+Update: Export JSON bundle sans mot de passe ni secrets ; import conserve le mot de passe local si absent du fichier.
+Update: MainWP — déploiement avec URL + identifiants centralisés uniquement.
+
+= 2.21.2 =
+Fix: Connect Uptime Kuma — clés API uk… distinctes du JWT ; auth par utilisateur/mot de passe avec JWT auto ; message explicite si clé Prometheus collée à la place du JWT.
+
 = 2.21.1 =
 Fix: Connect Uptime Kuma — sauvegarde formulaire (nonce _wpnonce + champ gi_toolkit_pro_save), URL sans /dashboard, messages sync.
 

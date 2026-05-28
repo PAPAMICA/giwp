@@ -9,13 +9,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 class MainWP_GIWeb_Uptime_Kuma {
 
 	/**
-	 * @return array{kuma_url:string, api_token:string}
+	 * @return array{kuma_url:string, kuma_username:string, kuma_password:string}
 	 */
 	public static function get_credentials() {
 		$settings = MainWP_GIWeb_Settings::get();
 		return array(
-			'kuma_url'   => self::normalize_url( $settings['kuma_url'] ?? '' ),
-			'api_token'  => trim( (string) ( $settings['kuma_api_token'] ?? '' ) ),
+			'kuma_url'      => self::normalize_url( $settings['kuma_url'] ?? '' ),
+			'kuma_username' => trim( (string) ( $settings['kuma_username'] ?? '' ) ),
+			'kuma_password' => (string) ( $settings['kuma_password'] ?? '' ),
 		);
 	}
 
@@ -24,7 +25,9 @@ class MainWP_GIWeb_Uptime_Kuma {
 	 */
 	public static function is_configured() {
 		$creds = self::get_credentials();
-		return '' !== $creds['kuma_url'] && '' !== $creds['api_token'];
+		return '' !== $creds['kuma_url']
+			&& '' !== $creds['kuma_username']
+			&& '' !== $creds['kuma_password'];
 	}
 
 	/**
@@ -40,16 +43,17 @@ class MainWP_GIWeb_Uptime_Kuma {
 			$bundle['modules'] = array();
 		}
 
-		$creds         = self::get_credentials();
-		$kuma_module   = $bundle['modules']['Gi_Toolkit_Uptime_Kuma'] ?? array();
+		$creds       = self::get_credentials();
+		$kuma_module = $bundle['modules']['Gi_Toolkit_Uptime_Kuma'] ?? array();
 		if ( ! is_array( $kuma_module ) ) {
 			$kuma_module = array();
 		}
 
 		$options = isset( $kuma_module['options'] ) && is_array( $kuma_module['options'] ) ? $kuma_module['options'] : array();
-		$options['kuma_url']   = $creds['kuma_url'];
-		$options['api_token']  = $creds['api_token'];
-		$options['monitor_id'] = 0;
+		$options['kuma_url']      = $creds['kuma_url'];
+		$options['kuma_username'] = $creds['kuma_username'];
+		$options['kuma_password'] = $creds['kuma_password'];
+		$options['monitor_id']    = 0;
 		if ( ! isset( $options['auto_monitor'] ) || '0' !== (string) $options['auto_monitor'] ) {
 			$options['auto_monitor'] = '1';
 		}
@@ -90,6 +94,8 @@ class MainWP_GIWeb_Uptime_Kuma {
 			$url = 'https://' . $url;
 		}
 		$url = esc_url_raw( $url );
-		return rtrim( $url, '/' );
+		$url = rtrim( $url, '/' );
+		$url = preg_replace( '#/dashboard/?$#i', '', $url );
+		return untrailingslashit( $url );
 	}
 }

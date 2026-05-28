@@ -135,7 +135,8 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 		$creds    = MainWP_GIWeb_Uptime_Kuma::get_credentials();
 		$settings = array(
 			'kuma_url'           => $creds['kuma_url'],
-			'api_token'          => $creds['api_token'],
+			'kuma_username'      => $creds['kuma_username'],
+			'kuma_password'      => $creds['kuma_password'],
 			'disable_ssl_verify' => '0',
 		);
 
