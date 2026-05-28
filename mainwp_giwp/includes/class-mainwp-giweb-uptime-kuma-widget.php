@@ -810,10 +810,6 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 		$status_text = $status_labels[ $status ] ?? $status_labels['unknown'];
 		$filter_group = in_array( $status, array( 'warn', 'down', 'unknown', 'paused' ), true ) ? 'issues' : $status;
 		$search_blob = strtolower( $label . ' ' . $url );
-		$host        = wp_parse_url( $url, PHP_URL_HOST );
-		if ( ! is_string( $host ) || '' === $host ) {
-			$host = $url;
-		}
 		?>
 		<article
 			class="giweb-ukw-card status-<?php echo esc_attr( $status ); ?>"
@@ -828,9 +824,6 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 			</header>
 
 			<h3 class="giweb-ukw-card__title"><?php echo esc_html( $label ); ?></h3>
-			<?php if ( '' !== $url ) : ?>
-				<p class="giweb-ukw-card__host"><?php echo esc_html( $host ); ?></p>
-			<?php endif; ?>
 
 			<?php if ( 'missing' === $status ) : ?>
 				<p class="giweb-ukw-card__hint"><?php esc_html_e( 'Aucun monitor Kuma associé à cette URL.', 'mainwp-giweb' ); ?></p>
@@ -839,10 +832,6 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 					<?php self::render_metric_bar( __( '24 h', 'mainwp-giweb' ), $uptime24 ); ?>
 					<?php self::render_metric_bar( __( '30 j', 'mainwp-giweb' ), $uptime30 ); ?>
 				</div>
-			<?php endif; ?>
-
-			<?php if ( '' !== $url ) : ?>
-				<a class="giweb-ukw-card__link" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Ouvrir le site', 'mainwp-giweb' ); ?> ↗</a>
 			<?php endif; ?>
 		</article>
 		<?php

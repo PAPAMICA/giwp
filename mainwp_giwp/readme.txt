@@ -3,7 +3,7 @@ Contributors: genevois-informatique
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.5.5
+Stable tag: 1.5.6
 License: GPLv2 or later
 
 Gérez et déployez GI-Toolkit sur tous vos sites WordPress via MainWP.
@@ -54,6 +54,9 @@ MainWP > Extensions > GI-Toolkit Manager
 - [ ] Modèle « Default » défini comme profil par défaut dans Réglages
 
 == Changelog ==
+
+= 1.5.6 =
+* Update: widget Uptime Kuma — champ recherche stylisé (thème sombre), cartes sans URL dupliquée ni lien « Ouvrir le site ».
 
 = 1.5.5 =
 * Update: refonte complète widget Uptime Kuma — score santé, bandeau par site, cartes avec dispo 24 h / 30 j, filtres et recherche.
