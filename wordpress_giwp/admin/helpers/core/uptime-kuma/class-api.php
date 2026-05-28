@@ -109,10 +109,63 @@ class Gi_Toolkit_Uptime_Kuma_API {
 					return null;
 				}
 				$client->emit( 'getMonitorList' );
+				$client->poll_incoming( 12 );
 				$list = $client->get_last_event( 'monitorList' );
 				return is_array( $list ) ? $list : array();
 			}
 		);
+	}
+
+	/**
+	 * Disponibilité 24 h / 30 j / 1 an (événements « uptime » après getMonitorList).
+	 *
+	 * @param int $monitor_id ID monitor.
+	 * @return array{stats: array<string, float>|null, monitor: array<string, mixed>|null}|null
+	 */
+	public function get_monitor_uptime_stats( $monitor_id ) {
+		$monitor_id = absint( $monitor_id );
+		if ( $monitor_id < 1 ) {
+			return null;
+		}
+
+		return $this->with_client(
+			function ( Gi_Toolkit_Uptime_Kuma_Socket_Client $client ) use ( $monitor_id ) {
+				if ( empty( $this->login_client( $client )['ok'] ) ) {
+					return null;
+				}
+				$client->emit( 'getMonitorList' );
+				$client->poll_incoming( 18 );
+				$stats   = $client->get_uptime_for_monitor( $monitor_id );
+				$list    = $client->get_last_event( 'monitorList' );
+				$monitor = null;
+				if ( is_array( $list ) && isset( $list[ $monitor_id ] ) && is_array( $list[ $monitor_id ] ) ) {
+					$monitor = $list[ $monitor_id ];
+				} elseif ( is_array( $list ) ) {
+					foreach ( $list as $key => $row ) {
+						$id = is_array( $row ) && isset( $row['id'] ) ? absint( $row['id'] ) : absint( $key );
+						if ( $id === $monitor_id ) {
+							$monitor = is_array( $row ) ? $row : null;
+							break;
+						}
+					}
+				}
+				return array(
+					'stats'   => is_array( $stats ) && ! empty( $stats ) ? $stats : null,
+					'monitor' => $monitor,
+				);
+			}
+		);
+	}
+
+	/**
+	 * @param float|null $ratio Ratio 0–1.
+	 * @return float|null Pourcentage affiché.
+	 */
+	public static function uptime_ratio_to_percent( $ratio ) {
+		if ( null === $ratio || ! is_numeric( $ratio ) ) {
+			return null;
+		}
+		return round( (float) $ratio * 100, 2 );
 	}
 
 	/**

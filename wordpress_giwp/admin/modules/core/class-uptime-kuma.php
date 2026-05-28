@@ -421,9 +421,6 @@ class Gi_Toolkit_Uptime_Kuma {
 
 		$status_level = (string) ( $dashboard['status_level'] ?? 'unknown' );
 		$interval     = absint( $dashboard['interval'] ?? 60 );
-		$kuma_url     = Gi_Toolkit_Uptime_Kuma_API::normalize_kuma_url( $settings['kuma_url'] ?? '' );
-		$monitor_url  = ! empty( $dashboard['monitor_url'] ) ? (string) $dashboard['monitor_url'] : home_url();
-		$monitor_name = ! empty( $dashboard['monitor_name'] ) ? (string) $dashboard['monitor_name'] : get_bloginfo( 'name' );
 		$fetched_label = ! empty( $dashboard['fetched_at'] )
 			? sprintf(
 				/* translators: %s: relative time */
@@ -500,12 +497,29 @@ class Gi_Toolkit_Uptime_Kuma {
 					<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( 'Disponibilité (24 h)', 'gi-toolkit' ); ?></span>
 					<strong class="gi-uptime-kuma-kpi__value"><?php echo esc_html( (string) ( $dashboard['uptime_percent'] ?? 0 ) ); ?>%</strong>
 				</div>
-				<div class="gi-uptime-kuma-kpi">
-					<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( 'Monitor', 'gi-toolkit' ); ?></span>
-					<strong class="gi-uptime-kuma-kpi__value gi-uptime-kuma-kpi__value--text"><?php echo esc_html( $monitor_name ); ?></strong>
-					<?php if ( ! empty( $dashboard['monitor_id'] ) ) : ?>
-						<span class="gi-uptime-kuma-kpi__sub">#<?php echo esc_html( (string) (int) $dashboard['monitor_id'] ); ?></span>
-					<?php endif; ?>
+				<div class="gi-uptime-kuma-kpi gi-uptime-kuma-kpi--uptime">
+					<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( 'Disponibilité (30 jours)', 'gi-toolkit' ); ?></span>
+					<strong class="gi-uptime-kuma-kpi__value">
+						<?php
+						echo esc_html(
+							null !== ( $dashboard['uptime_30d'] ?? null )
+								? (string) $dashboard['uptime_30d'] . '%'
+								: '—'
+						);
+						?>
+					</strong>
+				</div>
+				<div class="gi-uptime-kuma-kpi gi-uptime-kuma-kpi--uptime">
+					<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( 'Disponibilité (1 an)', 'gi-toolkit' ); ?></span>
+					<strong class="gi-uptime-kuma-kpi__value">
+						<?php
+						echo esc_html(
+							null !== ( $dashboard['uptime_1y'] ?? null )
+								? (string) $dashboard['uptime_1y'] . '%'
+								: '—'
+						);
+						?>
+					</strong>
 				</div>
 				<div class="gi-uptime-kuma-kpi">
 					<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( 'Dernière vérification', 'gi-toolkit' ); ?></span>
@@ -519,15 +533,6 @@ class Gi_Toolkit_Uptime_Kuma {
 						?>
 					</strong>
 				</div>
-				<?php if ( '' !== $kuma_url ) : ?>
-					<div class="gi-uptime-kuma-kpi gi-uptime-kuma-kpi--link">
-						<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( 'Liens', 'gi-toolkit' ); ?></span>
-						<p class="gi-uptime-kuma-kpi__links">
-							<a href="<?php echo esc_url( $monitor_url ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Site surveillé', 'gi-toolkit' ); ?></a>
-							<a href="<?php echo esc_url( trailingslashit( $kuma_url ) . 'dashboard' ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Ouvrir Uptime Kuma', 'gi-toolkit' ); ?></a>
-						</p>
-					</div>
-				<?php endif; ?>
 			</div>
 
 			<?php if ( ! empty( $dashboard['chart']['data'] ) ) : ?>

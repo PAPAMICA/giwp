@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.21.9 =
+Update: Dashboard Uptime Kuma — KPIs disponibilité 30 jours et 1 an (événements Socket.IO) à la place de Monitor / Liens.
+
 = 2.21.8 =
 Add: Page Statistiques — bloc disponibilité Uptime Kuma (bandeau, KPIs, graphique ping) au-dessus du dashboard Matomo.
 

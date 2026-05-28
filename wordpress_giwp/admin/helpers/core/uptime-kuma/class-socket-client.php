@@ -32,6 +32,9 @@ class Gi_Toolkit_Uptime_Kuma_Socket_Client {
 	/** @var array<string, mixed> */
 	private $last_events = array();
 
+	/** @var array<int, array<string, float>> */
+	private $uptime_by_monitor = array();
+
 	/** @var string|null */
 	private $last_error = null;
 
@@ -95,13 +98,35 @@ class Gi_Toolkit_Uptime_Kuma_Socket_Client {
 	}
 
 	/**
+	 * @param int $monitor_id ID monitor.
+	 * @return array<string, float>
+	 */
+	public function get_uptime_for_monitor( $monitor_id ) {
+		return $this->uptime_by_monitor[ absint( $monitor_id ) ] ?? array();
+	}
+
+	/**
+	 * Attend les événements push (uptime, monitorList…) après getMonitorList.
+	 *
+	 * @param int $max_attempts Nombre de GET polling.
+	 * @return void
+	 */
+	public function poll_incoming( $max_attempts = 15 ) {
+		$attempts = max( 1, absint( $max_attempts ) );
+		for ( $i = 0; $i < $attempts; $i++ ) {
+			$this->process_packets( $this->request( 'GET', '' ) );
+		}
+	}
+
+	/**
 	 * @return bool
 	 */
 	public function connect() {
 		$this->sid           = '';
 		$this->pending_acks  = array();
 		$this->ack_responses = array();
-		$this->last_events   = array();
+		$this->last_events       = array();
+		$this->uptime_by_monitor = array();
 
 		$body = $this->request( 'GET', '' );
 		if ( null === $body ) {
@@ -285,6 +310,20 @@ class Gi_Toolkit_Uptime_Kuma_Socket_Client {
 		}
 
 		$event = (string) $data[0];
+
+		if ( 'uptime' === $event && isset( $data[1], $data[3] ) ) {
+			$monitor_id = absint( $data[1] );
+			$period     = (string) $data[2];
+			$ratio      = is_numeric( $data[3] ) ? (float) $data[3] : 0.0;
+			if ( $monitor_id > 0 ) {
+				if ( ! isset( $this->uptime_by_monitor[ $monitor_id ] ) ) {
+					$this->uptime_by_monitor[ $monitor_id ] = array();
+				}
+				$this->uptime_by_monitor[ $monitor_id ][ $period ] = $ratio;
+			}
+			return;
+		}
+
 		$value = $data[1] ?? null;
 		$this->last_events[ $event ] = $value;
 	}

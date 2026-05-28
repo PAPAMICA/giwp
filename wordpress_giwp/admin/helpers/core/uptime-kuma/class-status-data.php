@@ -43,8 +43,7 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 			);
 		}
 
-		$monitor = self::find_monitor_in_list( $api, $monitor_id );
-		$beats   = $api->get_monitor_beats( $monitor_id, 24 );
+		$beats = $api->get_monitor_beats( $monitor_id, 24 );
 		if ( ! is_array( $beats ) ) {
 			return array(
 				'ready'   => false,
@@ -57,18 +56,35 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 		$latest     = self::latest_beat_summary( $beats );
 		$chart      = self::build_ping_chart_series( $beats, 48 );
 
-		$interval = 60;
+		$uptime_bundle = $api->get_monitor_uptime_stats( $monitor_id );
+		$interval      = 60;
+		$monitor       = ( is_array( $uptime_bundle ) && is_array( $uptime_bundle['monitor'] ?? null ) )
+			? $uptime_bundle['monitor']
+			: null;
 		if ( is_array( $monitor ) && ! empty( $monitor['interval'] ) ) {
 			$interval = max( 20, absint( $monitor['interval'] ) );
+		}
+
+		$uptime_30d = null;
+		$uptime_1y  = null;
+		$uptime_raw = ( is_array( $uptime_bundle ) && is_array( $uptime_bundle['stats'] ?? null ) )
+			? $uptime_bundle['stats']
+			: array();
+		if ( isset( $uptime_raw['720'] ) ) {
+			$uptime_30d = Gi_Toolkit_Uptime_Kuma_API::uptime_ratio_to_percent( $uptime_raw['720'] );
+		} elseif ( isset( $uptime_raw[720] ) ) {
+			$uptime_30d = Gi_Toolkit_Uptime_Kuma_API::uptime_ratio_to_percent( $uptime_raw[720] );
+		}
+		if ( isset( $uptime_raw['1y'] ) ) {
+			$uptime_1y = Gi_Toolkit_Uptime_Kuma_API::uptime_ratio_to_percent( $uptime_raw['1y'] );
 		}
 
 		$payload = array(
 			'ready'          => true,
 			'monitor_id'     => $monitor_id,
-			'monitor_name'   => is_array( $monitor ) ? (string) ( $monitor['name'] ?? '' ) : '',
-			'monitor_url'    => is_array( $monitor ) ? (string) ( $monitor['url'] ?? '' ) : '',
-			'monitor_active' => is_array( $monitor ) ? ! empty( $monitor['active'] ) : true,
 			'interval'       => $interval,
+			'uptime_30d'     => $uptime_30d,
+			'uptime_1y'      => $uptime_1y,
 			'status'         => $latest['status'],
 			'status_label'   => $latest['status_label'],
 			'status_level'   => $latest['status_level'],
@@ -88,28 +104,6 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 		set_transient( $cache_key, $payload, 5 * MINUTE_IN_SECONDS );
 
 		return $payload;
-	}
-
-	/**
-	 * @param Gi_Toolkit_Uptime_Kuma_API $api        API.
-	 * @param int                        $monitor_id ID monitor.
-	 * @return array<string, mixed>|null
-	 */
-	private static function find_monitor_in_list( Gi_Toolkit_Uptime_Kuma_API $api, $monitor_id ) {
-		$list = $api->get_monitors();
-		if ( ! is_array( $list ) ) {
-			return null;
-		}
-		foreach ( $list as $key => $monitor ) {
-			if ( ! is_array( $monitor ) ) {
-				continue;
-			}
-			$id = isset( $monitor['id'] ) ? absint( $monitor['id'] ) : absint( $key );
-			if ( $id === $monitor_id ) {
-				return $monitor;
-			}
-		}
-		return null;
 	}
 
 	/**
