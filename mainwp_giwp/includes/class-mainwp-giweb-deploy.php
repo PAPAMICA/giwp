@@ -16,7 +16,9 @@ class MainWP_GIWeb_Deploy {
 	 * @return array{deployment_id: int, results: array<int, array<string, mixed>>}
 	 */
 	public static function push_to_sites( $bundle, $site_ids, $template_id = '', $template_name = '' ) {
-		$bundle = MainWP_GIWeb_Matomo::merge_into_bundle( is_array( $bundle ) ? $bundle : array() );
+		$bundle = MainWP_GIWeb_Uptime_Kuma::merge_into_bundle(
+			MainWP_GIWeb_Matomo::merge_into_bundle( is_array( $bundle ) ? $bundle : array() )
+		);
 		$hash          = md5( wp_json_encode( $bundle ) );
 		$deployment_id = MainWP_GIWeb_History::create_deployment( $template_id, $template_name, $hash );
 		$results       = array();

@@ -1,0 +1,59 @@
+#wpadminbar #wp-admin-bar-gi-uptime-kuma-toolbar-stats > .ab-item {
+	padding: 0 10px;
+	height: 32px;
+	display: flex;
+	align-items: center;
+}
+
+.gi-uptime-kuma-ab-wrap {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	line-height: 1;
+}
+
+.gi-uptime-kuma-ab-bars {
+	display: inline-flex;
+	align-items: flex-end;
+	gap: 2px;
+	height: 18px;
+}
+
+.gi-uptime-kuma-ab-bar {
+	width: 4px;
+	min-height: 4px;
+	border-radius: 1px;
+	background: #9ca3af;
+}
+
+.gi-uptime-kuma-ab-bar.level-green {
+	background: #22c55e;
+	height: 16px;
+}
+
+.gi-uptime-kuma-ab-bar.level-orange {
+	background: #f59e0b;
+	height: 12px;
+}
+
+.gi-uptime-kuma-ab-bar.level-red {
+	background: #ef4444;
+	height: 8px;
+}
+
+.gi-uptime-kuma-ab-bar.level-unknown {
+	background: #6b7280;
+	height: 6px;
+	opacity: 0.5;
+}
+
+.gi-uptime-kuma-ab-ping {
+	font-size: 11px;
+	font-weight: 600;
+	color: #e5e7eb;
+	white-space: nowrap;
+}
+
+.gi-toolkit-uptime-kuma-settings #gi-uptime-kuma-notice {
+	margin-top: 12px;
+}

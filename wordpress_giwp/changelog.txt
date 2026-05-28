@@ -1,5 +1,10 @@
 == Changelog ==
 
+= 2.21.0 =
+Add: Module Connect Uptime Kuma — connexion Socket.IO (token JWT), monitor automatique par URL WordPress, barre admin 24 barres + ping moyen.
+Add: Déploiement / import MainWP (URL + token, monitor_id réinitialisé, sync monitor avec avertissement si échec).
+Update: API MainWP enfant — statut uptime_kuma (configured, monitor_id).
+
 = 2.20.36 =
 Fix: Déploiement MainWP Matomo — enregistrement immédiat des réglages puis sync API (évite les faux timeouts MainWP).
 Update: Sync Matomo en échec = avertissement (réglages conservés), pas un échec d’import complet.

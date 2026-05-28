@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'MAINWP_GIWEB_VERSION' ) ) {
-	define( 'MAINWP_GIWEB_VERSION', '1.4.5' );
+	define( 'MAINWP_GIWEB_VERSION', '1.5.0' );
 }
 if ( ! defined( 'MAINWP_GIWEB_PLUGIN_FILE' ) ) {
 	define( 'MAINWP_GIWEB_PLUGIN_FILE', __DIR__ . '/mainwp-giwp.php' );
@@ -31,6 +31,8 @@ require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-sites.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-catalog.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-settings.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-matomo.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-uptime-kuma.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-uptime-kuma-widget.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-overrides.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-templates.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-zip.php';
@@ -153,6 +155,8 @@ class MainWP_GIWeb_Extension_Activator {
 		add_filter( 'mainwp_getmetaboxes', array( 'MainWP_GIWeb_Dashboard_Widget', 'register_metabox' ), 20, 1 );
 		add_filter( 'mainwp_widgets_screen_options', array( 'MainWP_GIWeb_Dashboard_Widget', 'widgets_screen_options' ), 10, 1 );
 		add_action( 'admin_enqueue_scripts', array( 'MainWP_GIWeb_Dashboard_Widget', 'enqueue_assets' ) );
+
+		MainWP_GIWeb_Uptime_Kuma_Widget::activate_cron();
 	}
 
 	/**
@@ -221,6 +225,17 @@ class MainWP_GIWeb_Extension_Activator {
 
 global $mainwp_giweb_activator;
 $mainwp_giweb_activator = new MainWP_GIWeb_Extension_Activator();
+
+MainWP_GIWeb_Uptime_Kuma_Widget::register_cron_schedule();
+MainWP_GIWeb_Uptime_Kuma_Widget::init();
+
+register_activation_hook(
+	MAINWP_GIWEB_PLUGIN_FILE,
+	function () {
+		MainWP_GIWeb_Uptime_Kuma_Widget::register_cron_schedule();
+		MainWP_GIWeb_Uptime_Kuma_Widget::activate_cron();
+	}
+);
 
 MainWP_GIWeb_Onboarding::init();
 MainWP_GIWeb_Capabilities::init();

@@ -47,7 +47,7 @@ class MainWP_GIWeb_Sync_Ajax {
 		if ( empty( $bundle ) || empty( $bundle['modules'] ) ) {
 			return null;
 		}
-		return MainWP_GIWeb_Matomo::merge_into_bundle( $bundle );
+		return MainWP_GIWeb_Uptime_Kuma::merge_into_bundle( MainWP_GIWeb_Matomo::merge_into_bundle( $bundle ) );
 	}
 
 	/**
@@ -603,7 +603,7 @@ class MainWP_GIWeb_Sync_Ajax {
 			}
 
 			$label  = isset( $_POST['site_label'] ) ? sanitize_text_field( wp_unslash( $_POST['site_label'] ) ) : ( '#' . $site_id );
-			$bundle = MainWP_GIWeb_Matomo::merge_into_bundle( $ctx['bundle'] );
+			$bundle = MainWP_GIWeb_Uptime_Kuma::merge_into_bundle( MainWP_GIWeb_Matomo::merge_into_bundle( $ctx['bundle'] ) );
 			$args   = MainWP_GIWeb_Overrides::apply_to_bundle( $bundle, $site_id );
 			$result = MainWP_GIWeb_API::import_site( $site_id, $bundle, $args );
 			$ok     = ! empty( $result['success'] );

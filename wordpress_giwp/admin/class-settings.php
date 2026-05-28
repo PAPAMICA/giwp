@@ -499,6 +499,9 @@ class Gi_Toolkit_Settings {
 				if ( 'Gi_Toolkit_Matomo' === $item && is_array( $options ) ) {
 					$options['site_id'] = 0;
 				}
+				if ( 'Gi_Toolkit_Uptime_Kuma' === $item && is_array( $options ) ) {
+					$options['monitor_id'] = 0;
+				}
 				$modules_data[ $item ]['options'] = $options;
 			}
 		}
@@ -540,6 +543,8 @@ class Gi_Toolkit_Settings {
 		$sanitized_items_data   = array();
 		$matomo_pending         = null;
 		$matomo_deploy          = null;
+		$uptime_kuma_pending    = null;
+		$kuma_deploy            = null;
 		$import_errors          = array();
 		$import_warnings        = array();
 		$current_main           = get_option( GI_TOOLKIT_PLUGIN_SETTINGS, array() );
@@ -556,6 +561,10 @@ class Gi_Toolkit_Settings {
 			if ( isset( $upload_file_json[ $item ]['options'] ) && is_array( $upload_file_json[ $item ]['options'] ) ) {
 				if ( 'Gi_Toolkit_Matomo' === $item ) {
 					$matomo_pending = $upload_file_json[ $item ]['options'];
+					continue;
+				}
+				if ( 'Gi_Toolkit_Uptime_Kuma' === $item ) {
+					$uptime_kuma_pending = $upload_file_json[ $item ]['options'];
 					continue;
 				}
 				$can_save = class_exists( $item ) && method_exists( $item, 'save_settings' );
@@ -577,6 +586,15 @@ class Gi_Toolkit_Settings {
 				$import_errors[] = $matomo_deploy['message'] ?? __( 'Échec du déploiement Matomo.', 'gi-toolkit' );
 			} elseif ( ! empty( $matomo_deploy['warning'] ) ) {
 				$import_warnings[] = (string) $matomo_deploy['warning'];
+			}
+		}
+
+		if ( is_array( $uptime_kuma_pending ) && class_exists( 'Gi_Toolkit_Uptime_Kuma' ) ) {
+			$kuma_deploy = Gi_Toolkit_Uptime_Kuma::deploy_from_mainwp( $uptime_kuma_pending );
+			if ( empty( $kuma_deploy['success'] ) ) {
+				$import_errors[] = $kuma_deploy['message'] ?? __( 'Échec du déploiement Uptime Kuma.', 'gi-toolkit' );
+			} elseif ( ! empty( $kuma_deploy['warning'] ) ) {
+				$import_warnings[] = (string) $kuma_deploy['warning'];
 			}
 		}
 
@@ -611,6 +629,13 @@ class Gi_Toolkit_Settings {
 				'site_id' => absint( $matomo_deploy['site_id'] ?? 0 ),
 				'message' => (string) ( $matomo_deploy['message'] ?? '' ),
 				'warning' => (string) ( $matomo_deploy['warning'] ?? '' ),
+			);
+		}
+		if ( is_array( $kuma_deploy ) ) {
+			$data['uptime_kuma'] = array(
+				'monitor_id' => absint( $kuma_deploy['monitor_id'] ?? 0 ),
+				'message'    => (string) ( $kuma_deploy['message'] ?? '' ),
+				'warning'    => (string) ( $kuma_deploy['warning'] ?? '' ),
 			);
 		}
 

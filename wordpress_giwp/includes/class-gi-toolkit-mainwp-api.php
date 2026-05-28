@@ -136,6 +136,18 @@ class Gi_Toolkit_MainWP_API {
 			);
 		}
 
+		if ( class_exists( 'Gi_Toolkit_Uptime_Kuma' ) ) {
+			Gi_Toolkit_Uptime_Kuma::load_deploy_dependencies();
+			$kuma_settings = Gi_Toolkit_Uptime_Kuma::get_settings_static();
+			$kuma_url        = Gi_Toolkit_Uptime_Kuma_API::normalize_kuma_url( $kuma_settings['kuma_url'] ?? '' );
+			$payload['uptime_kuma'] = array(
+				'configured'  => ( new Gi_Toolkit_Uptime_Kuma_API( $kuma_settings ) )->is_configured(),
+				'monitor_id'  => absint( $kuma_settings['monitor_id'] ?? 0 ),
+				'auto_monitor' => (string) ( $kuma_settings['auto_monitor'] ?? '1' ),
+				'has_url'     => '' !== $kuma_url,
+			);
+		}
+
 		return $payload;
 	}
 
@@ -178,6 +190,23 @@ class Gi_Toolkit_MainWP_API {
 					'matomo'  => array(
 						'site_id' => (int) ( $deploy['site_id'] ?? 0 ),
 						'message' => (string) ( $deploy['message'] ?? '' ),
+					),
+				)
+			);
+		}
+
+		if ( 'Gi_Toolkit_Uptime_Kuma' === $class && is_array( $options ) && class_exists( 'Gi_Toolkit_Uptime_Kuma' ) ) {
+			$deploy = Gi_Toolkit_Uptime_Kuma::deploy_from_mainwp( $options );
+			if ( empty( $deploy['success'] ) ) {
+				return self::error( $deploy['message'] ?? __( 'Échec du déploiement Uptime Kuma.', 'gi-toolkit' ) );
+			}
+			return self::success(
+				array(
+					'saved'       => true,
+					'uptime_kuma' => array(
+						'monitor_id' => (int) ( $deploy['monitor_id'] ?? 0 ),
+						'message'    => (string) ( $deploy['message'] ?? '' ),
+						'warning'    => (string) ( $deploy['warning'] ?? '' ),
 					),
 				)
 			);

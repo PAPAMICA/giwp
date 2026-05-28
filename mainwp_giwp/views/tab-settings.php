@@ -90,6 +90,25 @@ $logs            = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 			</td>
 		</tr>
 		<tr>
+			<th scope="row"><?php esc_html_e( 'Uptime Kuma (multi-sites)', 'mainwp-giweb' ); ?></th>
+			<td>
+				<p>
+					<label for="mainwp_giweb_kuma_url"><?php esc_html_e( 'URL Uptime Kuma', 'mainwp-giweb' ); ?></label><br />
+					<input type="url" class="large-text code" id="mainwp_giweb_kuma_url" name="kuma_url" value="<?php echo esc_attr( (string) ( $settings['kuma_url'] ?? '' ) ); ?>" placeholder="https://status.example.com" />
+				</p>
+				<p>
+					<label for="mainwp_giweb_kuma_api_token"><?php esc_html_e( 'Token JWT Uptime Kuma', 'mainwp-giweb' ); ?></label><br />
+					<input type="password" class="large-text code" id="mainwp_giweb_kuma_api_token" name="kuma_api_token" value="" autocomplete="new-password" placeholder="<?php echo ! empty( $settings['kuma_api_token'] ) ? esc_attr__( '•••••••• (laisser vide pour conserver)', 'mainwp-giweb' ) : ''; ?>" />
+				</p>
+				<p class="description">
+					<?php esc_html_e( 'Token JWT (événement loginByToken), pas la clé API HTTP « uk… ». Lors d’un déploiement, l’URL et le token sont injectés sur chaque site enfant ; le module crée ou associe un monitor pour l’URL WordPress.', 'mainwp-giweb' ); ?>
+				</p>
+				<?php if ( MainWP_GIWeb_Uptime_Kuma::is_configured() ) : ?>
+					<p class="description" style="color:#15803d;"><?php esc_html_e( 'Uptime Kuma centralisé configuré — sera appliqué à chaque déploiement. Widget dashboard mis à jour toutes les 5 minutes.', 'mainwp-giweb' ); ?></p>
+				<?php endif; ?>
+			</td>
+		</tr>
+		<tr>
 			<th scope="row"><?php esc_html_e( 'Synchronisation', 'mainwp-giweb' ); ?></th>
 			<td>
 				<label for="mainwp_giweb_sync_concurrency"><?php esc_html_e( 'Sites interrogés en parallèle (sync et déploiement)', 'mainwp-giweb' ); ?></label>

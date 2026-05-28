@@ -119,6 +119,13 @@ class MainWP_GIWeb_API {
 			$messages[] = trim( wp_strip_all_tags( (string) $result['data']['matomo']['message'] ) );
 		}
 
+		if ( ! empty( $result['data']['uptime_kuma']['message'] ) ) {
+			$messages[] = trim( wp_strip_all_tags( (string) $result['data']['uptime_kuma']['message'] ) );
+		}
+		if ( ! empty( $result['data']['uptime_kuma']['warning'] ) ) {
+			$messages[] = trim( wp_strip_all_tags( (string) $result['data']['uptime_kuma']['warning'] ) );
+		}
+
 		return array_values( array_unique( array_filter( $messages ) ) );
 	}
 
@@ -142,6 +149,8 @@ class MainWP_GIWeb_API {
 			$joined = implode( ' — ', $structured );
 			if ( self::message_looks_like_matomo( $joined ) ) {
 				$joined = '[Matomo] ' . $joined;
+			} elseif ( self::message_looks_like_uptime_kuma( $joined ) ) {
+				$joined = '[Uptime Kuma] ' . $joined;
 			}
 			return sprintf( '« %1$s » : %2$s', $label, $joined );
 		}
@@ -162,7 +171,7 @@ class MainWP_GIWeb_API {
 			return sprintf(
 				/* translators: 1: site name, 2: technical detail */
 				__(
-					'« %1$s » : délai dépassé ou réponse invalide du site enfant (souvent l’appel API Matomo pendant l’import). Détail : %2$s',
+					'« %1$s » : délai dépassé ou réponse invalide du site enfant (souvent Matomo ou Uptime Kuma pendant l’import). Détail : %2$s',
 					'mainwp-giweb'
 				),
 				$label,
@@ -182,6 +191,10 @@ class MainWP_GIWeb_API {
 			return sprintf( '« %1$s » — [Matomo] %2$s', $label, $raw_error );
 		}
 
+		if ( self::message_looks_like_uptime_kuma( $raw_error ) ) {
+			return sprintf( '« %1$s » — [Uptime Kuma] %2$s', $label, $raw_error );
+		}
+
 		return sprintf( '« %1$s » : %2$s', $label, $raw_error );
 	}
 
@@ -191,8 +204,19 @@ class MainWP_GIWeb_API {
 	 */
 	private static function message_looks_like_matomo( $message ) {
 		return false !== stripos( $message, 'matomo' )
-			|| false !== stripos( $message, 'token api' )
-			|| false !== stripos( $message, 'site_id' );
+			|| ( false !== stripos( $message, 'token api' ) && false === stripos( $message, 'kuma' ) )
+			|| ( false !== stripos( $message, 'site_id' ) && false === stripos( $message, 'monitor' ) );
+	}
+
+	/**
+	 * @param string $message Message.
+	 * @return bool
+	 */
+	private static function message_looks_like_uptime_kuma( $message ) {
+		return false !== stripos( $message, 'uptime kuma' )
+			|| false !== stripos( $message, 'kuma' )
+			|| false !== stripos( $message, 'monitor_id' )
+			|| false !== stripos( $message, 'monitor ' );
 	}
 
 	/**
@@ -227,6 +251,13 @@ class MainWP_GIWeb_API {
 					/* translators: %d: Matomo site ID */
 					__( 'OK — Matomo site_id %d', 'mainwp-giweb' ),
 					absint( $result['data']['matomo']['site_id'] )
+				);
+			}
+			if ( ! empty( $result['data']['uptime_kuma']['monitor_id'] ) ) {
+				return sprintf(
+					/* translators: %d: Uptime Kuma monitor ID */
+					__( 'OK — Uptime Kuma monitor_id %d', 'mainwp-giweb' ),
+					absint( $result['data']['uptime_kuma']['monitor_id'] )
 				);
 			}
 			return __( 'OK', 'mainwp-giweb' );

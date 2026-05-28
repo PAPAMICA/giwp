@@ -38,6 +38,8 @@ class MainWP_GIWeb_Settings {
 			'sync_concurrency'              => 5,
 			'matomo_url'                    => '',
 			'matomo_api_token'              => '',
+			'kuma_url'                      => '',
+			'kuma_api_token'                => '',
 		);
 	}
 
@@ -76,6 +78,19 @@ class MainWP_GIWeb_Settings {
 			$clean['matomo_api_token'] = sanitize_text_field( (string) $data['matomo_api_token'] );
 		} else {
 			$clean['matomo_api_token'] = (string) ( $current['matomo_api_token'] ?? '' );
+		}
+
+		if ( isset( $data['kuma_url'] ) ) {
+			$kurl = esc_url_raw( rtrim( trim( (string) $data['kuma_url'] ), '/' ) );
+			$clean['kuma_url'] = ( '' !== $kurl && filter_var( $kurl, FILTER_VALIDATE_URL ) ) ? $kurl : '';
+		} else {
+			$clean['kuma_url'] = (string) ( $current['kuma_url'] ?? '' );
+		}
+
+		if ( ! empty( $data['kuma_api_token'] ) ) {
+			$clean['kuma_api_token'] = sanitize_text_field( (string) $data['kuma_api_token'] );
+		} else {
+			$clean['kuma_api_token'] = (string) ( $current['kuma_api_token'] ?? '' );
 		}
 
 		return update_option( self::OPTION_KEY, $clean, false );

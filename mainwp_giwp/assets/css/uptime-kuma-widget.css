@@ -1,0 +1,66 @@
+.mainwp-giweb-uptime-kuma-widget {
+	max-height: 420px;
+	overflow: auto;
+}
+
+.mainwp-giweb-uptime-kuma-table td {
+	vertical-align: middle;
+}
+
+.mainwp-giweb-uptime-kuma-badge {
+	display: inline-block;
+	margin-top: 4px;
+	padding: 2px 6px;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.mainwp-giweb-uptime-kuma-badge.status-ok {
+	background: #dcfce7;
+	color: #166534;
+}
+
+.mainwp-giweb-uptime-kuma-badge.status-warn {
+	background: #fef3c7;
+	color: #92400e;
+}
+
+.mainwp-giweb-uptime-kuma-badge.status-down {
+	background: #fee2e2;
+	color: #991b1b;
+}
+
+.mainwp-giweb-uptime-kuma-mini-bars {
+	display: inline-flex;
+	align-items: flex-end;
+	gap: 1px;
+	height: 14px;
+}
+
+.mainwp-giweb-uptime-kuma-mini-bars .bar {
+	width: 3px;
+	min-height: 3px;
+	border-radius: 1px;
+	background: #9ca3af;
+}
+
+.mainwp-giweb-uptime-kuma-mini-bars .bar.level-green {
+	background: #22c55e;
+	height: 12px;
+}
+
+.mainwp-giweb-uptime-kuma-mini-bars .bar.level-orange {
+	background: #f59e0b;
+	height: 9px;
+}
+
+.mainwp-giweb-uptime-kuma-mini-bars .bar.level-red {
+	background: #ef4444;
+	height: 6px;
+}
+
+.mainwp-giweb-uptime-kuma-mini-bars .bar.level-unknown {
+	opacity: 0.4;
+	height: 4px;
+}
