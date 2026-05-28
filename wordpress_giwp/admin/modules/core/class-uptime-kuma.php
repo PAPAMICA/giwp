@@ -688,6 +688,36 @@ class Gi_Toolkit_Uptime_Kuma {
 	}
 
 	/**
+	 * @param array<string, mixed> $data Données toolbar.
+	 * @return string
+	 */
+	public static function resolve_status_label( array $data ) {
+		$label = trim( (string) ( $data['status_label'] ?? '' ) );
+		if ( '' !== $label ) {
+			return $label;
+		}
+		$map = array(
+			'up'          => __( 'En ligne', 'gi-toolkit' ),
+			'down'        => __( 'Hors ligne', 'gi-toolkit' ),
+			'pending'     => __( 'En attente', 'gi-toolkit' ),
+			'maintenance' => __( 'Maintenance', 'gi-toolkit' ),
+		);
+		$level = (string) ( $data['status_level'] ?? 'unknown' );
+		return $map[ $level ] ?? __( 'Inconnu', 'gi-toolkit' );
+	}
+
+	/**
+	 * @param float|null $value Pourcentage ou null.
+	 * @return string
+	 */
+	public static function format_uptime_kpi( $value ) {
+		if ( null === $value || '' === $value ) {
+			return '—';
+		}
+		return number_format_i18n( (float) $value, 2 ) . ' %';
+	}
+
+	/**
 	 * Infobulle native (attribut title) sur l’entrée barre admin.
 	 *
 	 * @param array<string, mixed> $data Données toolbar.
@@ -698,12 +728,22 @@ class Gi_Toolkit_Uptime_Kuma {
 			sprintf(
 				/* translators: %s: status label */
 				__( 'Statut : %s', 'gi-toolkit' ),
-				(string) ( $data['status_label'] ?? '' )
+				self::resolve_status_label( $data )
 			),
 			sprintf(
 				/* translators: %s: uptime percent */
-				__( 'Disponibilité 24 h : %s %%', 'gi-toolkit' ),
-				(string) ( $data['uptime_percent'] ?? 0 )
+				__( 'Disponibilité 24 h : %s', 'gi-toolkit' ),
+				self::format_uptime_kpi( $data['uptime_percent'] ?? null )
+			),
+			sprintf(
+				/* translators: %s: uptime percent */
+				__( 'Disponibilité 30 j : %s', 'gi-toolkit' ),
+				self::format_uptime_kpi( $data['uptime_30d'] ?? null )
+			),
+			sprintf(
+				/* translators: %s: uptime percent */
+				__( 'Disponibilité 1 an : %s', 'gi-toolkit' ),
+				self::format_uptime_kpi( $data['uptime_1y'] ?? null )
 			),
 		);
 
@@ -755,56 +795,51 @@ class Gi_Toolkit_Uptime_Kuma {
 	 */
 	public static function render_admin_bar_flyout_html( array $data ) {
 		$status_level = sanitize_html_class( (string) ( $data['status_level'] ?? 'unknown' ) );
-		$status_label = esc_html( (string) ( $data['status_label'] ?? '' ) );
-		$uptime       = esc_html( (string) ( $data['uptime_percent'] ?? 0 ) );
+		$status_label = esc_html( self::resolve_status_label( $data ) );
 		$current_ping = (int) ( $data['current_ping'] ?? 0 );
 		$avg_ping     = (int) ( $data['avg_ping'] ?? 0 );
+		$ping_head    = $current_ping > 0 ? $current_ping : $avg_ping;
 		$last_check   = esc_html( (string) ( $data['last_check_ago'] ?? '' ) );
-		$strip_from   = esc_html( (string) ( $data['strip_from'] ?? '' ) );
-		$strip_to     = esc_html( (string) ( $data['strip_to'] ?? __( 'Maintenant', 'gi-toolkit' ) ) );
+		$has_chart    = ! empty( $data['chart_data'] ) && is_array( $data['chart_data'] );
 
 		ob_start();
 		?>
 		<div class="gi-uptime-kuma-ab-flyout">
-			<p class="gi-uptime-kuma-ab-flyout__status status-<?php echo esc_attr( $status_level ); ?>">
-				<?php echo $status_label; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_html above. ?>
-			</p>
-			<ul class="gi-uptime-kuma-ab-flyout__stats">
-				<li>
-					<span class="gi-uptime-kuma-ab-flyout__label"><?php esc_html_e( 'Disponibilité 24 h', 'gi-toolkit' ); ?></span>
-					<strong><?php echo $uptime; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>%</strong>
-				</li>
-				<?php if ( $current_ping > 0 ) : ?>
-				<li>
-					<span class="gi-uptime-kuma-ab-flyout__label"><?php esc_html_e( 'Ping actuel', 'gi-toolkit' ); ?></span>
-					<strong><?php echo esc_html( (string) $current_ping ); ?> ms</strong>
-				</li>
+			<div class="gi-uptime-kuma-ab-flyout__head">
+				<span class="gi-uptime-kuma-ab-flyout__status status-<?php echo esc_attr( $status_level ); ?>">
+					<?php echo $status_label; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+				</span>
+				<?php if ( $ping_head > 0 ) : ?>
+					<span class="gi-uptime-kuma-ab-flyout__ping-head"><?php echo esc_html( (string) $ping_head ); ?> ms</span>
 				<?php endif; ?>
-				<?php if ( $avg_ping > 0 ) : ?>
-				<li>
-					<span class="gi-uptime-kuma-ab-flyout__label"><?php esc_html_e( 'Ping moyen 24 h', 'gi-toolkit' ); ?></span>
-					<strong><?php echo esc_html( (string) $avg_ping ); ?> ms</strong>
-				</li>
-				<?php endif; ?>
-				<?php if ( '' !== $last_check ) : ?>
-				<li>
-					<span class="gi-uptime-kuma-ab-flyout__label"><?php esc_html_e( 'Dernière vérif.', 'gi-toolkit' ); ?></span>
-					<strong><?php echo $last_check; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></strong>
-				</li>
-				<?php endif; ?>
-			</ul>
-			<?php if ( '' !== $strip_from ) : ?>
-			<p class="gi-uptime-kuma-ab-flyout__range">
-				<?php
-				printf(
-					/* translators: 1: from label, 2: to label */
-					esc_html__( 'Période affichée : %1$s → %2$s', 'gi-toolkit' ),
-					$strip_from,
-					$strip_to
-				);
-				?>
-			</p>
+			</div>
+
+			<div class="gi-uptime-kuma-ab-flyout__kpis" role="list">
+				<div class="gi-uptime-kuma-ab-flyout__kpi" role="listitem">
+					<span class="gi-uptime-kuma-ab-flyout__kpi-label"><?php esc_html_e( '24 h', 'gi-toolkit' ); ?></span>
+					<span class="gi-uptime-kuma-ab-flyout__kpi-value"><?php echo esc_html( self::format_uptime_kpi( $data['uptime_percent'] ?? null ) ); ?></span>
+				</div>
+				<div class="gi-uptime-kuma-ab-flyout__kpi" role="listitem">
+					<span class="gi-uptime-kuma-ab-flyout__kpi-label"><?php esc_html_e( '30 j', 'gi-toolkit' ); ?></span>
+					<span class="gi-uptime-kuma-ab-flyout__kpi-value"><?php echo esc_html( self::format_uptime_kpi( $data['uptime_30d'] ?? null ) ); ?></span>
+				</div>
+				<div class="gi-uptime-kuma-ab-flyout__kpi" role="listitem">
+					<span class="gi-uptime-kuma-ab-flyout__kpi-label"><?php esc_html_e( '1 an', 'gi-toolkit' ); ?></span>
+					<span class="gi-uptime-kuma-ab-flyout__kpi-value"><?php echo esc_html( self::format_uptime_kpi( $data['uptime_1y'] ?? null ) ); ?></span>
+				</div>
+			</div>
+
+			<?php if ( $has_chart ) : ?>
+			<div class="gi-uptime-kuma-ab-flyout__chart-wrap">
+				<span class="gi-uptime-kuma-ab-flyout__chart-label"><?php esc_html_e( 'Temps de réponse (24 h)', 'gi-toolkit' ); ?></span>
+				<canvas id="gi-uptime-kuma-ab-chart" width="248" height="52" aria-hidden="true"></canvas>
+			</div>
 			<?php endif; ?>
+
+			<?php if ( '' !== $last_check ) : ?>
+				<p class="gi-uptime-kuma-ab-flyout__meta"><?php echo esc_html__( 'Dernière vérif.', 'gi-toolkit' ) . ' ' . $last_check; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></p>
+			<?php endif; ?>
+
 			<p class="gi-uptime-kuma-ab-flyout__link"><?php esc_html_e( 'Voir le tableau de bord →', 'gi-toolkit' ); ?></p>
 		</div>
 		<?php
@@ -815,8 +850,39 @@ class Gi_Toolkit_Uptime_Kuma {
 		if ( ! is_admin_bar_showing() || ! current_user_can( 'manage_options' ) || ! self::is_toolbar_ready() ) {
 			return;
 		}
+		$data    = Gi_Toolkit_Uptime_Kuma_Status_Data::fetch_toolbar( self::get_settings_static() );
 		$version = defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '1.0.0';
+
 		wp_enqueue_style( 'gi-toolkit-uptime-kuma', GI_TOOLKIT_PLUGIN_URL . 'admin/assets/css/uptime-kuma.css', array(), $version );
+
+		if ( empty( $data['ready'] ) || empty( $data['chart_data'] ) ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'chartjs',
+			'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+			array(),
+			'4.4.1',
+			true
+		);
+		wp_enqueue_script(
+			'gi-toolkit-uptime-kuma-admin-bar',
+			GI_TOOLKIT_PLUGIN_URL . 'admin/assets/js/uptime-kuma-admin-bar.js',
+			array( 'chartjs' ),
+			$version,
+			true
+		);
+		wp_localize_script(
+			'gi-toolkit-uptime-kuma-admin-bar',
+			'giToolkitUptimeKumaAdminBar',
+			array(
+				'chart' => array(
+					'labels' => $data['chart_labels'] ?? array(),
+					'values' => $data['chart_data'] ?? array(),
+				),
+			)
+		);
 	}
 
 	public static function load_deploy_dependencies() {

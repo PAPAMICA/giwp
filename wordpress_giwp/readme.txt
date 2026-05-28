@@ -4,7 +4,7 @@ Tags: all in one plugin, admin, security, disable features, easy to use
 Requires at least: 6.0.0
 Tested up to: 6.9.3
 Requires PHP: 7.4
-Stable tag: 2.21.2
+Stable tag: 2.22.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -193,6 +193,43 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 4. Code snippets
 
 == Changelog ==
+
+= 2.22.1 =
+* Update: Barre admin Uptime Kuma — panneau survol avec dispo 24 h / 30 j / 1 an, graphique ping (Chart.js), statut corrigé.
+
+= 2.22.0 =
+* Fix: Barre admin Uptime Kuma — barres vertes rendues côté serveur, bandeau type dashboard, sous-menu détaillé au survol.
+
+= 2.21.9 =
+* Update: Dashboard Uptime Kuma — KPIs disponibilité 30 jours et 1 an (événements Socket.IO).
+
+= 2.21.8 =
+* Add: Page Statistiques — bloc disponibilité Uptime Kuma au-dessus du dashboard Matomo.
+
+= 2.21.7 =
+* Add: Page Connect Uptime Kuma — tableau de bord (bandeau statut, KPIs 24 h, graphique ping).
+
+= 2.21.6 =
+* Update: Payload création monitor aligné sur Uptime Kuma 2.3.2.
+
+= 2.21.5 =
+* Fix: Création monitor — retrait du champ upsidedown (incompatible anciennes versions SQLite).
+
+= 2.21.4 =
+* Fix: Client Socket.IO — ACK login via GET polling et paquets séparés par 0x1e.
+
+= 2.21.3 =
+* Update: Connect Uptime Kuma — authentification utilisateur / mot de passe uniquement (plus de JWT).
+* Update: Export JSON sans secrets ; import conserve le mot de passe local si absent.
+
+= 2.21.2 =
+* Fix: Connect Uptime Kuma — clés API uk… distinctes du JWT ; messages d’erreur explicites.
+
+= 2.21.1 =
+* Fix: Connect Uptime Kuma — sauvegarde formulaire, URL sans /dashboard, messages sync.
+
+= 2.21.0 =
+* Add: Module Connect Uptime Kuma — Socket.IO, monitor automatique, barre admin, déploiement MainWP.
 
 = 2.18.0 =
 Update: Module: Two-Factor Authentication: Add a global option to force Email as default when no method is selected, show this option only when Email is active, enforce backend fallback disabling when Email is off, and move default/method toggles to the left for UI consistency.

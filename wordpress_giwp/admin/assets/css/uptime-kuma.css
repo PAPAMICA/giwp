@@ -66,17 +66,31 @@
 
 /* Sous-menu détaillé au survol */
 #wpadminbar #wp-admin-bar-gi-uptime-kuma-toolbar-flyout .ab-item {
+	box-sizing: border-box;
+	color: #f0f0f1;
+	display: block;
 	height: auto;
-	line-height: 1.45;
-	padding: 10px 14px;
+	line-height: 1.4;
+	padding: 12px 14px;
 	white-space: normal;
-	width: 260px;
+	width: 280px;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout {
+	display: block;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__head {
+	align-items: center;
+	display: flex;
+	gap: 10px;
+	justify-content: space-between;
+	margin-bottom: 10px;
 }
 
 #wpadminbar .gi-uptime-kuma-ab-flyout__status {
 	font-size: 13px;
 	font-weight: 600;
-	margin: 0 0 8px;
 }
 
 #wpadminbar .gi-uptime-kuma-ab-flyout__status.status-up {
@@ -91,40 +105,76 @@
 	color: #fbbf24;
 }
 
-#wpadminbar .gi-uptime-kuma-ab-flyout__stats {
-	list-style: none;
-	margin: 0;
-	padding: 0;
+#wpadminbar .gi-uptime-kuma-ab-flyout__status.status-maintenance,
+#wpadminbar .gi-uptime-kuma-ab-flyout__status.status-unknown {
+	color: #c3c4c7;
 }
 
-#wpadminbar .gi-uptime-kuma-ab-flyout__stats li {
-	display: flex;
-	justify-content: space-between;
-	gap: 12px;
-	margin: 0 0 4px;
-}
-
-#wpadminbar .gi-uptime-kuma-ab-flyout__label {
-	color: #a7aaad;
-	font-size: 12px;
-}
-
-#wpadminbar .gi-uptime-kuma-ab-flyout__stats strong {
+#wpadminbar .gi-uptime-kuma-ab-flyout__ping-head {
 	color: #f0f0f1;
-	font-size: 12px;
-	font-weight: 600;
+	font-size: 14px;
+	font-weight: 700;
+	white-space: nowrap;
 }
 
-#wpadminbar .gi-uptime-kuma-ab-flyout__range {
+#wpadminbar .gi-uptime-kuma-ab-flyout__kpis {
+	display: grid;
+	gap: 6px;
+	grid-template-columns: repeat(3, 1fr);
+	margin-bottom: 10px;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__kpi {
+	background: rgba(255, 255, 255, 0.06);
+	border-radius: 6px;
+	padding: 6px 8px;
+	text-align: center;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__kpi-label {
+	color: #a7aaad;
+	display: block;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	margin-bottom: 2px;
+	text-transform: uppercase;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__kpi-value {
+	color: #f0f0f1;
+	display: block;
+	font-size: 12px;
+	font-weight: 700;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__chart-wrap {
+	margin-bottom: 8px;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__chart-label {
+	color: #a7aaad;
+	display: block;
+	font-size: 10px;
+	margin-bottom: 4px;
+}
+
+#wpadminbar #gi-uptime-kuma-ab-chart {
+	display: block;
+	height: 52px !important;
+	width: 248px !important;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__meta {
 	color: #a7aaad;
 	font-size: 11px;
-	margin: 8px 0 0;
+	margin: 0 0 6px;
 }
 
 #wpadminbar .gi-uptime-kuma-ab-flyout__link {
 	color: #72aee6;
 	font-size: 11px;
-	margin: 8px 0 0;
+	margin: 0;
 }
 
 /* Page réglages */

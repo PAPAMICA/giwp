@@ -3,7 +3,7 @@ Contributors: genevois-informatique
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.4.2
+Stable tag: 1.5.4
 License: GPLv2 or later
 
 Gérez et déployez GI-Toolkit sur tous vos sites WordPress via MainWP.
@@ -54,6 +54,24 @@ MainWP > Extensions > GI-Toolkit Manager
 - [ ] Modèle « Default » défini comme profil par défaut dans Réglages
 
 == Changelog ==
+
+= 1.5.4 =
+* Fix: widget Uptime Kuma — liste des sites via mainwp_getsites (comme le reste de l’extension), pas MainWP_DB.
+* Fix: rapprochement URL (www/http/https) ; repli sur les monitors Kuma si besoin.
+* Update: tableau compact, thème clair/sombre MainWP, messages d’erreur explicites.
+
+= 1.5.3 =
+* Add: widget dashboard Uptime Kuma — sync au chargement, bouton Actualiser (AJAX), vue compacte multi-sites.
+* Update: API get_monitors_overview (stats légères sans heartbeats par monitor).
+
+= 1.5.2 =
+* Add: widget MainWP Uptime Kuma, cron 5 min, cache et assets CSS/JS.
+
+= 1.5.1 =
+* Add: réglages Uptime Kuma centralisés, merge_into_bundle et déploiement des identifiants.
+
+= 1.5.0 =
+* Add: intégration Connect Uptime Kuma (déploiement vers sites enfants, messages API).
 
 = 1.4.2 =
 * Fix: déploiement plugin — mise à jour forcée (`overwrite`) pour installer la dernière version sans perdre la config.

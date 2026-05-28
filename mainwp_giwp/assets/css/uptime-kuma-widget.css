@@ -1,15 +1,44 @@
+/**
+ * Widget MainWP — Uptime Kuma (compatible thème clair / sombre MainWP).
+ */
 .mainwp-giweb-uptime-kuma-widget {
+	--giweb-ukw-bg: var(--background-color-3, #fff);
+	--giweb-ukw-surface: var(--background-color-2, #f6f7f7);
+	--giweb-ukw-border: var(--border-color, rgba(0, 0, 0, 0.1));
+	--giweb-ukw-text: var(--font-color, #1d2327);
+	--giweb-ukw-muted: var(--font-light-color, #646970);
+	--giweb-ukw-ok: #12b76a;
+	--giweb-ukw-warn: #f79009;
+	--giweb-ukw-down: #f04438;
+	--giweb-ukw-missing: #98a2b3;
+	color: var(--giweb-ukw-text);
 	font-size: 12px;
-	line-height: 1.35;
+	line-height: 1.4;
+	max-width: 100%;
+}
+
+.mainwp-giweb-uptime-kuma-widget--dark,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget {
+	--giweb-ukw-bg: var(--background-color-3, #1e1e24);
+	--giweb-ukw-surface: var(--background-color-2, #16181d);
+	--giweb-ukw-border: var(--border-color, rgba(255, 255, 255, 0.1));
+	--giweb-ukw-text: var(--font-color, rgba(255, 255, 255, 0.92));
+	--giweb-ukw-muted: var(--font-light-color, rgba(255, 255, 255, 0.58));
+	--giweb-ukw-ok: #6ee7a8;
+	--giweb-ukw-warn: #fdba74;
+	--giweb-ukw-down: #fca5a5;
+	--giweb-ukw-missing: #9ca3af;
 }
 
 .giweb-ukw-toolbar {
 	align-items: center;
+	border-bottom: 1px solid var(--giweb-ukw-border);
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px 12px;
 	justify-content: space-between;
 	margin-bottom: 10px;
+	padding-bottom: 8px;
 }
 
 .giweb-ukw-summary {
@@ -27,30 +56,31 @@
 	font-weight: 700;
 	line-height: 1;
 	min-width: 22px;
-	padding: 4px 7px;
+	padding: 3px 7px;
 	text-align: center;
 }
 
 .giweb-ukw-pill--ok {
-	background: #16a34a;
+	background: var(--giweb-ukw-ok);
 }
 
 .giweb-ukw-pill--warn {
-	background: #d97706;
+	background: var(--giweb-ukw-warn);
+	color: #1d2327;
 }
 
 .giweb-ukw-pill--down {
-	background: #dc2626;
+	background: var(--giweb-ukw-down);
 }
 
 .giweb-ukw-pill--missing {
-	background: #6b7280;
+	background: var(--giweb-ukw-missing);
 }
 
 .giweb-ukw-summary__total {
-	color: #9ca3af;
+	color: var(--giweb-ukw-muted);
 	font-size: 11px;
-	margin-left: 4px;
+	margin-left: 2px;
 }
 
 .giweb-ukw-toolbar__actions {
@@ -61,119 +91,131 @@
 }
 
 .giweb-ukw-updated {
-	color: #9ca3af !important;
+	color: var(--giweb-ukw-muted);
 	font-size: 11px;
-	margin: 0 !important;
 }
 
 .giweb-ukw-error {
-	color: #f87171;
+	background: rgba(240, 68, 56, 0.12);
+	border: 1px solid rgba(240, 68, 56, 0.35);
+	border-radius: 6px;
+	color: var(--giweb-ukw-down);
+	margin: 0 0 8px;
+	padding: 8px 10px;
+}
+
+.giweb-ukw-note {
+	color: var(--giweb-ukw-muted);
+	font-size: 11px;
 	margin: 0 0 8px;
 }
 
-.giweb-ukw-empty {
+.giweb-ukw-empty,
+.giweb-ukw-hint {
+	color: var(--giweb-ukw-muted);
 	margin: 8px 0 0;
 }
 
-.giweb-ukw-grid {
-	display: grid;
-	gap: 6px;
-	grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-	max-height: 380px;
+.giweb-ukw-table-wrap {
+	max-height: 420px;
 	overflow: auto;
-	padding: 2px 1px 4px;
 }
 
-.giweb-ukw-tile {
-	background: rgba(255, 255, 255, 0.04);
-	border: 1px solid rgba(255, 255, 255, 0.08);
-	border-radius: 6px;
-	padding: 7px 8px 6px;
-	transition: border-color 0.15s ease, background 0.15s ease;
+.giweb-ukw-table {
+	border-collapse: collapse;
+	table-layout: fixed;
+	width: 100%;
 }
 
-.giweb-ukw-tile:hover {
-	background: rgba(255, 255, 255, 0.07);
-	border-color: rgba(255, 255, 255, 0.14);
+.giweb-ukw-table thead th {
+	border-bottom: 1px solid var(--giweb-ukw-border);
+	color: var(--giweb-ukw-muted);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	padding: 0 6px 6px;
+	text-align: left;
+	text-transform: uppercase;
 }
 
-.giweb-ukw-tile__head {
-	align-items: center;
-	display: flex;
-	gap: 6px;
-	margin-bottom: 4px;
-	min-width: 0;
+.giweb-ukw-col-status {
+	width: 22px;
 }
 
-.giweb-ukw-tile__dot {
+.giweb-ukw-col-uptime {
+	text-align: right;
+	width: 52px;
+}
+
+.giweb-ukw-col-ping {
+	text-align: right;
+	width: 56px;
+}
+
+.giweb-ukw-row td {
+	border-bottom: 1px solid var(--giweb-ukw-border);
+	padding: 5px 6px;
+	vertical-align: middle;
+}
+
+.giweb-ukw-row:last-child td {
+	border-bottom: 0;
+}
+
+.giweb-ukw-row:hover td {
+	background: var(--giweb-ukw-surface);
+}
+
+.giweb-ukw-row__dot {
 	border-radius: 50%;
-	flex-shrink: 0;
+	display: inline-block;
 	height: 8px;
 	width: 8px;
 }
 
-.giweb-ukw-tile.status-ok .giweb-ukw-tile__dot {
-	background: #22c55e;
-	box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
+.giweb-ukw-row.status-ok .giweb-ukw-row__dot {
+	background: var(--giweb-ukw-ok);
+	box-shadow: 0 0 0 2px rgba(18, 183, 106, 0.2);
 }
 
-.giweb-ukw-tile.status-warn .giweb-ukw-tile__dot {
-	background: #f59e0b;
+.giweb-ukw-row.status-warn .giweb-ukw-row__dot {
+	background: var(--giweb-ukw-warn);
 }
 
-.giweb-ukw-tile.status-down .giweb-ukw-tile__dot {
-	background: #ef4444;
+.giweb-ukw-row.status-down .giweb-ukw-row__dot {
+	background: var(--giweb-ukw-down);
 }
 
-.giweb-ukw-tile.status-paused .giweb-ukw-tile__dot,
-.giweb-ukw-tile.status-missing .giweb-ukw-tile__dot,
-.giweb-ukw-tile.status-unknown .giweb-ukw-tile__dot {
-	background: #6b7280;
+.giweb-ukw-row.status-paused .giweb-ukw-row__dot,
+.giweb-ukw-row.status-missing .giweb-ukw-row__dot,
+.giweb-ukw-row.status-unknown .giweb-ukw-row__dot {
+	background: var(--giweb-ukw-missing);
 }
 
-.giweb-ukw-tile.status-down {
-	border-color: rgba(239, 68, 68, 0.35);
+.giweb-ukw-row.status-down .giweb-ukw-row__name {
+	color: var(--giweb-ukw-down);
 }
 
-.giweb-ukw-tile.status-warn {
-	border-color: rgba(245, 158, 11, 0.35);
-}
-
-.giweb-ukw-tile.status-missing {
-	opacity: 0.75;
-}
-
-.giweb-ukw-tile__name {
-	color: #e5e7eb;
-	font-size: 11px;
+.giweb-ukw-row__name {
+	display: block;
 	font-weight: 600;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.giweb-ukw-tile__stats {
-	align-items: baseline;
-	display: flex;
-	gap: 6px;
-	justify-content: space-between;
-}
-
-.giweb-ukw-tile__uptime {
-	color: #f9fafb;
-	font-size: 13px;
+.giweb-ukw-col-uptime strong {
+	font-size: 12px;
 	font-weight: 700;
 }
 
-.giweb-ukw-tile__uptime--na {
-	color: #9ca3af;
-	font-weight: 500;
+.giweb-ukw-unit {
+	color: var(--giweb-ukw-muted);
+	font-size: 10px;
 }
 
-.giweb-ukw-tile__ping {
-	color: #9ca3af;
-	font-size: 10px;
-	white-space: nowrap;
+.giweb-ukw-na {
+	color: var(--giweb-ukw-muted);
 }
 
 .mainwp-giweb-uptime-kuma-widget.is-loading {
@@ -181,8 +223,8 @@
 	pointer-events: none;
 }
 
-@media (max-width: 600px) {
-	.giweb-ukw-grid {
-		grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+@media (max-width: 480px) {
+	.giweb-ukw-col-ping {
+		width: 48px;
 	}
 }

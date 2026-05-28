@@ -45,7 +45,14 @@
 						json && json.data && json.data.message
 							? json.data.message
 							: 'Erreur de synchronisation.';
-					window.alert(msg);
+					var errEl = root.querySelector('.giweb-ukw-error');
+					if (!errEl) {
+						errEl = document.createElement('p');
+						errEl.className = 'giweb-ukw-error';
+						errEl.setAttribute('role', 'alert');
+						root.insertBefore(errEl, root.firstChild);
+					}
+					errEl.textContent = msg;
 					return;
 				}
 				var temp = document.createElement('div');

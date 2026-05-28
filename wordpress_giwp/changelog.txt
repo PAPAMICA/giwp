@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.22.1 =
+Update: Barre admin Uptime Kuma — panneau survol avec dispo 24 h / 30 j / 1 an, graphique ping (Chart.js), statut corrigé.
+
 = 2.22.0 =
 Fix: Barre admin Uptime Kuma — barres vertes rendues côté serveur (plus de dépendance JS), bandeau type dashboard, sous-menu détaillé au survol.
 

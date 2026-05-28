@@ -206,11 +206,14 @@ class Gi_Toolkit_Uptime_Kuma_API {
 					return null;
 				}
 				$client->emit( 'getMonitorList' );
-				$client->poll_incoming( 22 );
+				$client->poll_incoming( 24 );
 				$list = $client->get_last_event( 'monitorList' );
 				if ( ! is_array( $list ) ) {
 					return array();
 				}
+
+				$poll_rounds = min( 80, max( 28, count( $list ) * 2 ) );
+				$client->poll_incoming( $poll_rounds );
 
 				$rows = array();
 				foreach ( $list as $key => $monitor ) {

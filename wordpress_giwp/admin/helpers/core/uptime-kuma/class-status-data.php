@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Gi_Toolkit_Uptime_Kuma_Status_Data {
 
-	const TRANSIENT_TOOLBAR    = 'gi_uptime_kuma_toolbar_';
+	const TRANSIENT_TOOLBAR    = 'gi_uptime_kuma_toolbar_v2_';
 	const TRANSIENT_DASHBOARD  = 'gi_uptime_kuma_dashboard_';
 
 	/**
@@ -339,6 +339,22 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 		$hourly = self::aggregate_hourly_bars( $beats );
 		$check  = self::aggregate_check_bars( $beats, 50 );
 		$latest = self::latest_beat_summary( $beats );
+		$chart  = self::build_ping_chart_series( $beats, 36 );
+
+		$uptime_30d = null;
+		$uptime_1y  = null;
+		$uptime_raw = $api->get_monitor_uptime_stats( $monitor_id );
+		if ( is_array( $uptime_raw ) && is_array( $uptime_raw['stats'] ?? null ) ) {
+			$stats = $uptime_raw['stats'];
+			if ( isset( $stats['720'] ) ) {
+				$uptime_30d = Gi_Toolkit_Uptime_Kuma_API::uptime_ratio_to_percent( $stats['720'] );
+			} elseif ( isset( $stats[720] ) ) {
+				$uptime_30d = Gi_Toolkit_Uptime_Kuma_API::uptime_ratio_to_percent( $stats[720] );
+			}
+			if ( isset( $stats['1y'] ) ) {
+				$uptime_1y = Gi_Toolkit_Uptime_Kuma_API::uptime_ratio_to_percent( $stats['1y'] );
+			}
+		}
 
 		$payload = array(
 			'ready'          => true,
@@ -347,10 +363,14 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 			'strip_to'       => $check['to_label'] ?? '',
 			'avg_ping'       => (int) ( $hourly['avg_ping'] ?? 0 ),
 			'uptime_percent' => (float) ( $hourly['uptime_percent'] ?? 0 ),
+			'uptime_30d'     => $uptime_30d,
+			'uptime_1y'      => $uptime_1y,
 			'current_ping'   => (int) ( $latest['ping'] ?? 0 ),
 			'status_label'   => (string) ( $latest['status_label'] ?? '' ),
 			'status_level'   => (string) ( $latest['status_level'] ?? 'unknown' ),
 			'last_check_ago' => (string) ( $latest['last_check_ago'] ?? '' ),
+			'chart_labels'   => $chart['labels'] ?? array(),
+			'chart_data'     => $chart['data'] ?? array(),
 			'fetched_at'     => time(),
 		);
 
