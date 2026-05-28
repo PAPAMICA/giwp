@@ -4,7 +4,7 @@ Tags: all in one plugin, admin, security, disable features, easy to use
 Requires at least: 6.0.0
 Tested up to: 6.9.3
 Requires PHP: 7.4
-Stable tag: 2.22.1
+Stable tag: 2.22.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -193,6 +193,15 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 4. Code snippets
 
 == Changelog ==
+
+= 2.22.4 =
+* Update: Barre admin Matomo — panneau survol avec KPIs, graphique visites et échelle (comme Uptime Kuma).
+
+= 2.22.3 =
+* Update: Dashboard Matomo — légendes donut avec visites et pourcentage, triées par volume.
+
+= 2.22.2 =
+* Fix: Barre admin Uptime Kuma — retrait du « 1 » parasite, ping à droite des barres, échelle ms sur le graphique ping.
 
 = 2.22.1 =
 * Update: Barre admin Uptime Kuma — panneau survol avec dispo 24 h / 30 j / 1 an, graphique ping (Chart.js), statut corrigé.

@@ -651,10 +651,10 @@ class Gi_Toolkit_Uptime_Kuma {
 				'parent' => 'gi-uptime-kuma-toolbar-stats',
 				'id'     => 'gi-uptime-kuma-toolbar-flyout',
 				'title'  => self::render_admin_bar_flyout_html( $data ),
-				'href'   => self::get_settings_admin_url(),
 				'meta'   => array(
-					'html'  => true,
-					'class' => 'gi-uptime-kuma-ab-flyout-item',
+					'html'     => true,
+					'class'    => 'gi-uptime-kuma-ab-flyout-item',
+					'tabindex' => -1,
 				),
 			)
 		);
@@ -742,7 +742,7 @@ class Gi_Toolkit_Uptime_Kuma {
 			),
 			sprintf(
 				/* translators: %s: uptime percent */
-				__( 'Disponibilité 1 an : %s', 'gi-toolkit' ),
+				__( 'Disponibilité 12 mois : %s', 'gi-toolkit' ),
 				self::format_uptime_kpi( $data['uptime_1y'] ?? null )
 			),
 		);
@@ -824,7 +824,7 @@ class Gi_Toolkit_Uptime_Kuma {
 					<span class="gi-uptime-kuma-ab-flyout__kpi-value"><?php echo esc_html( self::format_uptime_kpi( $data['uptime_30d'] ?? null ) ); ?></span>
 				</div>
 				<div class="gi-uptime-kuma-ab-flyout__kpi" role="listitem">
-					<span class="gi-uptime-kuma-ab-flyout__kpi-label"><?php esc_html_e( '1 an', 'gi-toolkit' ); ?></span>
+					<span class="gi-uptime-kuma-ab-flyout__kpi-label"><?php esc_html_e( '12 mois', 'gi-toolkit' ); ?></span>
 					<span class="gi-uptime-kuma-ab-flyout__kpi-value"><?php echo esc_html( self::format_uptime_kpi( $data['uptime_1y'] ?? null ) ); ?></span>
 				</div>
 			</div>
@@ -832,15 +832,25 @@ class Gi_Toolkit_Uptime_Kuma {
 			<?php if ( $has_chart ) : ?>
 			<div class="gi-uptime-kuma-ab-flyout__chart-wrap">
 				<span class="gi-uptime-kuma-ab-flyout__chart-label"><?php esc_html_e( 'Temps de réponse (24 h)', 'gi-toolkit' ); ?></span>
-				<canvas id="gi-uptime-kuma-ab-chart" width="248" height="52" aria-hidden="true"></canvas>
+				<canvas id="gi-uptime-kuma-ab-chart" width="248" height="72" aria-hidden="true"></canvas>
 			</div>
 			<?php endif; ?>
 
 			<?php if ( '' !== $last_check ) : ?>
-				<p class="gi-uptime-kuma-ab-flyout__meta"><?php echo esc_html__( 'Dernière vérif.', 'gi-toolkit' ) . ' ' . $last_check; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></p>
+				<p class="gi-uptime-kuma-ab-flyout__meta">
+					<?php
+					printf(
+						/* translators: %s: human time */
+						esc_html__( 'Dernière vérif. %s', 'gi-toolkit' ),
+						$last_check
+					);
+					?>
+				</p>
 			<?php endif; ?>
 
-			<p class="gi-uptime-kuma-ab-flyout__link"><?php esc_html_e( 'Voir le tableau de bord →', 'gi-toolkit' ); ?></p>
+			<p class="gi-uptime-kuma-ab-flyout__link">
+				<a href="<?php echo esc_url( self::get_settings_admin_url() ); ?>"><?php esc_html_e( 'Voir le tableau de bord →', 'gi-toolkit' ); ?></a>
+			</p>
 		</div>
 		<?php
 		return (string) ob_get_clean();

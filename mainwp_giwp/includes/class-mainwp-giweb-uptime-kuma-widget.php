@@ -552,16 +552,10 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 	}
 
 	/**
-	 * @return void
+	 * @param array<int, array<string, mixed>> $sites Sites.
+	 * @return array<string, mixed>
 	 */
-	public static function render_metabox_body() {
-		$cache         = self::get_cache();
-		$sites         = isset( $cache['sites'] ) && is_array( $cache['sites'] ) ? $cache['sites'] : array();
-		$updated_at    = absint( $cache['updated_at'] ?? 0 );
-		$error         = isset( $cache['error'] ) ? (string) $cache['error'] : '';
-		$note          = isset( $cache['note'] ) ? (string) $cache['note'] : '';
-		$monitor_count = absint( $cache['monitor_count'] ?? 0 );
-
+	private static function compute_summary( array $sites ) {
 		$counts = array(
 			'ok'      => 0,
 			'warn'    => 0,
@@ -570,6 +564,10 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 			'missing' => 0,
 			'unknown' => 0,
 		);
+		$ping_sum = 0;
+		$ping_cnt = 0;
+		$strip    = array();
+
 		foreach ( $sites as $site ) {
 			if ( ! is_array( $site ) ) {
 				continue;
@@ -579,79 +577,213 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 				$st = 'unknown';
 			}
 			$counts[ $st ]++;
+			$strip[] = $st;
+
+			$ping = (int) ( $site['avg_ping'] ?? 0 );
+			if ( $ping > 0 ) {
+				$ping_sum += $ping;
+				$ping_cnt++;
+			}
 		}
 
+		$total     = count( $sites );
+		$monitored = $total - $counts['missing'];
+		$healthy   = $counts['ok'];
+		$issues    = $counts['warn'] + $counts['down'] + $counts['unknown'] + $counts['paused'];
+		$health    = $monitored > 0 ? round( ( $healthy / $monitored ) * 100, 1 ) : ( $total > 0 ? 0 : 100 );
+
+		return array(
+			'counts'    => $counts,
+			'total'     => $total,
+			'monitored' => $monitored,
+			'healthy'   => $healthy,
+			'issues'    => $issues,
+			'health'    => $health,
+			'avg_ping'  => $ping_cnt > 0 ? (int) round( $ping_sum / $ping_cnt ) : 0,
+			'strip'     => $strip,
+		);
+	}
+
+	/**
+	 * @param int $ping_ms Ping en ms.
+	 * @return string fast|medium|slow|none
+	 */
+	private static function ping_level( $ping_ms ) {
+		$ping_ms = (int) $ping_ms;
+		if ( $ping_ms < 1 ) {
+			return 'none';
+		}
+		if ( $ping_ms < 300 ) {
+			return 'fast';
+		}
+		if ( $ping_ms < 800 ) {
+			return 'medium';
+		}
+		return 'slow';
+	}
+
+	/**
+	 * @param float|null $uptime Uptime %.
+	 * @return string
+	 */
+	private static function uptime_bar_level( $uptime ) {
+		if ( null === $uptime ) {
+			return 'none';
+		}
+		if ( $uptime >= 99 ) {
+			return 'ok';
+		}
+		if ( $uptime >= 85 ) {
+			return 'warn';
+		}
+		return 'down';
+	}
+
+	/**
+	 * @param float|null $uptime Uptime.
+	 * @return string
+	 */
+	private static function format_uptime( $uptime ) {
+		if ( null === $uptime ) {
+			return '—';
+		}
+		return number_format_i18n( (float) $uptime, 1 ) . ' %';
+	}
+
+	/**
+	 * @return void
+	 */
+	public static function render_metabox_body() {
+		$cache         = self::get_cache();
+		$sites         = isset( $cache['sites'] ) && is_array( $cache['sites'] ) ? $cache['sites'] : array();
+		$updated_at    = absint( $cache['updated_at'] ?? 0 );
+		$error         = isset( $cache['error'] ) ? (string) $cache['error'] : '';
+		$note          = isset( $cache['note'] ) ? (string) $cache['note'] : '';
+		$monitor_count = absint( $cache['monitor_count'] ?? 0 );
+		$summary       = self::compute_summary( $sites );
+		$counts        = $summary['counts'];
 		$refresh_nonce = wp_create_nonce( 'mainwp_giweb_uptime_kuma_refresh' );
+		$health        = (float) ( $summary['health'] ?? 0 );
+		$health_deg    = min( 100, max( 0, $health ) ) * 3.6;
 		?>
-		<div class="giweb-ukw-toolbar">
-			<div class="giweb-ukw-summary" role="status">
-				<span class="giweb-ukw-pill giweb-ukw-pill--ok" title="<?php esc_attr_e( 'En ligne', 'mainwp-giweb' ); ?>"><?php echo esc_html( (string) $counts['ok'] ); ?></span>
-				<span class="giweb-ukw-pill giweb-ukw-pill--warn" title="<?php esc_attr_e( 'Dégradé', 'mainwp-giweb' ); ?>"><?php echo esc_html( (string) $counts['warn'] ); ?></span>
-				<span class="giweb-ukw-pill giweb-ukw-pill--down" title="<?php esc_attr_e( 'Hors ligne', 'mainwp-giweb' ); ?>"><?php echo esc_html( (string) $counts['down'] ); ?></span>
-				<?php if ( $counts['missing'] > 0 ) : ?>
-					<span class="giweb-ukw-pill giweb-ukw-pill--missing" title="<?php esc_attr_e( 'Sans monitor', 'mainwp-giweb' ); ?>"><?php echo esc_html( (string) $counts['missing'] ); ?></span>
+		<div class="giweb-ukw">
+			<header class="giweb-ukw-header">
+				<div class="giweb-ukw-header__row">
+					<div class="giweb-ukw-brand">
+						<span class="giweb-ukw-brand__icon" aria-hidden="true"></span>
+						<div>
+							<p class="giweb-ukw-brand__title"><?php esc_html_e( 'Uptime Kuma', 'mainwp-giweb' ); ?></p>
+							<p class="giweb-ukw-brand__sub">
+								<?php
+								printf(
+									/* translators: 1: monitored count, 2: total sites */
+									esc_html__( '%1$d / %2$d sites monitorés', 'mainwp-giweb' ),
+									(int) $summary['monitored'],
+									(int) $summary['total']
+								);
+								?>
+							</p>
+						</div>
+					</div>
+					<div class="giweb-ukw-header__actions">
+						<?php if ( $updated_at ) : ?>
+							<time class="giweb-ukw-sync" datetime="<?php echo esc_attr( gmdate( 'c', $updated_at ) ); ?>">
+								<?php
+								printf(
+									/* translators: %s: human time diff */
+									esc_html__( 'Sync il y a %s', 'mainwp-giweb' ),
+									esc_html( human_time_diff( $updated_at, time() ) )
+								);
+								?>
+							</time>
+						<?php endif; ?>
+						<button type="button" class="giweb-ukw-btn giweb-ukw-refresh" data-nonce="<?php echo esc_attr( $refresh_nonce ); ?>">
+							<?php esc_html_e( 'Actualiser', 'mainwp-giweb' ); ?>
+						</button>
+					</div>
+				</div>
+
+				<?php if ( ! empty( $sites ) ) : ?>
+				<div class="giweb-ukw-overview">
+					<div class="giweb-ukw-score" style="--giweb-ukw-score-deg: <?php echo esc_attr( (string) $health_deg ); ?>deg;">
+						<span class="giweb-ukw-score__value"><?php echo esc_html( number_format_i18n( $health, 1 ) ); ?>%</span>
+						<span class="giweb-ukw-score__label"><?php esc_html_e( 'Santé', 'mainwp-giweb' ); ?></span>
+					</div>
+					<div class="giweb-ukw-overview__main">
+						<div class="giweb-ukw-strip" aria-hidden="true" title="<?php esc_attr_e( 'Statut par site', 'mainwp-giweb' ); ?>">
+							<?php foreach ( $summary['strip'] as $strip_status ) : ?>
+								<span class="giweb-ukw-strip__seg status-<?php echo esc_attr( (string) $strip_status ); ?>"></span>
+							<?php endforeach; ?>
+						</div>
+						<div class="giweb-ukw-stats">
+							<div class="giweb-ukw-stat giweb-ukw-stat--ok">
+								<strong><?php echo esc_html( (string) $counts['ok'] ); ?></strong>
+								<span><?php esc_html_e( 'En ligne', 'mainwp-giweb' ); ?></span>
+							</div>
+							<div class="giweb-ukw-stat giweb-ukw-stat--warn">
+								<strong><?php echo esc_html( (string) ( $counts['warn'] + $counts['down'] ) ); ?></strong>
+								<span><?php esc_html_e( 'Alertes', 'mainwp-giweb' ); ?></span>
+							</div>
+							<div class="giweb-ukw-stat giweb-ukw-stat--missing">
+								<strong><?php echo esc_html( (string) $counts['missing'] ); ?></strong>
+								<span><?php esc_html_e( 'Sans monitor', 'mainwp-giweb' ); ?></span>
+							</div>
+							<div class="giweb-ukw-stat giweb-ukw-stat--ping">
+								<strong><?php echo esc_html( $summary['avg_ping'] > 0 ? (string) $summary['avg_ping'] . ' ms' : '—' ); ?></strong>
+								<span><?php esc_html_e( 'Ping moy.', 'mainwp-giweb' ); ?></span>
+							</div>
+						</div>
+					</div>
+				</div>
 				<?php endif; ?>
-				<span class="giweb-ukw-summary__total"><?php echo esc_html( count( $sites ) ); ?> <?php esc_html_e( 'sites', 'mainwp-giweb' ); ?></span>
-			</div>
-			<div class="giweb-ukw-toolbar__actions">
-				<?php if ( $updated_at ) : ?>
-					<span class="giweb-ukw-updated description">
+			</header>
+
+			<?php if ( '' !== $error ) : ?>
+				<p class="giweb-ukw-alert giweb-ukw-alert--error" role="alert"><?php echo esc_html( $error ); ?></p>
+			<?php endif; ?>
+
+			<?php if ( '' !== $note ) : ?>
+				<p class="giweb-ukw-alert giweb-ukw-alert--note"><?php echo esc_html( $note ); ?></p>
+			<?php endif; ?>
+
+			<?php if ( empty( $sites ) ) : ?>
+				<div class="giweb-ukw-empty-state">
+					<p>
 						<?php
-						printf(
-							/* translators: %s: human time diff */
-							esc_html__( 'il y a %s', 'mainwp-giweb' ),
-							esc_html( human_time_diff( $updated_at, time() ) )
-						);
+						if ( $monitor_count > 0 ) {
+							printf(
+								/* translators: %d: monitor count */
+								esc_html__( '%d monitors Kuma détectés — vérifiez la correspondance des URL.', 'mainwp-giweb' ),
+								$monitor_count
+							);
+						} else {
+							esc_html_e( 'Aucune donnée. Vérifiez la connexion Uptime Kuma puis actualisez.', 'mainwp-giweb' );
+						}
 						?>
-					</span>
-				<?php endif; ?>
-				<button type="button" class="button button-small giweb-ukw-refresh" data-nonce="<?php echo esc_attr( $refresh_nonce ); ?>">
-					<?php esc_html_e( 'Actualiser', 'mainwp-giweb' ); ?>
-				</button>
-			</div>
+					</p>
+				</div>
+			<?php else : ?>
+				<div class="giweb-ukw-toolbar">
+					<label class="giweb-ukw-search">
+						<span class="screen-reader-text"><?php esc_html_e( 'Rechercher un site', 'mainwp-giweb' ); ?></span>
+						<input type="search" class="giweb-ukw-search__input" placeholder="<?php esc_attr_e( 'Rechercher…', 'mainwp-giweb' ); ?>" autocomplete="off" />
+					</label>
+					<div class="giweb-ukw-filters" role="tablist">
+						<button type="button" class="giweb-ukw-filter is-active" data-filter="all" role="tab"><?php esc_html_e( 'Tous', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $summary['total'] ); ?></em></button>
+						<button type="button" class="giweb-ukw-filter" data-filter="ok" role="tab"><?php esc_html_e( 'En ligne', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $counts['ok'] ); ?></em></button>
+						<button type="button" class="giweb-ukw-filter" data-filter="issues" role="tab"><?php esc_html_e( 'Alertes', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $summary['issues'] ); ?></em></button>
+						<button type="button" class="giweb-ukw-filter" data-filter="missing" role="tab"><?php esc_html_e( 'Sans monitor', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $counts['missing'] ); ?></em></button>
+					</div>
+				</div>
+
+				<div class="giweb-ukw-grid">
+					<?php foreach ( $sites as $site ) : ?>
+						<?php self::render_site_card( $site ); ?>
+					<?php endforeach; ?>
+				</div>
+				<p class="giweb-ukw-no-match" hidden><?php esc_html_e( 'Aucun site ne correspond à votre recherche.', 'mainwp-giweb' ); ?></p>
+			<?php endif; ?>
 		</div>
-
-		<?php if ( '' !== $error ) : ?>
-			<p class="giweb-ukw-error" role="alert"><?php echo esc_html( $error ); ?></p>
-		<?php endif; ?>
-
-		<?php if ( '' !== $note ) : ?>
-			<p class="giweb-ukw-note"><?php echo esc_html( $note ); ?></p>
-		<?php endif; ?>
-
-		<?php if ( empty( $sites ) ) : ?>
-			<p class="giweb-ukw-empty">
-				<?php
-				if ( $monitor_count > 0 ) {
-					printf(
-						/* translators: %d: monitor count */
-						esc_html__( '%d monitors Kuma chargés mais aucune ligne à afficher. Vérifiez les URL des monitors.', 'mainwp-giweb' ),
-						$monitor_count
-					);
-				} else {
-					esc_html_e( 'Aucune donnée. Vérifiez la connexion Uptime Kuma puis cliquez sur Actualiser.', 'mainwp-giweb' );
-				}
-				?>
-			</p>
-		<?php else : ?>
-			<div class="giweb-ukw-table-wrap">
-				<table class="giweb-ukw-table">
-					<thead>
-						<tr>
-							<th scope="col" class="giweb-ukw-col-status"><span class="screen-reader-text"><?php esc_html_e( 'Statut', 'mainwp-giweb' ); ?></span></th>
-							<th scope="col" class="giweb-ukw-col-site"><?php esc_html_e( 'Site', 'mainwp-giweb' ); ?></th>
-							<th scope="col" class="giweb-ukw-col-uptime"><?php esc_html_e( '24 h', 'mainwp-giweb' ); ?></th>
-							<th scope="col" class="giweb-ukw-col-ping"><?php esc_html_e( 'Ping', 'mainwp-giweb' ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php foreach ( $sites as $site ) : ?>
-							<?php self::render_site_row( $site ); ?>
-						<?php endforeach; ?>
-					</tbody>
-				</table>
-			</div>
-		<?php endif; ?>
 		<?php
 	}
 
@@ -659,11 +791,12 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 	 * @param array<string, mixed> $site Ligne site.
 	 * @return void
 	 */
-	private static function render_site_row( array $site ) {
+	private static function render_site_card( array $site ) {
 		$status = (string) ( $site['status'] ?? 'unknown' );
 		$label  = (string) ( $site['label'] ?? '' );
 		$url    = (string) ( $site['url'] ?? '' );
-		$uptime = null !== ( $site['uptime_24h'] ?? null ) ? (float) $site['uptime_24h'] : null;
+		$uptime24 = null !== ( $site['uptime_24h'] ?? null ) ? (float) $site['uptime_24h'] : null;
+		$uptime30 = null !== ( $site['uptime_30d'] ?? null ) ? (float) $site['uptime_30d'] : null;
 		$ping   = (int) ( $site['avg_ping'] ?? 0 );
 
 		$status_labels = array(
@@ -675,34 +808,64 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 			'unknown' => __( 'Inconnu', 'mainwp-giweb' ),
 		);
 		$status_text = $status_labels[ $status ] ?? $status_labels['unknown'];
-		$title       = $label . ' — ' . $status_text;
-		if ( '' !== $url ) {
-			$title .= "\n" . $url;
+		$filter_group = in_array( $status, array( 'warn', 'down', 'unknown', 'paused' ), true ) ? 'issues' : $status;
+		$search_blob = strtolower( $label . ' ' . $url );
+		$host        = wp_parse_url( $url, PHP_URL_HOST );
+		if ( ! is_string( $host ) || '' === $host ) {
+			$host = $url;
 		}
 		?>
-		<tr class="giweb-ukw-row status-<?php echo esc_attr( $status ); ?>" title="<?php echo esc_attr( $title ); ?>">
-			<td class="giweb-ukw-col-status">
-				<span class="giweb-ukw-row__dot" aria-hidden="true"></span>
-				<span class="screen-reader-text"><?php echo esc_html( $status_text ); ?></span>
-			</td>
-			<td class="giweb-ukw-col-site">
-				<span class="giweb-ukw-row__name"><?php echo esc_html( $label ); ?></span>
-			</td>
-			<td class="giweb-ukw-col-uptime">
-				<?php if ( null !== $uptime ) : ?>
-					<strong><?php echo esc_html( number_format_i18n( $uptime, 1 ) ); ?>%</strong>
-				<?php else : ?>
-					<span class="giweb-ukw-na">—</span>
-				<?php endif; ?>
-			</td>
-			<td class="giweb-ukw-col-ping">
+		<article
+			class="giweb-ukw-card status-<?php echo esc_attr( $status ); ?>"
+			data-status="<?php echo esc_attr( $filter_group ); ?>"
+			data-search="<?php echo esc_attr( $search_blob ); ?>"
+		>
+			<header class="giweb-ukw-card__head">
+				<span class="giweb-ukw-card__badge"><?php echo esc_html( $status_text ); ?></span>
 				<?php if ( $ping > 0 ) : ?>
-					<?php echo esc_html( (string) $ping ); ?> <span class="giweb-ukw-unit">ms</span>
-				<?php else : ?>
-					<span class="giweb-ukw-na">—</span>
+					<span class="giweb-ukw-card__ping ping-<?php echo esc_attr( self::ping_level( $ping ) ); ?>"><?php echo esc_html( (string) $ping ); ?> ms</span>
 				<?php endif; ?>
-			</td>
-		</tr>
+			</header>
+
+			<h3 class="giweb-ukw-card__title"><?php echo esc_html( $label ); ?></h3>
+			<?php if ( '' !== $url ) : ?>
+				<p class="giweb-ukw-card__host"><?php echo esc_html( $host ); ?></p>
+			<?php endif; ?>
+
+			<?php if ( 'missing' === $status ) : ?>
+				<p class="giweb-ukw-card__hint"><?php esc_html_e( 'Aucun monitor Kuma associé à cette URL.', 'mainwp-giweb' ); ?></p>
+			<?php else : ?>
+				<div class="giweb-ukw-card__metrics">
+					<?php self::render_metric_bar( __( '24 h', 'mainwp-giweb' ), $uptime24 ); ?>
+					<?php self::render_metric_bar( __( '30 j', 'mainwp-giweb' ), $uptime30 ); ?>
+				</div>
+			<?php endif; ?>
+
+			<?php if ( '' !== $url ) : ?>
+				<a class="giweb-ukw-card__link" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Ouvrir le site', 'mainwp-giweb' ); ?> ↗</a>
+			<?php endif; ?>
+		</article>
+		<?php
+	}
+
+	/**
+	 * @param string     $label  Libellé période.
+	 * @param float|null $uptime Valeur %.
+	 * @return void
+	 */
+	private static function render_metric_bar( $label, $uptime ) {
+		$level = self::uptime_bar_level( $uptime );
+		$width = null !== $uptime ? min( 100, max( 0, (float) $uptime ) ) : 0;
+		?>
+		<div class="giweb-ukw-metric">
+			<div class="giweb-ukw-metric__head">
+				<span class="giweb-ukw-metric__label"><?php echo esc_html( $label ); ?></span>
+				<span class="giweb-ukw-metric__value"><?php echo esc_html( self::format_uptime( $uptime ) ); ?></span>
+			</div>
+			<div class="giweb-ukw-metric__track">
+				<span class="giweb-ukw-metric__fill level-<?php echo esc_attr( $level ); ?>" style="width: <?php echo esc_attr( null !== $uptime ? (string) $width : '0' ); ?>%;"></span>
+			</div>
+		</div>
 		<?php
 	}
 }

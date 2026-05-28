@@ -23,11 +23,18 @@
 		],
 	};
 
+	function clearDonutLegends() {
+		document.querySelectorAll( '.gi-matomo-donut-legend' ).forEach( function ( el ) {
+			el.remove();
+		} );
+	}
+
 	function destroyCharts() {
 		chartInstances.forEach( function ( chart ) {
 			chart.destroy();
 		} );
 		chartInstances = [];
+		clearDonutLegends();
 	}
 
 	function readChartsData() {
@@ -193,18 +200,120 @@
 		} );
 	}
 
+	function formatCount( value ) {
+		var n = Number( value ) || 0;
+		try {
+			return n.toLocaleString( undefined, { maximumFractionDigits: 0 } );
+		} catch ( e ) {
+			return String( n );
+		}
+	}
+
+	function formatPercent( value, total ) {
+		if ( ! total ) {
+			return '0 %';
+		}
+		var pct = Math.round( ( value / total ) * 1000 ) / 10;
+		return pct.toLocaleString( undefined, { maximumFractionDigits: 1 } ) + ' %';
+	}
+
+	function filterChartSegments( labels, values ) {
+		var outLabels = [];
+		var outValues = [];
+		( labels || [] ).forEach( function ( label, index ) {
+			var val = Number( values[ index ] ) || 0;
+			if ( val > 0 ) {
+				outLabels.push( label );
+				outValues.push( val );
+			}
+		} );
+		return {
+			labels: outLabels,
+			values: outValues,
+		};
+	}
+
+	function renderDonutLegend( canvasId, labels, values, colors ) {
+		var canvas = document.getElementById( canvasId );
+		if ( ! canvas ) {
+			return;
+		}
+		var wrap = canvas.closest( '.gi-matomo-chart-canvas-wrap' );
+		if ( ! wrap ) {
+			return;
+		}
+
+		var existing = wrap.querySelector( '.gi-matomo-donut-legend' );
+		if ( existing ) {
+			existing.remove();
+		}
+
+		var total = values.reduce( function ( sum, val ) {
+			return sum + val;
+		}, 0 );
+		if ( ! total ) {
+			return;
+		}
+
+		var list = document.createElement( 'ul' );
+		list.className = 'gi-matomo-donut-legend';
+		list.setAttribute( 'aria-hidden', 'true' );
+
+		var rows = labels.map( function ( label, index ) {
+			return {
+				label: label,
+				value: values[ index ],
+				color: colors[ index % colors.length ],
+			};
+		} ).sort( function ( a, b ) {
+			return b.value - a.value;
+		} );
+
+		rows.forEach( function ( row ) {
+			var item = document.createElement( 'li' );
+			item.className = 'gi-matomo-donut-legend__row';
+
+			var dot = document.createElement( 'span' );
+			dot.className = 'gi-matomo-donut-legend__dot';
+			dot.style.backgroundColor = row.color;
+
+			var labelEl = document.createElement( 'span' );
+			labelEl.className = 'gi-matomo-donut-legend__label';
+			labelEl.textContent = row.label;
+			labelEl.title = row.label;
+
+			var valueEl = document.createElement( 'span' );
+			valueEl.className = 'gi-matomo-donut-legend__value';
+			valueEl.innerHTML =
+				'<strong>' + formatCount( row.value ) + '</strong>' +
+				'<span class="gi-matomo-donut-legend__pct">' + formatPercent( row.value, total ) + '</span>';
+
+			item.appendChild( dot );
+			item.appendChild( labelEl );
+			item.appendChild( valueEl );
+			list.appendChild( item );
+		} );
+
+		wrap.appendChild( list );
+	}
+
 	function initDonutChart( canvasId, data ) {
 		var canvas = document.getElementById( canvasId );
 		if ( ! canvas || typeof window.Chart === 'undefined' ) {
 			return;
 		}
 
-		var labels = ( data && data.labels ) ? data.labels : [];
-		var values = ( data && data.values ) ? data.values : [];
+		var rawLabels = ( data && data.labels ) ? data.labels : [];
+		var rawValues = ( data && data.values ) ? data.values : [];
+		var filtered = filterChartSegments( rawLabels, rawValues );
+		var labels = filtered.labels;
+		var values = filtered.values;
 
 		if ( ! hasChartData( { values: values } ) ) {
 			return;
 		}
+
+		var colors = palette.donut.slice( 0, labels.length );
 
 		var chart = new window.Chart( canvas, {
 			type: 'doughnut',
@@ -213,7 +322,7 @@
 				datasets: [
 					{
 						data: values,
-						backgroundColor: palette.donut,
+						backgroundColor: colors,
 						borderWidth: 2,
 						borderColor: '#fff',
 						hoverOffset: 6,
@@ -223,20 +332,26 @@
 			options: {
 				responsive: true,
 				maintainAspectRatio: false,
-				cutout: '62%',
+				cutout: '58%',
+				layout: {
+					padding: { top: 4, bottom: 4 },
+				},
 				plugins: {
-					legend: {
-						position: 'bottom',
-						labels: { boxWidth: 12, padding: 10 },
-					},
+					legend: { display: false },
 					tooltip: {
 						callbacks: {
 							label: function ( context ) {
 								var total = context.dataset.data.reduce( function ( a, b ) {
 									return a + b;
 								}, 0 );
-								var pct = total > 0 ? Math.round( ( context.parsed / total ) * 1000 ) / 10 : 0;
-								return context.label + ': ' + context.parsed + ' (' + pct + '%)';
+								return (
+									context.label +
+									': ' +
+									formatCount( context.parsed ) +
+									' (' +
+									formatPercent( context.parsed, total ) +
+									')'
+								);
 							},
 						},
 					},
@@ -244,6 +359,7 @@
 			},
 		} );
 		chartInstances.push( chart );
+		renderDonutLegend( canvasId, labels, values, colors );
 	}
 
 	function initCharts() {

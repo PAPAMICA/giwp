@@ -130,7 +130,7 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 			return array( 'success' => false );
 		}
 
-		$cache_key = 'gi_matomo_toolbar_' . $site_id;
+		$cache_key = 'gi_matomo_toolbar_v2_' . $site_id;
 		$cached    = get_transient( $cache_key );
 		if ( is_array( $cached ) && ! empty( $cached['success'] ) ) {
 			return $cached;
@@ -153,16 +153,27 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 			);
 		}
 
-		$chart   = self::normalize_timeline_chart( $series );
-		$values  = $chart['visits'] ?? array();
-		$visits7 = array_slice( $values, -7 );
-		$total7  = array_sum( $visits7 );
+		$chart    = self::normalize_timeline_chart( $series );
+		$values   = $chart['visits'] ?? array();
+		$unique   = $chart['unique'] ?? array();
+		$actions  = $chart['actions'] ?? array();
+		$labels   = $chart['labels'] ?? array();
+		$visits7  = array_slice( $values, -7 );
+		$labels7  = array_slice( $labels, -7 );
+		$unique7  = array_slice( $unique, -7 );
+		$actions7 = array_slice( $actions, -7 );
+		$total7   = array_sum( $visits7 );
 
 		$result = array(
-			'success' => true,
-			'visits'  => $total7,
-			'labels'  => array_slice( $chart['labels'] ?? array(), -7 ),
-			'values'  => $visits7,
+			'success'       => true,
+			'visits'        => $total7,
+			'unique_7d'     => array_sum( $unique7 ),
+			'actions_7d'    => array_sum( $actions7 ),
+			'today_visits'  => ! empty( $visits7 ) ? (int) $visits7[ count( $visits7 ) - 1 ] : 0,
+			'labels'        => $labels7,
+			'values'        => $visits7,
+			'chart_unique'  => $unique7,
+			'chart_actions' => $actions7,
 		);
 
 		set_transient( $cache_key, $result, 5 * MINUTE_IN_SECONDS );

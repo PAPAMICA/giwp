@@ -337,10 +337,6 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 	margin-bottom: 20px;
 }
 
-.gi-matomo-chart-panel--full {
-	width: 100%;
-}
-
 .gi-matomo-charts-bottom {
 	align-items: stretch;
 	display: grid;
@@ -403,7 +399,70 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 }
 
 .gi-matomo-chart-canvas-wrap--donut {
-	height: 240px;
+	display: flex;
+	flex-direction: column;
+	height: auto;
+	min-height: 220px;
+}
+
+.gi-matomo-chart-canvas-wrap--donut canvas {
+	flex: 0 0 auto;
+	height: 150px !important;
+	max-height: 150px;
+	width: 100% !important;
+}
+
+.gi-matomo-donut-legend {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	list-style: none;
+	margin: 10px 0 0;
+	max-height: 160px;
+	overflow-y: auto;
+	padding: 0;
+}
+
+.gi-matomo-donut-legend__row {
+	align-items: center;
+	display: grid;
+	gap: 8px;
+	grid-template-columns: 8px minmax(0, 1fr) auto;
+}
+
+.gi-matomo-donut-legend__dot {
+	border-radius: 50%;
+	flex-shrink: 0;
+	height: 8px;
+	width: 8px;
+}
+
+.gi-matomo-donut-legend__label {
+	color: #50575e;
+	font-size: 12px;
+	line-height: 1.3;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.gi-matomo-donut-legend__value {
+	align-items: baseline;
+	display: inline-flex;
+	gap: 6px;
+	white-space: nowrap;
+}
+
+.gi-matomo-donut-legend__value strong {
+	color: #1d2327;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.gi-matomo-donut-legend__pct {
+	color: #646970;
+	font-size: 11px;
+	font-weight: 500;
 }
 
 .gi-matomo-tables {
@@ -829,27 +888,32 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 }
 
 /* Barre d’administration — sparkline (style wp-piwik) */
-#wpadminbar #wp-admin-bar-gi-matomo-toolbar-stats .ab-item {
-	display: flex;
+#wpadminbar #wp-admin-bar-gi-matomo-toolbar-stats > .ab-item {
 	align-items: center;
+	display: flex;
 	height: 32px;
+	overflow: visible;
 	padding: 0 12px !important;
 }
 
-#wpadminbar .gi-matomo-ab-stats {
+#wpadminbar .gi-matomo-ab-wrap {
 	align-items: center;
 	display: inline-flex;
+	flex-shrink: 0;
+	flex-wrap: nowrap;
 	gap: 10px;
+	line-height: 1;
 }
 
 #wpadminbar .gi-matomo-ab-count {
 	color: #f0f0f1;
+	flex: 0 0 auto;
 	line-height: 1.2;
 	white-space: nowrap;
 }
 
 #wpadminbar .gi-matomo-ab-count strong {
-	font-size: 14px;
+	font-size: 13px;
 	font-weight: 600;
 }
 
@@ -862,13 +926,115 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 
 #wpadminbar #gi-matomo-ab-chart {
 	display: block;
-	height: 32px !important;
-	width: 140px !important;
+	flex: 0 0 auto;
+	height: 28px !important;
+	width: 120px !important;
 }
 
-#wpadminbar #wp-admin-bar-gi-matomo-toolbar-stats:hover .ab-item,
+#wpadminbar #wp-admin-bar-gi-matomo-toolbar-stats:hover > .ab-item,
 #wpadminbar #wp-admin-bar-gi-matomo-toolbar-stats .ab-item:focus {
 	background: #2c3338;
+}
+
+/* Sous-menu détaillé au survol */
+#wpadminbar #wp-admin-bar-gi-matomo-toolbar-flyout {
+	font-size: 0;
+	line-height: 0;
+}
+
+#wpadminbar #wp-admin-bar-gi-matomo-toolbar-flyout > .ab-item {
+	box-sizing: border-box;
+	color: #f0f0f1;
+	cursor: default;
+	display: block;
+	font-size: 12px;
+	height: auto;
+	line-height: 1.4;
+	padding: 12px 14px;
+	pointer-events: auto;
+	white-space: normal;
+	width: 280px;
+}
+
+#wpadminbar .gi-matomo-ab-flyout__head {
+	align-items: baseline;
+	display: flex;
+	gap: 10px;
+	justify-content: space-between;
+	margin-bottom: 10px;
+}
+
+#wpadminbar .gi-matomo-ab-flyout__title {
+	color: #72aee6;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+#wpadminbar .gi-matomo-ab-flyout__total {
+	color: #f0f0f1;
+	font-size: 13px;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+#wpadminbar .gi-matomo-ab-flyout__kpis {
+	display: grid;
+	gap: 6px;
+	grid-template-columns: repeat(2, 1fr);
+	margin-bottom: 10px;
+}
+
+#wpadminbar .gi-matomo-ab-flyout__kpi {
+	background: rgba(255, 255, 255, 0.06);
+	border-radius: 6px;
+	padding: 6px 8px;
+}
+
+#wpadminbar .gi-matomo-ab-flyout__kpi-label {
+	color: #a7aaad;
+	display: block;
+	font-size: 10px;
+	font-weight: 600;
+	margin-bottom: 2px;
+	text-transform: uppercase;
+}
+
+#wpadminbar .gi-matomo-ab-flyout__kpi-value {
+	color: #f0f0f1;
+	display: block;
+	font-size: 13px;
+	font-weight: 700;
+}
+
+#wpadminbar .gi-matomo-ab-flyout__chart-wrap {
+	margin-bottom: 8px;
+}
+
+#wpadminbar .gi-matomo-ab-flyout__chart-label {
+	color: #a7aaad;
+	display: block;
+	font-size: 10px;
+	margin-bottom: 4px;
+}
+
+#wpadminbar #gi-matomo-ab-chart-detail {
+	display: block;
+	height: 72px !important;
+	width: 248px !important;
+}
+
+#wpadminbar .gi-matomo-ab-flyout__link {
+	font-size: 11px;
+	margin: 0;
+}
+
+#wpadminbar .gi-matomo-ab-flyout__link a {
+	color: #72aee6;
+	text-decoration: none;
+}
+
+#wpadminbar .gi-matomo-ab-flyout__link a:hover {
+	color: #9ec2e8;
 }
 
 @media (max-width: 1100px) {

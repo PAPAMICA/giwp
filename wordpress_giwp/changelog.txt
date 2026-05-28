@@ -1,5 +1,14 @@
 == Changelog ==
 
+= 2.22.4 =
+Update: Barre admin Matomo — panneau survol (KPIs 7 j, graphique visites avec échelle), infobulle détaillée.
+
+= 2.22.3 =
+Update: Dashboard Matomo — légendes donut HTML avec visites et pourcentage, segments à zéro masqués.
+
+= 2.22.2 =
+Fix: Barre admin Uptime Kuma — retrait du « 1 » parasite (sous-menu sans lien), ping à droite des barres, échelle ms sur le graphique ping.
+
 = 2.22.1 =
 Update: Barre admin Uptime Kuma — panneau survol avec dispo 24 h / 30 j / 1 an, graphique ping (Chart.js), statut corrigé.
 

@@ -16,6 +16,9 @@
 			return;
 		}
 
+		var maxVal = Math.max.apply( null, values );
+		var yMax = Math.max( 50, Math.ceil( maxVal * 1.15 / 10 ) * 10 );
+
 		new window.Chart( canvas, {
 			type: 'line',
 			data: {
@@ -37,13 +40,49 @@
 				responsive: false,
 				maintainAspectRatio: false,
 				animation: false,
+				layout: {
+					padding: { left: 0, right: 4, top: 2, bottom: 0 },
+				},
 				plugins: {
 					legend: { display: false },
-					tooltip: { enabled: false },
+					tooltip: {
+						enabled: true,
+						callbacks: {
+							label: function ( ctx ) {
+								return ctx.parsed.y + ' ms';
+							},
+						},
+					},
 				},
 				scales: {
-					x: { display: false },
-					y: { display: false },
+					x: {
+						display: true,
+						grid: { display: false },
+						ticks: {
+							maxTicksLimit: 4,
+							maxRotation: 0,
+							color: 'rgba(167, 170, 173, 0.95)',
+							font: { size: 9 },
+						},
+						border: { display: false },
+					},
+					y: {
+						display: true,
+						min: 0,
+						max: yMax,
+						grid: {
+							color: 'rgba(255, 255, 255, 0.08)',
+						},
+						ticks: {
+							maxTicksLimit: 3,
+							color: 'rgba(167, 170, 173, 0.95)',
+							font: { size: 9 },
+							callback: function ( value ) {
+								return value + ' ms';
+							},
+						},
+						border: { display: false },
+					},
 				},
 			},
 		} );

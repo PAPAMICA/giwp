@@ -800,9 +800,6 @@ class Gi_Toolkit_Matomo {
 	}
 
 	/**
-	 * @return void
-	 */
-	/**
 	 * Graphique visites dans la barre d’administration (style wp-piwik).
 	 *
 	 * @param WP_Admin_Bar $wp_admin_bar Barre admin.
@@ -825,23 +822,117 @@ class Gi_Toolkit_Matomo {
 
 		$visits = number_format_i18n( (int) ( $data['visits'] ?? 0 ) );
 		$title  = sprintf(
-			'<span class="gi-matomo-ab-stats"><span class="gi-matomo-ab-count"><strong>%1$s</strong> <small>%2$s</small></span><canvas id="gi-matomo-ab-chart" width="140" height="32" aria-hidden="true"></canvas></span>',
+			'<span class="gi-matomo-ab-wrap"><span class="gi-matomo-ab-count"><strong>%1$s</strong> <small>%2$s</small></span><canvas id="gi-matomo-ab-chart" width="120" height="28" aria-hidden="true"></canvas></span>',
 			esc_html( $visits ),
 			esc_html__( '7 j', 'gi-toolkit' )
 		);
 
 		$wp_admin_bar->add_node(
 			array(
-				'id'     => 'gi-matomo-toolbar-stats',
-				'title'  => $title,
-				'href'   => admin_url( 'admin.php?page=' . self::STATS_PAGE_SLUG ),
-				'meta'   => array(
+				'id'    => 'gi-matomo-toolbar-stats',
+				'title' => $title,
+				'href'  => admin_url( 'admin.php?page=' . self::STATS_PAGE_SLUG ),
+				'meta'  => array(
 					'class' => 'gi-matomo-ab-stats-menu',
 					'html'  => true,
-					'title' => __( 'Statistiques Matomo — 7 derniers jours', 'gi-toolkit' ),
+					'title' => self::build_admin_bar_tooltip( $data ),
 				),
 			)
 		);
+
+		$wp_admin_bar->add_node(
+			array(
+				'parent' => 'gi-matomo-toolbar-stats',
+				'id'     => 'gi-matomo-toolbar-flyout',
+				'title'  => self::render_admin_bar_flyout_html( $data ),
+				'meta'   => array(
+					'html'     => true,
+					'class'    => 'gi-matomo-ab-flyout-item',
+					'tabindex' => -1,
+				),
+			)
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $data Données toolbar.
+	 * @return string
+	 */
+	public static function build_admin_bar_tooltip( array $data ) {
+		$parts = array(
+			sprintf(
+				/* translators: %s: visit count */
+				__( 'Visites (7 j) : %s', 'gi-toolkit' ),
+				number_format_i18n( (int) ( $data['visits'] ?? 0 ) )
+			),
+			sprintf(
+				/* translators: %s: visitor count */
+				__( 'Visiteurs uniques (7 j) : %s', 'gi-toolkit' ),
+				number_format_i18n( (int) ( $data['unique_7d'] ?? 0 ) )
+			),
+			sprintf(
+				/* translators: %s: page view count */
+				__( 'Pages vues (7 j) : %s', 'gi-toolkit' ),
+				number_format_i18n( (int) ( $data['actions_7d'] ?? 0 ) )
+			),
+			sprintf(
+				/* translators: %s: visit count */
+				__( 'Visites aujourd’hui : %s', 'gi-toolkit' ),
+				number_format_i18n( (int) ( $data['today_visits'] ?? 0 ) )
+			),
+		);
+
+		return implode( "\n", $parts );
+	}
+
+	/**
+	 * @param array<string, mixed> $data Données toolbar.
+	 * @return string
+	 */
+	public static function render_admin_bar_flyout_html( array $data ) {
+		$stats_url = admin_url( 'admin.php?page=' . self::STATS_PAGE_SLUG );
+		$has_chart = ! empty( $data['values'] ) && is_array( $data['values'] );
+
+		ob_start();
+		?>
+		<div class="gi-matomo-ab-flyout">
+			<div class="gi-matomo-ab-flyout__head">
+				<span class="gi-matomo-ab-flyout__title"><?php esc_html_e( 'Matomo — 7 derniers jours', 'gi-toolkit' ); ?></span>
+				<span class="gi-matomo-ab-flyout__total"><?php echo esc_html( number_format_i18n( (int) ( $data['visits'] ?? 0 ) ) ); ?> <?php esc_html_e( 'visites', 'gi-toolkit' ); ?></span>
+			</div>
+
+			<div class="gi-matomo-ab-flyout__kpis" role="list">
+				<div class="gi-matomo-ab-flyout__kpi" role="listitem">
+					<span class="gi-matomo-ab-flyout__kpi-label"><?php esc_html_e( 'Visites', 'gi-toolkit' ); ?></span>
+					<span class="gi-matomo-ab-flyout__kpi-value"><?php echo esc_html( number_format_i18n( (int) ( $data['visits'] ?? 0 ) ) ); ?></span>
+				</div>
+				<div class="gi-matomo-ab-flyout__kpi" role="listitem">
+					<span class="gi-matomo-ab-flyout__kpi-label"><?php esc_html_e( 'Visiteurs', 'gi-toolkit' ); ?></span>
+					<span class="gi-matomo-ab-flyout__kpi-value"><?php echo esc_html( number_format_i18n( (int) ( $data['unique_7d'] ?? 0 ) ) ); ?></span>
+				</div>
+				<div class="gi-matomo-ab-flyout__kpi" role="listitem">
+					<span class="gi-matomo-ab-flyout__kpi-label"><?php esc_html_e( 'Pages vues', 'gi-toolkit' ); ?></span>
+					<span class="gi-matomo-ab-flyout__kpi-value"><?php echo esc_html( number_format_i18n( (int) ( $data['actions_7d'] ?? 0 ) ) ); ?></span>
+				</div>
+				<div class="gi-matomo-ab-flyout__kpi" role="listitem">
+					<span class="gi-matomo-ab-flyout__kpi-label"><?php esc_html_e( 'Aujourd’hui', 'gi-toolkit' ); ?></span>
+					<span class="gi-matomo-ab-flyout__kpi-value"><?php echo esc_html( number_format_i18n( (int) ( $data['today_visits'] ?? 0 ) ) ); ?></span>
+				</div>
+			</div>
+
+			<?php if ( $has_chart ) : ?>
+			<div class="gi-matomo-ab-flyout__chart-wrap">
+				<span class="gi-matomo-ab-flyout__chart-label"><?php esc_html_e( 'Visites par jour', 'gi-toolkit' ); ?></span>
+				<canvas id="gi-matomo-ab-chart-detail" width="248" height="72" aria-hidden="true"></canvas>
+			</div>
+			<?php endif; ?>
+
+			<p class="gi-matomo-ab-flyout__link">
+				<a href="<?php echo esc_url( $stats_url ); ?>"><?php esc_html_e( 'Voir les statistiques →', 'gi-toolkit' ); ?></a>
+			</p>
+		</div>
+		<?php
+		return (string) ob_get_clean();
 	}
 
 	/**
@@ -897,7 +988,18 @@ class Gi_Toolkit_Matomo {
 					'labels' => $data['labels'] ?? array(),
 					'values' => $data['values'] ?? array(),
 				),
+				'flyout'    => array(
+					'labels'  => $data['labels'] ?? array(),
+					'visits'  => $data['values'] ?? array(),
+					'unique'  => $data['chart_unique'] ?? array(),
+					'actions' => $data['chart_actions'] ?? array(),
+				),
 				'statsUrl'  => admin_url( 'admin.php?page=' . self::STATS_PAGE_SLUG ),
+				'i18n'      => array(
+					'visits'  => __( 'Visites', 'gi-toolkit' ),
+					'unique'  => __( 'Visiteurs uniques', 'gi-toolkit' ),
+					'actions' => __( 'Pages vues', 'gi-toolkit' ),
+				),
 			)
 		);
 	}
