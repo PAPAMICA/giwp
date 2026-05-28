@@ -70,9 +70,10 @@ class Gi_Toolkit_Uptime_Kuma_Socket_Client {
 		$ack                             = $this->ack_id;
 		$payload                         = wp_json_encode( array_merge( array( $event ), $args ) );
 		$this->pending_acks[ $ack ]      = true;
-		$packet                          = '42' . $ack . $payload;
-		$responses                       = $this->request( 'POST', $packet );
+		$packet    = '42' . $ack . $payload;
+		$responses = $this->request( 'POST', $packet );
 		$this->process_packets( $responses );
+		$this->poll_until_ack( $ack );
 
 		if ( ! array_key_exists( $ack, $this->ack_responses ) ) {
 			unset( $this->pending_acks[ $ack ] );
@@ -80,7 +81,7 @@ class Gi_Toolkit_Uptime_Kuma_Socket_Client {
 			return null;
 		}
 
-		$response = $this->ack_responses[ $ack ];
+		$response = $this->normalize_ack_payload( $this->ack_responses[ $ack ] );
 		unset( $this->ack_responses[ $ack ], $this->pending_acks[ $ack ] );
 		return $response;
 	}
@@ -114,6 +115,7 @@ class Gi_Toolkit_Uptime_Kuma_Socket_Client {
 		}
 
 		$this->process_packets( $this->request( 'POST', '40' ) );
+		$this->process_packets( $this->request( 'GET', '' ) );
 		return true;
 	}
 
@@ -188,6 +190,20 @@ class Gi_Toolkit_Uptime_Kuma_Socket_Client {
 	 */
 	private function process_packets( $raw ) {
 		if ( ! is_string( $raw ) || '' === $raw ) {
+			return;
+		}
+
+		if ( false !== strpos( $raw, "\x1e" ) ) {
+			foreach ( explode( "\x1e", $raw ) as $chunk ) {
+				if ( '' !== $chunk ) {
+					$this->process_packets( $chunk );
+				}
+			}
+			return;
+		}
+
+		// Réponse proxy « ok » sans paquet Engine.IO.
+		if ( 'ok' === $raw ) {
 			return;
 		}
 
@@ -286,5 +302,32 @@ class Gi_Toolkit_Uptime_Kuma_Socket_Client {
 		$data   = json_decode( $m[2], true );
 		unset( $this->pending_acks[ $ack_id ] );
 		$this->ack_responses[ $ack_id ] = $data;
+	}
+
+	/**
+	 * Uptime Kuma renvoie souvent l’ACK dans un GET polling après le POST (corps « ok » seul).
+	 *
+	 * @param int $ack_id ID ack attendu.
+	 * @return void
+	 */
+	private function poll_until_ack( $ack_id ) {
+		$attempts = 0;
+		while ( isset( $this->pending_acks[ $ack_id ] ) && $attempts < 12 ) {
+			$attempts++;
+			$this->process_packets( $this->request( 'GET', '' ) );
+		}
+	}
+
+	/**
+	 * Déplie [{ok:true}] → {ok:true} (format ACK Socket.IO de Kuma).
+	 *
+	 * @param mixed $data Données brutes.
+	 * @return mixed
+	 */
+	private function normalize_ack_payload( $data ) {
+		if ( is_array( $data ) && 1 === count( $data ) && isset( $data[0] ) && is_array( $data[0] ) ) {
+			return $data[0];
+		}
+		return $data;
 	}
 }

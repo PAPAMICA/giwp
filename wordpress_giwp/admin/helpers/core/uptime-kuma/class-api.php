@@ -294,6 +294,14 @@ class Gi_Toolkit_Uptime_Kuma_API {
 			)
 		);
 
+		if ( null === $response ) {
+			$detail = $client->get_last_error();
+			return array(
+				'ok'      => false,
+				'message' => $detail ?: __( 'Pas de réponse Socket.IO (vérifiez l’URL et l’accès réseau au serveur Kuma).', 'gi-toolkit' ),
+			);
+		}
+
 		if ( is_array( $response ) && ! empty( $response['ok'] ) ) {
 			return array( 'ok' => true );
 		}
@@ -305,9 +313,11 @@ class Gi_Toolkit_Uptime_Kuma_API {
 			);
 		}
 
+		$server_msg = is_array( $response ) && ! empty( $response['msg'] ) ? (string) $response['msg'] : '';
+
 		return array(
 			'ok'      => false,
-			'message' => __( 'Identifiants Uptime Kuma invalides.', 'gi-toolkit' ),
+			'message' => $server_msg ?: __( 'Identifiants Uptime Kuma invalides.', 'gi-toolkit' ),
 		);
 	}
 }

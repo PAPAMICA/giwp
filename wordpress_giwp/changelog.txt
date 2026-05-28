@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.21.4 =
+Fix: Client Socket.IO — lecture de l’ACK login via GET polling (réponse POST « ok » seule) et paquets séparés par 0x1e.
+
 = 2.21.3 =
 Update: Connect Uptime Kuma — authentification uniquement par utilisateur / mot de passe (plus de JWT ni clé uk… dans l’UI).
 Update: Export JSON bundle sans mot de passe ni secrets ; import conserve le mot de passe local si absent du fichier.
