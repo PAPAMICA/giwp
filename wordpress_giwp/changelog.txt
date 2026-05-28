@@ -1,5 +1,11 @@
 == Changelog ==
 
+= 2.21.8 =
+Add: Page Statistiques — bloc disponibilité Uptime Kuma (bandeau, KPIs, graphique ping) au-dessus du dashboard Matomo.
+
+= 2.21.7 =
+Add: Page Connect Uptime Kuma — tableau de bord (bandeau statut, KPIs 24 h, graphique ping) style cartes mail / Matomo.
+
 = 2.21.6 =
 Update: Payload création monitor aligné sur Uptime Kuma 2.3.2 (upsideDown, champs JSON requis : conditions, kafka, rabbitmq).
 Update: Textes d’aide et messages — cible Uptime Kuma 2.3.x.

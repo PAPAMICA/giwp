@@ -54,6 +54,275 @@
 	white-space: nowrap;
 }
 
+/* Page réglages */
+.gi-toolkit-uptime-kuma-settings {
+	max-width: 1200px;
+}
+
+.gi-uptime-kuma-page-header {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	justify-content: space-between;
+	margin-bottom: 16px;
+}
+
+.gi-uptime-kuma-page-header h1 {
+	margin: 0;
+}
+
 .gi-toolkit-uptime-kuma-settings #gi-uptime-kuma-notice {
 	margin-top: 12px;
+}
+
+.gi-uptime-kuma-setup-panel {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 10px;
+	box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+	margin: 0 0 24px;
+	max-width: 640px;
+	padding: 32px 28px;
+	text-align: center;
+}
+
+.gi-uptime-kuma-setup-panel__icon {
+	color: #2271b1;
+	font-size: 48px;
+	height: 48px;
+	margin: 0 auto 12px;
+	width: 48px;
+}
+
+.gi-uptime-kuma-setup-panel h2 {
+	font-size: 18px;
+	margin: 0 0 10px;
+}
+
+.gi-uptime-kuma-setup-panel p {
+	color: #50575e;
+	font-size: 14px;
+	margin: 0;
+}
+
+.gi-uptime-kuma-dashboard {
+	margin-bottom: 28px;
+}
+
+.gi-uptime-kuma-dashboard__meta {
+	margin: 0 0 12px;
+	text-align: right;
+}
+
+.gi-uptime-kuma-status-panel {
+	align-items: stretch;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 10px;
+	box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+	display: flex;
+	gap: 16px;
+	margin-bottom: 16px;
+	padding: 20px 22px;
+}
+
+.gi-uptime-kuma-status-panel__main {
+	flex: 1;
+	min-width: 0;
+}
+
+.gi-uptime-kuma-status-strip {
+	align-items: flex-end;
+	display: flex;
+	gap: 3px;
+	height: 44px;
+	margin-bottom: 10px;
+	overflow-x: auto;
+	padding-bottom: 2px;
+}
+
+.gi-uptime-kuma-status-strip__bar {
+	border-radius: 3px 3px 1px 1px;
+	flex: 1 1 4px;
+	max-width: 8px;
+	min-height: 8px;
+	min-width: 4px;
+}
+
+.gi-uptime-kuma-status-strip__bar.level-green {
+	background: #22c55e;
+	height: 40px;
+}
+
+.gi-uptime-kuma-status-strip__bar.level-orange {
+	background: #f59e0b;
+	height: 28px;
+}
+
+.gi-uptime-kuma-status-strip__bar.level-red {
+	background: #ef4444;
+	height: 18px;
+}
+
+.gi-uptime-kuma-status-strip__bar.level-unknown {
+	background: #c3c4c7;
+	height: 12px;
+	opacity: 0.65;
+}
+
+.gi-uptime-kuma-status-panel__footer {
+	color: #646970;
+	display: flex;
+	flex-wrap: wrap;
+	font-size: 12px;
+	gap: 8px 20px;
+	justify-content: space-between;
+}
+
+.gi-uptime-kuma-status-badge {
+	align-items: center;
+	align-self: center;
+	border-radius: 999px;
+	color: #fff;
+	display: inline-flex;
+	flex-shrink: 0;
+	font-size: 15px;
+	font-weight: 600;
+	justify-content: center;
+	min-width: 110px;
+	padding: 12px 22px;
+	text-align: center;
+}
+
+.gi-uptime-kuma-status-badge.status-up {
+	background: #22c55e;
+}
+
+.gi-uptime-kuma-status-badge.status-down {
+	background: #ef4444;
+}
+
+.gi-uptime-kuma-status-badge.status-pending {
+	background: #f59e0b;
+	color: #1d2327;
+}
+
+.gi-uptime-kuma-status-badge.status-maintenance,
+.gi-uptime-kuma-status-badge.status-unknown {
+	background: #646970;
+}
+
+.gi-uptime-kuma-kpis {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	margin-bottom: 16px;
+}
+
+.gi-uptime-kuma-kpi {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 10px;
+	box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 16px 18px;
+}
+
+.gi-uptime-kuma-kpi--uptime .gi-uptime-kuma-kpi__value {
+	color: #00a32a;
+}
+
+.gi-uptime-kuma-kpi__label {
+	color: #646970;
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.gi-uptime-kuma-kpi__value {
+	color: #1d2327;
+	font-size: 26px;
+	font-weight: 700;
+	line-height: 1.15;
+}
+
+.gi-uptime-kuma-kpi__value--text {
+	font-size: 16px;
+	font-weight: 600;
+	line-height: 1.3;
+	word-break: break-word;
+}
+
+.gi-uptime-kuma-kpi__sub {
+	color: #646970;
+	font-size: 11px;
+}
+
+.gi-uptime-kuma-kpi__links {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin: 0;
+}
+
+.gi-uptime-kuma-kpi__links a {
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.gi-uptime-kuma-chart-panel {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 10px;
+	box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+	margin-bottom: 16px;
+	padding: 20px 22px 16px;
+}
+
+.gi-uptime-kuma-chart-panel h3 {
+	color: #1d2327;
+	font-size: 15px;
+	font-weight: 600;
+	margin: 0 0 14px;
+}
+
+.gi-uptime-kuma-chart-panel__canvas-wrap {
+	height: 220px;
+	position: relative;
+}
+
+.gi-uptime-kuma-chart-panel__canvas-wrap canvas {
+	max-height: 220px;
+}
+
+.gi-uptime-kuma-panel {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 6px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+	margin-top: 8px;
+	padding: 16px 20px 8px;
+}
+
+.gi-uptime-kuma-panel__title {
+	font-size: 15px;
+	font-weight: 600;
+	margin: 0 0 12px;
+	padding: 0;
+}
+
+@media screen and (max-width: 782px) {
+	.gi-uptime-kuma-status-panel {
+		flex-direction: column;
+	}
+
+	.gi-uptime-kuma-status-badge {
+		align-self: flex-start;
+	}
+
+	.gi-uptime-kuma-kpis {
+		grid-template-columns: 1fr 1fr;
+	}
 }

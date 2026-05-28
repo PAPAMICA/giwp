@@ -43,6 +43,43 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 	max-width: 1440px;
 }
 
+.gi-matomo-uptime-section {
+	margin-bottom: 28px;
+}
+
+.gi-matomo-uptime-section__head {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	justify-content: space-between;
+	margin-bottom: 14px;
+}
+
+.gi-matomo-uptime-section__title {
+	align-items: center;
+	display: flex;
+	font-size: 18px;
+	font-weight: 600;
+	gap: 8px;
+	margin: 0;
+}
+
+.gi-matomo-uptime-section__title .dashicons {
+	color: #00a32a;
+	font-size: 22px;
+	height: 22px;
+	width: 22px;
+}
+
+.gi-matomo-uptime-section .gi-uptime-kuma-dashboard {
+	margin-bottom: 0;
+}
+
+.gi-matomo-uptime-section .gi-uptime-kuma-setup-panel {
+	max-width: none;
+}
+
 .gi-matomo-stats-header {
 	display: flex;
 	align-items: center;

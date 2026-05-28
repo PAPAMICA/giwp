@@ -8,7 +8,304 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Gi_Toolkit_Uptime_Kuma_Status_Data {
 
-	const TRANSIENT_TOOLBAR = 'gi_uptime_kuma_toolbar_';
+	const TRANSIENT_TOOLBAR    = 'gi_uptime_kuma_toolbar_';
+	const TRANSIENT_DASHBOARD  = 'gi_uptime_kuma_dashboard_';
+
+	/**
+	 * Données tableau de bord (page réglages).
+	 *
+	 * @param array<string, mixed> $settings Réglages.
+	 * @param bool                 $force    Ignorer le cache transient.
+	 * @return array<string, mixed>
+	 */
+	public static function fetch_dashboard( array $settings, $force = false ) {
+		$monitor_id = absint( $settings['monitor_id'] ?? 0 );
+		if ( $monitor_id < 1 ) {
+			return array(
+				'ready'   => false,
+				'message' => __( 'Associez un monitor (synchronisation automatique ou ID manuel).', 'gi-toolkit' ),
+			);
+		}
+
+		$cache_key = self::TRANSIENT_DASHBOARD . $monitor_id;
+		if ( ! $force ) {
+			$cached = get_transient( $cache_key );
+			if ( is_array( $cached ) ) {
+				return $cached;
+			}
+		}
+
+		$api = new Gi_Toolkit_Uptime_Kuma_API( $settings );
+		if ( ! $api->is_configured() ) {
+			return array(
+				'ready'   => false,
+				'message' => __( 'Configurez l’URL et les identifiants Uptime Kuma.', 'gi-toolkit' ),
+			);
+		}
+
+		$monitor = self::find_monitor_in_list( $api, $monitor_id );
+		$beats   = $api->get_monitor_beats( $monitor_id, 24 );
+		if ( ! is_array( $beats ) ) {
+			return array(
+				'ready'   => false,
+				'message' => $api->get_last_error() ?: __( 'Impossible de charger les heartbeats.', 'gi-toolkit' ),
+			);
+		}
+
+		$hourly     = self::aggregate_hourly_bars( $beats );
+		$check_bars = self::aggregate_check_bars( $beats, 90 );
+		$latest     = self::latest_beat_summary( $beats );
+		$chart      = self::build_ping_chart_series( $beats, 48 );
+
+		$interval = 60;
+		if ( is_array( $monitor ) && ! empty( $monitor['interval'] ) ) {
+			$interval = max( 20, absint( $monitor['interval'] ) );
+		}
+
+		$payload = array(
+			'ready'          => true,
+			'monitor_id'     => $monitor_id,
+			'monitor_name'   => is_array( $monitor ) ? (string) ( $monitor['name'] ?? '' ) : '',
+			'monitor_url'    => is_array( $monitor ) ? (string) ( $monitor['url'] ?? '' ) : '',
+			'monitor_active' => is_array( $monitor ) ? ! empty( $monitor['active'] ) : true,
+			'interval'       => $interval,
+			'status'         => $latest['status'],
+			'status_label'   => $latest['status_label'],
+			'status_level'   => $latest['status_level'],
+			'current_ping'   => $latest['ping'],
+			'last_check'     => $latest['last_check'],
+			'last_check_ago' => $latest['last_check_ago'],
+			'avg_ping'       => (int) ( $hourly['avg_ping'] ?? 0 ),
+			'uptime_percent' => (float) ( $hourly['uptime_percent'] ?? 0 ),
+			'hourly_bars'    => $hourly['bars'] ?? array(),
+			'check_bars'     => $check_bars['bars'],
+			'strip_from'     => $check_bars['from_label'],
+			'strip_to'       => $check_bars['to_label'],
+			'chart'          => $chart,
+			'fetched_at'     => time(),
+		);
+
+		set_transient( $cache_key, $payload, 5 * MINUTE_IN_SECONDS );
+
+		return $payload;
+	}
+
+	/**
+	 * @param Gi_Toolkit_Uptime_Kuma_API $api        API.
+	 * @param int                        $monitor_id ID monitor.
+	 * @return array<string, mixed>|null
+	 */
+	private static function find_monitor_in_list( Gi_Toolkit_Uptime_Kuma_API $api, $monitor_id ) {
+		$list = $api->get_monitors();
+		if ( ! is_array( $list ) ) {
+			return null;
+		}
+		foreach ( $list as $key => $monitor ) {
+			if ( ! is_array( $monitor ) ) {
+				continue;
+			}
+			$id = isset( $monitor['id'] ) ? absint( $monitor['id'] ) : absint( $key );
+			if ( $id === $monitor_id ) {
+				return $monitor;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Barres par heartbeat (bandeau type Uptime Kuma).
+	 *
+	 * @param array<int, array<string, mixed>> $beats Heartbeats.
+	 * @param int                               $max   Nombre max.
+	 * @return array{bars: array<int, array{level:string}>, from_label: string, to_label: string}
+	 */
+	public static function aggregate_check_bars( array $beats, $max = 90 ) {
+		$rows = array();
+		foreach ( $beats as $beat ) {
+			if ( ! is_array( $beat ) ) {
+				continue;
+			}
+			$ts = self::beat_timestamp( $beat );
+			if ( $ts < 1 ) {
+				continue;
+			}
+			$status = (int) ( $beat['status'] ?? -1 );
+			$level  = 'red';
+			if ( self::is_up_status( $status ) ) {
+				$level = 'green';
+			} elseif ( Gi_Toolkit_Uptime_Kuma_API::STATUS_PENDING === $status ) {
+				$level = 'orange';
+			} elseif ( Gi_Toolkit_Uptime_Kuma_API::STATUS_MAINTENANCE === $status ) {
+				$level = 'unknown';
+			}
+			$rows[] = array(
+				'ts'    => $ts,
+				'level' => $level,
+			);
+		}
+
+		usort(
+			$rows,
+			static function ( $a, $b ) {
+				return $a['ts'] <=> $b['ts'];
+			}
+		);
+
+		if ( count( $rows ) > $max ) {
+			$rows = array_slice( $rows, -$max );
+		}
+
+		$bars_only = array();
+		foreach ( $rows as $row ) {
+			$bars_only[] = array( 'level' => $row['level'] );
+		}
+
+		$from_label = '';
+		$to_label   = __( 'Maintenant', 'gi-toolkit' );
+		if ( ! empty( $rows ) ) {
+			$from_label = self::human_time_ago( $rows[0]['ts'] );
+		}
+
+		return array(
+			'bars'       => $bars_only,
+			'from_label' => $from_label,
+			'to_label'   => $to_label,
+		);
+	}
+
+	/**
+	 * @param array<int, array<string, mixed>> $beats Heartbeats.
+	 * @return array{status:string, status_label:string, status_level:string, ping:int, last_check:string, last_check_ago:string}
+	 */
+	public static function latest_beat_summary( array $beats ) {
+		$latest = null;
+		$latest_ts = 0;
+		foreach ( $beats as $beat ) {
+			if ( ! is_array( $beat ) ) {
+				continue;
+			}
+			$ts = self::beat_timestamp( $beat );
+			if ( $ts >= $latest_ts ) {
+				$latest_ts = $ts;
+				$latest    = $beat;
+			}
+		}
+
+		if ( ! is_array( $latest ) ) {
+			return array(
+				'status'         => 'unknown',
+				'status_label'   => __( 'Inconnu', 'gi-toolkit' ),
+				'status_level'   => 'unknown',
+				'ping'           => 0,
+				'last_check'     => '',
+				'last_check_ago' => '',
+			);
+		}
+
+		$status = (int) ( $latest['status'] ?? -1 );
+		if ( self::is_up_status( $status ) ) {
+			$label = __( 'En ligne', 'gi-toolkit' );
+			$level = 'up';
+		} elseif ( Gi_Toolkit_Uptime_Kuma_API::STATUS_DOWN === $status ) {
+			$label = __( 'Hors ligne', 'gi-toolkit' );
+			$level = 'down';
+		} elseif ( Gi_Toolkit_Uptime_Kuma_API::STATUS_MAINTENANCE === $status ) {
+			$label = __( 'Maintenance', 'gi-toolkit' );
+			$level = 'maintenance';
+		} else {
+			$label = __( 'En attente', 'gi-toolkit' );
+			$level = 'pending';
+		}
+
+		$ping = isset( $latest['ping'] ) ? (int) round( (float) $latest['ping'] ) : 0;
+
+		return array(
+			'status'         => $level,
+			'status_label'   => $label,
+			'status_level'   => $level,
+			'ping'           => $ping,
+			'last_check'     => (string) ( $latest['time'] ?? '' ),
+			'last_check_ago' => $latest_ts > 0 ? self::human_time_ago( $latest_ts ) : '',
+		);
+	}
+
+	/**
+	 * @param array<int, array<string, mixed>> $beats Heartbeats.
+	 * @param int                               $max_points Points max.
+	 * @return array{labels: array<int, string>, data: array<int, int>}
+	 */
+	public static function build_ping_chart_series( array $beats, $max_points = 48 ) {
+		$points = array();
+		foreach ( $beats as $beat ) {
+			if ( ! is_array( $beat ) ) {
+				continue;
+			}
+			if ( ! self::is_up_status( $beat['status'] ?? null ) ) {
+				continue;
+			}
+			$ping = isset( $beat['ping'] ) ? (float) $beat['ping'] : 0;
+			if ( $ping <= 0 ) {
+				continue;
+			}
+			$ts = self::beat_timestamp( $beat );
+			if ( $ts < 1 ) {
+				continue;
+			}
+			$points[] = array(
+				'ts'   => $ts,
+				'ping' => (int) round( $ping ),
+			);
+		}
+
+		usort(
+			$points,
+			static function ( $a, $b ) {
+				return $a['ts'] <=> $b['ts'];
+			}
+		);
+
+		if ( count( $points ) > $max_points ) {
+			$points = array_slice( $points, -$max_points );
+		}
+
+		$labels = array();
+		$data   = array();
+		foreach ( $points as $point ) {
+			$labels[] = wp_date( 'H:i', $point['ts'] );
+			$data[]   = $point['ping'];
+		}
+
+		return array(
+			'labels' => $labels,
+			'data'   => $data,
+		);
+	}
+
+	/**
+	 * @param int $timestamp Unix timestamp.
+	 * @return string
+	 */
+	private static function human_time_ago( $timestamp ) {
+		$diff = max( 0, time() - absint( $timestamp ) );
+		if ( $diff < MINUTE_IN_SECONDS ) {
+			return __( 'À l’instant', 'gi-toolkit' );
+		}
+		if ( $diff < HOUR_IN_SECONDS ) {
+			return sprintf(
+				/* translators: %d: minutes */
+				_n( '%d min', '%d min', (int) floor( $diff / MINUTE_IN_SECONDS ), 'gi-toolkit' ),
+				(int) floor( $diff / MINUTE_IN_SECONDS )
+			);
+		}
+		if ( $diff < DAY_IN_SECONDS ) {
+			return sprintf(
+				/* translators: %d: hours */
+				_n( '%d h', '%d h', (int) floor( $diff / HOUR_IN_SECONDS ), 'gi-toolkit' ),
+				(int) floor( $diff / HOUR_IN_SECONDS )
+			);
+		}
+		return wp_date( 'd/m H:i', $timestamp );
+	}
 
 	/**
 	 * @param array<string, mixed> $settings Réglages.

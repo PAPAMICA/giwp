@@ -920,6 +920,16 @@ class Gi_Toolkit_Matomo {
 			array(),
 			$version
 		);
+
+		if ( class_exists( 'Gi_Toolkit_Uptime_Kuma' ) ) {
+			Gi_Toolkit_Uptime_Kuma::load_deploy_dependencies();
+			$kuma_dashboard = Gi_Toolkit_Uptime_Kuma_Status_Data::fetch_dashboard(
+				Gi_Toolkit_Uptime_Kuma::get_settings_static(),
+				! empty( $_GET['gi_uptime_kuma_refresh'] )
+			);
+			Gi_Toolkit_Uptime_Kuma::enqueue_dashboard_assets( $kuma_dashboard, $version, 'gi-uptime-kuma-ping-chart-matomo' );
+		}
+
 		wp_enqueue_style(
 			'jsvectormap',
 			'https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/css/jsvectormap.min.css',
@@ -994,6 +1004,11 @@ class Gi_Toolkit_Matomo {
 					<a class="button button-secondary" href="<?php echo esc_url( $settings_url ); ?>">
 						<?php esc_html_e( 'Réglages Matomo', 'gi-toolkit' ); ?>
 					</a>
+					<?php if ( class_exists( 'Gi_Toolkit_Uptime_Kuma' ) ) : ?>
+						<a class="button button-secondary" href="<?php echo esc_url( Gi_Toolkit_Uptime_Kuma::get_settings_admin_url() ); ?>">
+							<?php esc_html_e( 'Réglages Uptime Kuma', 'gi-toolkit' ); ?>
+						</a>
+					<?php endif; ?>
 					<?php if ( $is_ready && ! empty( $settings['matomo_url'] ) ) : ?>
 						<a id="gi-matomo-external-link" class="button button-secondary" href="<?php echo esc_url( Gi_Toolkit_Matomo_API::get_site_dashboard_url( $settings, $period_key ) ); ?>" target="_blank" rel="noopener noreferrer">
 							<?php esc_html_e( 'Ouvrir dans Matomo', 'gi-toolkit' ); ?>
@@ -1001,6 +1016,8 @@ class Gi_Toolkit_Matomo {
 					<?php endif; ?>
 				</div>
 			</header>
+
+			<?php $this->render_uptime_kuma_section(); ?>
 
 			<?php if ( ! $is_ready ) : ?>
 				<?php $this->render_setup_notice( $api, $settings ); ?>
@@ -1037,6 +1054,57 @@ class Gi_Toolkit_Matomo {
 				</div>
 			<?php endif; ?>
 		</div>
+		<?php
+	}
+
+	/**
+	 * Bloc disponibilité Uptime Kuma (au-dessus du dashboard Matomo).
+	 *
+	 * @return void
+	 */
+	private function render_uptime_kuma_section() {
+		if ( ! class_exists( 'Gi_Toolkit_Uptime_Kuma' ) ) {
+			return;
+		}
+
+		Gi_Toolkit_Uptime_Kuma::load_deploy_dependencies();
+		$kuma_settings = Gi_Toolkit_Uptime_Kuma::get_settings_static();
+		$force_refresh = ! empty( $_GET['gi_uptime_kuma_refresh'] );
+		$dashboard     = Gi_Toolkit_Uptime_Kuma_Status_Data::fetch_dashboard( $kuma_settings, $force_refresh );
+		$chart_id      = 'gi-uptime-kuma-ping-chart-matomo';
+		$refresh_url   = add_query_arg(
+			array(
+				'page'                    => self::STATS_PAGE_SLUG,
+				'period'                  => isset( $_GET['period'] ) ? sanitize_key( wp_unslash( $_GET['period'] ) ) : 'last7',
+				'gi_uptime_kuma_refresh'  => '1',
+			),
+			admin_url( 'admin.php' )
+		);
+
+		?>
+		<section class="gi-matomo-uptime-section" aria-labelledby="gi-matomo-uptime-heading">
+			<div class="gi-matomo-uptime-section__head">
+				<h2 id="gi-matomo-uptime-heading" class="gi-matomo-uptime-section__title">
+					<span class="dashicons dashicons-heart" aria-hidden="true"></span>
+					<?php esc_html_e( 'Disponibilité', 'gi-toolkit' ); ?>
+				</h2>
+				<?php if ( ! empty( $dashboard['ready'] ) ) : ?>
+					<a class="button button-secondary" href="<?php echo esc_url( $refresh_url ); ?>">
+						<?php esc_html_e( 'Actualiser', 'gi-toolkit' ); ?>
+					</a>
+				<?php endif; ?>
+			</div>
+			<?php
+			Gi_Toolkit_Uptime_Kuma::render_dashboard_markup(
+				$dashboard,
+				$kuma_settings,
+				array(
+					'chart_canvas_id' => $chart_id,
+					'settings_url'    => Gi_Toolkit_Uptime_Kuma::get_settings_admin_url(),
+				)
+			);
+			?>
+		</section>
 		<?php
 	}
 

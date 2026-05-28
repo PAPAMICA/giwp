@@ -128,12 +128,26 @@ class Gi_Toolkit_Uptime_Kuma {
 		}
 
 		update_option( self::OPTION_SETTINGS, $settings, false );
+		self::clear_dashboard_cache( absint( $settings['monitor_id'] ?? 0 ) );
 
 		return array(
 			'success'    => true,
 			'monitor_id' => absint( $settings['monitor_id'] ?? 0 ),
 			'sync'       => $sync_result,
 		);
+	}
+
+	/**
+	 * @param int $monitor_id ID monitor (0 = tous).
+	 * @return void
+	 */
+	private static function clear_dashboard_cache( $monitor_id ) {
+		$monitor_id = absint( $monitor_id );
+		if ( $monitor_id < 1 ) {
+			return;
+		}
+		delete_transient( Gi_Toolkit_Uptime_Kuma_Status_Data::TRANSIENT_DASHBOARD . $monitor_id );
+		delete_transient( Gi_Toolkit_Uptime_Kuma_Status_Data::TRANSIENT_TOOLBAR . $monitor_id );
 	}
 
 	/**
@@ -208,7 +222,11 @@ class Gi_Toolkit_Uptime_Kuma {
 	public function render_submenu() {
 		$settings = $this->get_settings();
 		$version  = defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '1.0.0';
-		wp_enqueue_style( 'gi-toolkit-uptime-kuma', GI_TOOLKIT_PLUGIN_URL . 'admin/assets/css/uptime-kuma.css', array(), $version );
+
+		$force_refresh = ! empty( $_GET['gi_uptime_kuma_refresh'] );
+		$dashboard     = Gi_Toolkit_Uptime_Kuma_Status_Data::fetch_dashboard( $settings, $force_refresh );
+
+		self::enqueue_dashboard_assets( $dashboard, $version );
 		wp_enqueue_script(
 			'gi-toolkit-uptime-kuma-settings',
 			GI_TOOLKIT_PLUGIN_URL . 'admin/assets/js/uptime-kuma-settings.js',
@@ -230,7 +248,15 @@ class Gi_Toolkit_Uptime_Kuma {
 		);
 		?>
 		<div class="wrap gi-toolkit-uptime-kuma-settings">
-			<h1><?php echo esc_html( $this->header_title ); ?></h1>
+			<div class="gi-uptime-kuma-page-header">
+				<h1><?php echo esc_html( $this->header_title ); ?></h1>
+				<?php if ( ! empty( $dashboard['ready'] ) ) : ?>
+					<a class="button" href="<?php echo esc_url( add_query_arg( 'gi_uptime_kuma_refresh', '1' ) ); ?>">
+						<?php esc_html_e( 'Actualiser', 'gi-toolkit' ); ?>
+					</a>
+				<?php endif; ?>
+			</div>
+			<?php self::render_dashboard_markup( $dashboard, $settings ); ?>
 			<?php if ( ! empty( $_GET['gi_toolkit_pro_saved'] ) ) : ?>
 				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Réglages enregistrés.', 'gi-toolkit' ); ?></p></div>
 			<?php endif; ?>
@@ -254,6 +280,8 @@ class Gi_Toolkit_Uptime_Kuma {
 					</p>
 				</div>
 			<?php endif; ?>
+			<div class="gi-uptime-kuma-panel gi-uptime-kuma-panel--settings">
+				<h2 class="gi-uptime-kuma-panel__title"><?php esc_html_e( 'Configuration', 'gi-toolkit' ); ?></h2>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=' . rawurlencode( $this->page_slug ) ) ); ?>">
 				<?php wp_nonce_field( 'gi_toolkit_uptime_kuma_save' ); ?>
 				<input type="hidden" name="gi_toolkit_pro_save" value="1" />
@@ -296,6 +324,220 @@ class Gi_Toolkit_Uptime_Kuma {
 				</p>
 				<div id="gi-uptime-kuma-notice" class="notice" style="display:none;"></div>
 			</form>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Styles + script graphique ping (Chart.js).
+	 *
+	 * @param array<string, mixed> $dashboard      Données dashboard.
+	 * @param string|null          $version      Version assets.
+	 * @param string               $chart_canvas ID canvas.
+	 * @return void
+	 */
+	public static function enqueue_dashboard_assets( array $dashboard, $version = null, $chart_canvas = 'gi-uptime-kuma-ping-chart' ) {
+		$version = $version ?: ( defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '1.0.0' );
+		wp_enqueue_style(
+			'gi-toolkit-uptime-kuma',
+			GI_TOOLKIT_PLUGIN_URL . 'admin/assets/css/uptime-kuma.css',
+			array(),
+			$version
+		);
+
+		if ( empty( $dashboard['ready'] ) || empty( $dashboard['chart']['data'] ) ) {
+			return;
+		}
+
+		if ( ! wp_script_is( 'chartjs', 'registered' ) ) {
+			wp_register_script(
+				'chartjs',
+				'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+				array(),
+				'4.4.1',
+				true
+			);
+		}
+		wp_enqueue_script( 'chartjs' );
+		wp_enqueue_script(
+			'gi-toolkit-uptime-kuma-dashboard',
+			GI_TOOLKIT_PLUGIN_URL . 'admin/assets/js/uptime-kuma-dashboard.js',
+			array( 'chartjs' ),
+			$version,
+			true
+		);
+		wp_localize_script(
+			'gi-toolkit-uptime-kuma-dashboard',
+			'giToolkitUptimeKumaDashboard',
+			array(
+				'chart'      => $dashboard['chart'],
+				'canvasId'   => $chart_canvas,
+				'i18n'       => array(
+					'pingLabel' => __( 'Temps de réponse (ms)', 'gi-toolkit' ),
+				),
+			)
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $dashboard Données dashboard.
+	 * @param array<string, mixed> $settings  Réglages.
+	 * @param array<string, mixed> $args      show_section_heading, chart_canvas_id, settings_url.
+	 * @return void
+	 */
+	public static function render_dashboard_markup( array $dashboard, array $settings, array $args = array() ) {
+		$args = wp_parse_args(
+			$args,
+			array(
+				'show_section_heading' => false,
+				'chart_canvas_id'      => 'gi-uptime-kuma-ping-chart',
+				'settings_url'         => self::get_settings_admin_url(),
+			)
+		);
+
+		if ( ! empty( $args['show_section_heading'] ) ) {
+			echo '<h2 class="gi-uptime-kuma-section-title">' . esc_html__( 'Disponibilité (Uptime Kuma)', 'gi-toolkit' ) . '</h2>';
+		}
+
+		if ( empty( $dashboard['ready'] ) ) {
+			$msg = ! empty( $dashboard['message'] ) ? (string) $dashboard['message'] : __( 'Configurez la connexion et synchronisez un monitor pour afficher les statistiques.', 'gi-toolkit' );
+			?>
+			<div class="gi-uptime-kuma-setup-panel">
+				<span class="dashicons dashicons-chart-line gi-uptime-kuma-setup-panel__icon" aria-hidden="true"></span>
+				<h2><?php esc_html_e( 'Statistiques Uptime Kuma', 'gi-toolkit' ); ?></h2>
+				<p><?php echo esc_html( $msg ); ?></p>
+				<?php if ( ! empty( $args['settings_url'] ) ) : ?>
+					<p>
+						<a class="button button-secondary" href="<?php echo esc_url( (string) $args['settings_url'] ); ?>">
+							<?php esc_html_e( 'Configurer Uptime Kuma', 'gi-toolkit' ); ?>
+						</a>
+					</p>
+				<?php endif; ?>
+			</div>
+			<?php
+			return;
+		}
+
+		$status_level = (string) ( $dashboard['status_level'] ?? 'unknown' );
+		$interval     = absint( $dashboard['interval'] ?? 60 );
+		$kuma_url     = Gi_Toolkit_Uptime_Kuma_API::normalize_kuma_url( $settings['kuma_url'] ?? '' );
+		$monitor_url  = ! empty( $dashboard['monitor_url'] ) ? (string) $dashboard['monitor_url'] : home_url();
+		$monitor_name = ! empty( $dashboard['monitor_name'] ) ? (string) $dashboard['monitor_name'] : get_bloginfo( 'name' );
+		$fetched_label = ! empty( $dashboard['fetched_at'] )
+			? sprintf(
+				/* translators: %s: relative time */
+				__( 'Mis à jour il y a %s', 'gi-toolkit' ),
+				human_time_diff( (int) $dashboard['fetched_at'], time() )
+			)
+			: '';
+		?>
+		<div class="gi-uptime-kuma-dashboard">
+			<?php if ( '' !== $fetched_label ) : ?>
+				<p class="gi-uptime-kuma-dashboard__meta description"><?php echo esc_html( $fetched_label ); ?></p>
+			<?php endif; ?>
+
+			<div class="gi-uptime-kuma-status-panel">
+				<div class="gi-uptime-kuma-status-panel__main">
+					<div class="gi-uptime-kuma-status-strip" aria-hidden="true">
+						<?php foreach ( (array) ( $dashboard['check_bars'] ?? array() ) as $bar ) : ?>
+							<span class="gi-uptime-kuma-status-strip__bar level-<?php echo esc_attr( (string) ( $bar['level'] ?? 'unknown' ) ); ?>"></span>
+						<?php endforeach; ?>
+					</div>
+					<div class="gi-uptime-kuma-status-panel__footer">
+						<span class="gi-uptime-kuma-status-panel__range">
+							<?php
+							echo esc_html( (string) ( $dashboard['strip_from'] ?? '' ) );
+							if ( ! empty( $dashboard['strip_from'] ) ) {
+								echo ' — ';
+							}
+							echo esc_html( (string) ( $dashboard['strip_to'] ?? __( 'Maintenant', 'gi-toolkit' ) ) );
+							?>
+						</span>
+						<span class="gi-uptime-kuma-status-panel__interval">
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: %d: seconds */
+									_n(
+										'Vérification toutes les %d seconde',
+										'Vérification toutes les %d secondes',
+										$interval,
+										'gi-toolkit'
+									),
+									$interval
+								)
+							);
+							?>
+						</span>
+					</div>
+				</div>
+				<div class="gi-uptime-kuma-status-badge status-<?php echo esc_attr( $status_level ); ?>">
+					<?php echo esc_html( (string) ( $dashboard['status_label'] ?? '' ) ); ?>
+				</div>
+			</div>
+
+			<div class="gi-uptime-kuma-kpis">
+				<div class="gi-uptime-kuma-kpi">
+					<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( 'Temps de réponse (actuel)', 'gi-toolkit' ); ?></span>
+					<strong class="gi-uptime-kuma-kpi__value">
+						<?php
+						$ping = (int) ( $dashboard['current_ping'] ?? 0 );
+						echo esc_html( $ping > 0 ? $ping . ' ms' : '—' );
+						?>
+					</strong>
+				</div>
+				<div class="gi-uptime-kuma-kpi">
+					<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( 'Réponse moyenne (24 h)', 'gi-toolkit' ); ?></span>
+					<strong class="gi-uptime-kuma-kpi__value">
+						<?php
+						$avg = (int) ( $dashboard['avg_ping'] ?? 0 );
+						echo esc_html( $avg > 0 ? $avg . ' ms' : '—' );
+						?>
+					</strong>
+				</div>
+				<div class="gi-uptime-kuma-kpi gi-uptime-kuma-kpi--uptime">
+					<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( 'Disponibilité (24 h)', 'gi-toolkit' ); ?></span>
+					<strong class="gi-uptime-kuma-kpi__value"><?php echo esc_html( (string) ( $dashboard['uptime_percent'] ?? 0 ) ); ?>%</strong>
+				</div>
+				<div class="gi-uptime-kuma-kpi">
+					<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( 'Monitor', 'gi-toolkit' ); ?></span>
+					<strong class="gi-uptime-kuma-kpi__value gi-uptime-kuma-kpi__value--text"><?php echo esc_html( $monitor_name ); ?></strong>
+					<?php if ( ! empty( $dashboard['monitor_id'] ) ) : ?>
+						<span class="gi-uptime-kuma-kpi__sub">#<?php echo esc_html( (string) (int) $dashboard['monitor_id'] ); ?></span>
+					<?php endif; ?>
+				</div>
+				<div class="gi-uptime-kuma-kpi">
+					<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( 'Dernière vérification', 'gi-toolkit' ); ?></span>
+					<strong class="gi-uptime-kuma-kpi__value gi-uptime-kuma-kpi__value--text">
+						<?php
+						echo esc_html(
+							! empty( $dashboard['last_check_ago'] )
+								? (string) $dashboard['last_check_ago']
+								: '—'
+						);
+						?>
+					</strong>
+				</div>
+				<?php if ( '' !== $kuma_url ) : ?>
+					<div class="gi-uptime-kuma-kpi gi-uptime-kuma-kpi--link">
+						<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( 'Liens', 'gi-toolkit' ); ?></span>
+						<p class="gi-uptime-kuma-kpi__links">
+							<a href="<?php echo esc_url( $monitor_url ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Site surveillé', 'gi-toolkit' ); ?></a>
+							<a href="<?php echo esc_url( trailingslashit( $kuma_url ) . 'dashboard' ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Ouvrir Uptime Kuma', 'gi-toolkit' ); ?></a>
+						</p>
+					</div>
+				<?php endif; ?>
+			</div>
+
+			<?php if ( ! empty( $dashboard['chart']['data'] ) ) : ?>
+				<div class="gi-uptime-kuma-chart-panel">
+					<h3><?php esc_html_e( 'Temps de réponse (24 h)', 'gi-toolkit' ); ?></h3>
+					<div class="gi-uptime-kuma-chart-panel__canvas-wrap">
+						<canvas id="<?php echo esc_attr( (string) $args['chart_canvas_id'] ); ?>" height="120" aria-hidden="true"></canvas>
+					</div>
+				</div>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -539,6 +781,7 @@ class Gi_Toolkit_Uptime_Kuma {
 		$settings['kuma_url']   = Gi_Toolkit_Uptime_Kuma_API::normalize_kuma_url( $settings['kuma_url'] ?? '' );
 		$settings['monitor_id'] = absint( $settings['monitor_id'] ?? 0 );
 		update_option( self::OPTION_SETTINGS, $settings, false );
+		self::clear_dashboard_cache( absint( $settings['monitor_id'] ?? 0 ) );
 		return array(
 			'success'    => true,
 			'monitor_id' => absint( $settings['monitor_id'] ?? 0 ),
