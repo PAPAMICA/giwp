@@ -648,8 +648,14 @@ function gi_toolkit_pro_begin_save( $page_slug, $nonce_action ) {
 	if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
 		return false;
 	}
-	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- vérifié ci-dessous via check_admin_referer.
-	if ( empty( $_GET['page'] ) || sanitize_key( wp_unslash( $_GET['page'] ) ) !== sanitize_key( $page_slug ) ) {
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing
+	$posted_page = '';
+	if ( ! empty( $_POST['page'] ) ) {
+		$posted_page = sanitize_key( wp_unslash( $_POST['page'] ) );
+	} elseif ( ! empty( $_GET['page'] ) ) {
+		$posted_page = sanitize_key( wp_unslash( $_GET['page'] ) );
+	}
+	if ( '' === $posted_page || $posted_page !== sanitize_key( $page_slug ) ) {
 		return false;
 	}
 	// phpcs:ignore WordPress.Security.NonceVerification.Missing

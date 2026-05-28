@@ -19,7 +19,9 @@
 			action: action,
 			nonce: cfg.nonce,
 			kuma_url: $('#gi_uptime_kuma_url').val(),
-			api_token: $('#gi_uptime_kuma_token').val()
+			api_token: $('#gi_uptime_kuma_token').val(),
+			kuma_username: $('input[name="kuma_username"]').val(),
+			kuma_password: $('input[name="kuma_password"]').val()
 		})
 			.always(function () {
 				$btn.prop('disabled', false).text(label);

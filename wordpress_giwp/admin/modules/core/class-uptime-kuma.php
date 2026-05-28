@@ -152,10 +152,15 @@ class Gi_Toolkit_Uptime_Kuma {
 
 		$settings = $this->get_settings();
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$settings['kuma_url'] = isset( $_POST['kuma_url'] ) ? sanitize_text_field( wp_unslash( $_POST['kuma_url'] ) ) : $settings['kuma_url'];
+		$settings['kuma_url'] = isset( $_POST['kuma_url'] )
+			? Gi_Toolkit_Uptime_Kuma_API::normalize_kuma_url( sanitize_text_field( wp_unslash( $_POST['kuma_url'] ) ) )
+			: $settings['kuma_url'];
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		if ( ! empty( $_POST['api_token'] ) ) {
-			$settings['api_token'] = sanitize_text_field( wp_unslash( $_POST['api_token'] ) );
+			$token = sanitize_text_field( wp_unslash( $_POST['api_token'] ) );
+			if ( '' !== $token && ! preg_match( '/^[•*.\s]+$/u', $token ) ) {
+				$settings['api_token'] = $token;
+			}
 		}
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$settings['kuma_username'] = isset( $_POST['kuma_username'] ) ? sanitize_text_field( wp_unslash( $_POST['kuma_username'] ) ) : $settings['kuma_username'];
@@ -170,8 +175,24 @@ class Gi_Toolkit_Uptime_Kuma {
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$settings['disable_ssl_verify'] = isset( $_POST['disable_ssl_verify'] ) ? '1' : '0';
 
-		$this->persist_settings( $settings, true );
-		gi_toolkit_pro_module_redirect_saved( $this->page_slug );
+		$save = $this->persist_settings( $settings, true );
+
+		$redirect_args = array(
+			'page'                 => $this->page_slug,
+			'gi_toolkit_pro_saved' => '1',
+		);
+		if ( ! empty( $save['sync'] ) && empty( $save['sync']['success'] ) ) {
+			$redirect_args['gi_uptime_kuma_sync'] = '0';
+			$sync_msg = isset( $save['sync']['message'] ) ? (string) $save['sync']['message'] : '';
+			if ( '' !== $sync_msg ) {
+				$redirect_args['gi_uptime_kuma_sync_msg'] = rawurlencode( $sync_msg );
+			}
+		} elseif ( ! empty( $save['sync']['success'] ) ) {
+			$redirect_args['gi_uptime_kuma_sync'] = '1';
+		}
+
+		wp_safe_redirect( add_query_arg( $redirect_args, admin_url( 'admin.php' ) ) );
+		exit;
 	}
 
 	public function render_submenu() {
@@ -200,13 +221,40 @@ class Gi_Toolkit_Uptime_Kuma {
 		?>
 		<div class="wrap gi-toolkit-uptime-kuma-settings">
 			<h1><?php echo esc_html( $this->header_title ); ?></h1>
-			<form method="post" action="">
-				<?php wp_nonce_field( 'gi_toolkit_uptime_kuma_save', 'gi_toolkit_pro_save' ); ?>
+			<?php if ( ! empty( $_GET['gi_toolkit_pro_saved'] ) ) : ?>
+				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Réglages enregistrés.', 'gi-toolkit' ); ?></p></div>
+			<?php endif; ?>
+			<?php if ( isset( $_GET['gi_uptime_kuma_sync'] ) && '0' === (string) $_GET['gi_uptime_kuma_sync'] ) : ?>
+				<div class="notice notice-warning is-dismissible">
+					<p>
+						<?php
+						$sync_msg = isset( $_GET['gi_uptime_kuma_sync_msg'] )
+							? sanitize_text_field( wp_unslash( rawurldecode( (string) $_GET['gi_uptime_kuma_sync_msg'] ) ) )
+							: '';
+						echo esc_html(
+							'' !== $sync_msg
+								? sprintf(
+									/* translators: %s: error detail */
+									__( 'Réglages enregistrés, mais la synchronisation du monitor a échoué : %s', 'gi-toolkit' ),
+									$sync_msg
+								)
+								: __( 'Réglages enregistrés, mais la synchronisation du monitor a échoué.', 'gi-toolkit' )
+						);
+						?>
+					</p>
+				</div>
+			<?php endif; ?>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=' . rawurlencode( $this->page_slug ) ) ); ?>">
+				<?php wp_nonce_field( 'gi_toolkit_uptime_kuma_save' ); ?>
+				<input type="hidden" name="gi_toolkit_pro_save" value="1" />
 				<input type="hidden" name="page" value="<?php echo esc_attr( $this->page_slug ); ?>" />
 				<table class="form-table" role="presentation">
 					<tr>
 						<th scope="row"><label for="gi_uptime_kuma_url"><?php esc_html_e( 'URL Uptime Kuma', 'gi-toolkit' ); ?></label></th>
-						<td><input type="url" class="large-text code" id="gi_uptime_kuma_url" name="kuma_url" value="<?php echo esc_attr( (string) $settings['kuma_url'] ); ?>" placeholder="https://status.example.com" /></td>
+						<td>
+							<input type="url" class="large-text code" id="gi_uptime_kuma_url" name="kuma_url" value="<?php echo esc_attr( (string) $settings['kuma_url'] ); ?>" placeholder="https://status.example.com" />
+							<p class="description"><?php esc_html_e( 'URL racine du serveur Uptime Kuma (sans /dashboard).', 'gi-toolkit' ); ?></p>
+						</td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="gi_uptime_kuma_token"><?php esc_html_e( 'Token JWT', 'gi-toolkit' ); ?></label></th>
@@ -288,11 +336,24 @@ class Gi_Toolkit_Uptime_Kuma {
 		$settings = $this->get_settings();
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		if ( isset( $_POST['kuma_url'] ) ) {
-			$settings['kuma_url'] = sanitize_text_field( wp_unslash( $_POST['kuma_url'] ) );
+			$settings['kuma_url'] = Gi_Toolkit_Uptime_Kuma_API::normalize_kuma_url(
+				sanitize_text_field( wp_unslash( $_POST['kuma_url'] ) )
+			);
 		}
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		if ( ! empty( $_POST['api_token'] ) ) {
-			$settings['api_token'] = sanitize_text_field( wp_unslash( $_POST['api_token'] ) );
+			$token = sanitize_text_field( wp_unslash( $_POST['api_token'] ) );
+			if ( '' !== $token && ! preg_match( '/^[•*.\s]+$/u', $token ) ) {
+				$settings['api_token'] = $token;
+			}
+		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( isset( $_POST['kuma_username'] ) ) {
+			$settings['kuma_username'] = sanitize_text_field( wp_unslash( $_POST['kuma_username'] ) );
+		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( ! empty( $_POST['kuma_password'] ) ) {
+			$settings['kuma_password'] = sanitize_text_field( wp_unslash( $_POST['kuma_password'] ) );
 		}
 		return $settings;
 	}

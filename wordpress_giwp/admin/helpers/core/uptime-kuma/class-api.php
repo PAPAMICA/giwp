@@ -59,7 +59,10 @@ class Gi_Toolkit_Uptime_Kuma_API {
 		if ( ! preg_match( '#^https?://#i', $url ) ) {
 			$url = 'https://' . $url;
 		}
-		return untrailingslashit( esc_url_raw( $url ) );
+		$url = untrailingslashit( esc_url_raw( $url ) );
+		// L’API Socket.IO est à la racine de l’instance, pas sous /dashboard.
+		$url = preg_replace( '#/dashboard/?$#i', '', $url );
+		return untrailingslashit( $url );
 	}
 
 	/**
@@ -318,7 +321,7 @@ class Gi_Toolkit_Uptime_Kuma_API {
 
 		return array(
 			'ok'      => false,
-			'message' => __( 'Fournissez un token JWT (login Uptime Kuma) ou un couple utilisateur / mot de passe.', 'gi-toolkit' ),
+			'message' => __( 'Fournissez un token JWT (format eyJ…) obtenu après connexion à Uptime Kuma, ou un couple utilisateur / mot de passe. L’URL doit être la racine du serveur (ex. https://status.example.com), pas la page /dashboard.', 'gi-toolkit' ),
 		);
 	}
 

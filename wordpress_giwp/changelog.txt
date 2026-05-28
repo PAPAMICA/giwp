@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.21.1 =
+Fix: Connect Uptime Kuma — sauvegarde formulaire (nonce _wpnonce + champ gi_toolkit_pro_save), URL sans /dashboard, messages sync.
+
 = 2.21.0 =
 Add: Module Connect Uptime Kuma — connexion Socket.IO (token JWT), monitor automatique par URL WordPress, barre admin 24 barres + ping moyen.
 Add: Déploiement / import MainWP (URL + token, monitor_id réinitialisé, sync monitor avec avertissement si échec).
