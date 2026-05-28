@@ -1,3 +1,4 @@
+/* Barre d’administration */
 #wpadminbar #wp-admin-bar-gi-uptime-kuma-toolbar-stats > .ab-item {
 	padding: 0 10px;
 	height: 32px;
@@ -5,53 +6,125 @@
 	align-items: center;
 }
 
-.gi-uptime-kuma-ab-wrap {
+#wpadminbar #wp-admin-bar-gi-uptime-kuma-toolbar-stats:hover > .ab-item,
+#wpadminbar #wp-admin-bar-gi-uptime-kuma-toolbar-stats .ab-item:focus {
+	background: #2c3338;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-wrap {
 	display: inline-flex;
 	align-items: center;
 	gap: 8px;
 	line-height: 1;
 }
 
-.gi-uptime-kuma-ab-bars {
-	display: inline-flex;
+#wpadminbar .gi-uptime-kuma-ab-bars {
 	align-items: flex-end;
+	display: inline-flex;
 	gap: 2px;
-	height: 18px;
+	height: 22px;
+	max-width: 150px;
+	min-width: 90px;
 }
 
-.gi-uptime-kuma-ab-bar {
-	width: 4px;
-	min-height: 4px;
-	border-radius: 1px;
+#wpadminbar .gi-uptime-kuma-ab-bar {
 	background: #9ca3af;
+	border-radius: 1px;
+	flex: 1 1 2px;
+	max-width: 4px;
+	min-height: 6px;
+	min-width: 2px;
 }
 
-.gi-uptime-kuma-ab-bar.level-green {
+#wpadminbar .gi-uptime-kuma-ab-bar.level-green {
 	background: #22c55e;
-	height: 16px;
+	height: 20px;
 }
 
-.gi-uptime-kuma-ab-bar.level-orange {
+#wpadminbar .gi-uptime-kuma-ab-bar.level-orange {
 	background: #f59e0b;
-	height: 12px;
+	height: 14px;
 }
 
-.gi-uptime-kuma-ab-bar.level-red {
+#wpadminbar .gi-uptime-kuma-ab-bar.level-red {
 	background: #ef4444;
-	height: 8px;
+	height: 10px;
 }
 
-.gi-uptime-kuma-ab-bar.level-unknown {
+#wpadminbar .gi-uptime-kuma-ab-bar.level-unknown {
 	background: #6b7280;
-	height: 6px;
-	opacity: 0.5;
+	height: 8px;
+	opacity: 0.55;
 }
 
-.gi-uptime-kuma-ab-ping {
+#wpadminbar .gi-uptime-kuma-ab-ping {
+	color: #f0f0f1;
 	font-size: 11px;
 	font-weight: 600;
-	color: #e5e7eb;
 	white-space: nowrap;
+}
+
+/* Sous-menu détaillé au survol */
+#wpadminbar #wp-admin-bar-gi-uptime-kuma-toolbar-flyout .ab-item {
+	height: auto;
+	line-height: 1.45;
+	padding: 10px 14px;
+	white-space: normal;
+	width: 260px;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__status {
+	font-size: 13px;
+	font-weight: 600;
+	margin: 0 0 8px;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__status.status-up {
+	color: #4ade80;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__status.status-down {
+	color: #f87171;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__status.status-pending {
+	color: #fbbf24;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__stats {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__stats li {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	margin: 0 0 4px;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__label {
+	color: #a7aaad;
+	font-size: 12px;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__stats strong {
+	color: #f0f0f1;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__range {
+	color: #a7aaad;
+	font-size: 11px;
+	margin: 8px 0 0;
+}
+
+#wpadminbar .gi-uptime-kuma-ab-flyout__link {
+	color: #72aee6;
+	font-size: 11px;
+	margin: 8px 0 0;
 }
 
 /* Page réglages */

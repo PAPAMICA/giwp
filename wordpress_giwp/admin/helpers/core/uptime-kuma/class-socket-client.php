@@ -35,6 +35,9 @@ class Gi_Toolkit_Uptime_Kuma_Socket_Client {
 	/** @var array<int, array<string, float>> */
 	private $uptime_by_monitor = array();
 
+	/** @var array<int, float> */
+	private $avg_ping_by_monitor = array();
+
 	/** @var string|null */
 	private $last_error = null;
 
@@ -106,6 +109,17 @@ class Gi_Toolkit_Uptime_Kuma_Socket_Client {
 	}
 
 	/**
+	 * @param int $monitor_id ID monitor.
+	 * @return float|null
+	 */
+	public function get_avg_ping_for_monitor( $monitor_id ) {
+		$monitor_id = absint( $monitor_id );
+		return array_key_exists( $monitor_id, $this->avg_ping_by_monitor )
+			? (float) $this->avg_ping_by_monitor[ $monitor_id ]
+			: null;
+	}
+
+	/**
 	 * Attend les événements push (uptime, monitorList…) après getMonitorList.
 	 *
 	 * @param int $max_attempts Nombre de GET polling.
@@ -127,6 +141,7 @@ class Gi_Toolkit_Uptime_Kuma_Socket_Client {
 		$this->ack_responses = array();
 		$this->last_events       = array();
 		$this->uptime_by_monitor = array();
+		$this->avg_ping_by_monitor = array();
 
 		$body = $this->request( 'GET', '' );
 		if ( null === $body ) {
@@ -321,6 +336,11 @@ class Gi_Toolkit_Uptime_Kuma_Socket_Client {
 				}
 				$this->uptime_by_monitor[ $monitor_id ][ $period ] = $ratio;
 			}
+			return;
+		}
+
+		if ( 'avgPing' === $event && isset( $data[1] ) && is_numeric( $data[2] ?? null ) ) {
+			$this->avg_ping_by_monitor[ absint( $data[1] ) ] = (float) $data[2];
 			return;
 		}
 

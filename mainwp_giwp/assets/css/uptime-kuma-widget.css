@@ -1,66 +1,188 @@
 .mainwp-giweb-uptime-kuma-widget {
-	max-height: 420px;
-	overflow: auto;
+	font-size: 12px;
+	line-height: 1.35;
 }
 
-.mainwp-giweb-uptime-kuma-table td {
-	vertical-align: middle;
+.giweb-ukw-toolbar {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 12px;
+	justify-content: space-between;
+	margin-bottom: 10px;
 }
 
-.mainwp-giweb-uptime-kuma-badge {
+.giweb-ukw-summary {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.giweb-ukw-pill {
+	border-radius: 999px;
+	color: #fff;
 	display: inline-block;
-	margin-top: 4px;
-	padding: 2px 6px;
-	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1;
+	min-width: 22px;
+	padding: 4px 7px;
+	text-align: center;
+}
+
+.giweb-ukw-pill--ok {
+	background: #16a34a;
+}
+
+.giweb-ukw-pill--warn {
+	background: #d97706;
+}
+
+.giweb-ukw-pill--down {
+	background: #dc2626;
+}
+
+.giweb-ukw-pill--missing {
+	background: #6b7280;
+}
+
+.giweb-ukw-summary__total {
+	color: #9ca3af;
+	font-size: 11px;
+	margin-left: 4px;
+}
+
+.giweb-ukw-toolbar__actions {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.giweb-ukw-updated {
+	color: #9ca3af !important;
+	font-size: 11px;
+	margin: 0 !important;
+}
+
+.giweb-ukw-error {
+	color: #f87171;
+	margin: 0 0 8px;
+}
+
+.giweb-ukw-empty {
+	margin: 8px 0 0;
+}
+
+.giweb-ukw-grid {
+	display: grid;
+	gap: 6px;
+	grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+	max-height: 380px;
+	overflow: auto;
+	padding: 2px 1px 4px;
+}
+
+.giweb-ukw-tile {
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 6px;
+	padding: 7px 8px 6px;
+	transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.giweb-ukw-tile:hover {
+	background: rgba(255, 255, 255, 0.07);
+	border-color: rgba(255, 255, 255, 0.14);
+}
+
+.giweb-ukw-tile__head {
+	align-items: center;
+	display: flex;
+	gap: 6px;
+	margin-bottom: 4px;
+	min-width: 0;
+}
+
+.giweb-ukw-tile__dot {
+	border-radius: 50%;
+	flex-shrink: 0;
+	height: 8px;
+	width: 8px;
+}
+
+.giweb-ukw-tile.status-ok .giweb-ukw-tile__dot {
+	background: #22c55e;
+	box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
+}
+
+.giweb-ukw-tile.status-warn .giweb-ukw-tile__dot {
+	background: #f59e0b;
+}
+
+.giweb-ukw-tile.status-down .giweb-ukw-tile__dot {
+	background: #ef4444;
+}
+
+.giweb-ukw-tile.status-paused .giweb-ukw-tile__dot,
+.giweb-ukw-tile.status-missing .giweb-ukw-tile__dot,
+.giweb-ukw-tile.status-unknown .giweb-ukw-tile__dot {
+	background: #6b7280;
+}
+
+.giweb-ukw-tile.status-down {
+	border-color: rgba(239, 68, 68, 0.35);
+}
+
+.giweb-ukw-tile.status-warn {
+	border-color: rgba(245, 158, 11, 0.35);
+}
+
+.giweb-ukw-tile.status-missing {
+	opacity: 0.75;
+}
+
+.giweb-ukw-tile__name {
+	color: #e5e7eb;
 	font-size: 11px;
 	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-.mainwp-giweb-uptime-kuma-badge.status-ok {
-	background: #dcfce7;
-	color: #166534;
+.giweb-ukw-tile__stats {
+	align-items: baseline;
+	display: flex;
+	gap: 6px;
+	justify-content: space-between;
 }
 
-.mainwp-giweb-uptime-kuma-badge.status-warn {
-	background: #fef3c7;
-	color: #92400e;
+.giweb-ukw-tile__uptime {
+	color: #f9fafb;
+	font-size: 13px;
+	font-weight: 700;
 }
 
-.mainwp-giweb-uptime-kuma-badge.status-down {
-	background: #fee2e2;
-	color: #991b1b;
+.giweb-ukw-tile__uptime--na {
+	color: #9ca3af;
+	font-weight: 500;
 }
 
-.mainwp-giweb-uptime-kuma-mini-bars {
-	display: inline-flex;
-	align-items: flex-end;
-	gap: 1px;
-	height: 14px;
+.giweb-ukw-tile__ping {
+	color: #9ca3af;
+	font-size: 10px;
+	white-space: nowrap;
 }
 
-.mainwp-giweb-uptime-kuma-mini-bars .bar {
-	width: 3px;
-	min-height: 3px;
-	border-radius: 1px;
-	background: #9ca3af;
+.mainwp-giweb-uptime-kuma-widget.is-loading {
+	opacity: 0.55;
+	pointer-events: none;
 }
 
-.mainwp-giweb-uptime-kuma-mini-bars .bar.level-green {
-	background: #22c55e;
-	height: 12px;
-}
-
-.mainwp-giweb-uptime-kuma-mini-bars .bar.level-orange {
-	background: #f59e0b;
-	height: 9px;
-}
-
-.mainwp-giweb-uptime-kuma-mini-bars .bar.level-red {
-	background: #ef4444;
-	height: 6px;
-}
-
-.mainwp-giweb-uptime-kuma-mini-bars .bar.level-unknown {
-	opacity: 0.4;
-	height: 4px;
+@media (max-width: 600px) {
+	.giweb-ukw-grid {
+		grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+	}
 }

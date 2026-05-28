@@ -195,6 +195,61 @@ class Gi_Toolkit_Uptime_Kuma_API {
 	}
 
 	/**
+	 * Liste légère des monitors (stats uptime / ping, sans heartbeats — adapté MainWP).
+	 *
+	 * @return array<int, array<string, mixed>>|null
+	 */
+	public function get_monitors_overview() {
+		return $this->with_client(
+			function ( Gi_Toolkit_Uptime_Kuma_Socket_Client $client ) {
+				if ( empty( $this->login_client( $client )['ok'] ) ) {
+					return null;
+				}
+				$client->emit( 'getMonitorList' );
+				$client->poll_incoming( 22 );
+				$list = $client->get_last_event( 'monitorList' );
+				if ( ! is_array( $list ) ) {
+					return array();
+				}
+
+				$rows = array();
+				foreach ( $list as $key => $monitor ) {
+					if ( ! is_array( $monitor ) ) {
+						continue;
+					}
+					$monitor_id = isset( $monitor['id'] ) ? absint( $monitor['id'] ) : absint( $key );
+					if ( $monitor_id < 1 ) {
+						continue;
+					}
+					$uptime_raw = $client->get_uptime_for_monitor( $monitor_id );
+					$uptime_24  = null;
+					$uptime_30  = null;
+					if ( is_array( $uptime_raw ) ) {
+						if ( isset( $uptime_raw['24'] ) ) {
+							$uptime_24 = self::uptime_ratio_to_percent( $uptime_raw['24'] );
+						}
+						if ( isset( $uptime_raw['720'] ) ) {
+							$uptime_30 = self::uptime_ratio_to_percent( $uptime_raw['720'] );
+						}
+					}
+					$ping = $client->get_avg_ping_for_monitor( $monitor_id );
+
+					$rows[] = array(
+						'id'         => $monitor_id,
+						'name'       => (string) ( $monitor['name'] ?? '' ),
+						'url'        => isset( $monitor['url'] ) ? untrailingslashit( (string) $monitor['url'] ) : '',
+						'active'     => ! empty( $monitor['active'] ),
+						'uptime_24h' => $uptime_24,
+						'uptime_30d' => $uptime_30,
+						'avg_ping'   => null !== $ping ? (int) round( $ping ) : 0,
+					);
+				}
+				return $rows;
+			}
+		);
+	}
+
+	/**
 	 * Liste des monitors avec agrégation 24 h (une seule connexion Socket.IO).
 	 *
 	 * @return array<int, array<string, mixed>>|null
@@ -206,6 +261,7 @@ class Gi_Toolkit_Uptime_Kuma_API {
 					return null;
 				}
 				$client->emit( 'getMonitorList' );
+				$client->poll_incoming( 12 );
 				$list = $client->get_last_event( 'monitorList' );
 				if ( ! is_array( $list ) ) {
 					return array();

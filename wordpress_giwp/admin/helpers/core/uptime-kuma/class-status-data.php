@@ -336,8 +336,24 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 			);
 		}
 
-		$payload = self::aggregate_hourly_bars( $beats );
-		$payload['ready'] = true;
+		$hourly = self::aggregate_hourly_bars( $beats );
+		$check  = self::aggregate_check_bars( $beats, 50 );
+		$latest = self::latest_beat_summary( $beats );
+
+		$payload = array(
+			'ready'          => true,
+			'bars'           => $check['bars'] ?? array(),
+			'strip_from'     => $check['from_label'] ?? '',
+			'strip_to'       => $check['to_label'] ?? '',
+			'avg_ping'       => (int) ( $hourly['avg_ping'] ?? 0 ),
+			'uptime_percent' => (float) ( $hourly['uptime_percent'] ?? 0 ),
+			'current_ping'   => (int) ( $latest['ping'] ?? 0 ),
+			'status_label'   => (string) ( $latest['status_label'] ?? '' ),
+			'status_level'   => (string) ( $latest['status_level'] ?? 'unknown' ),
+			'last_check_ago' => (string) ( $latest['last_check_ago'] ?? '' ),
+			'fetched_at'     => time(),
+		);
+
 		set_transient( $cache_key, $payload, 5 * MINUTE_IN_SECONDS );
 
 		return $payload;

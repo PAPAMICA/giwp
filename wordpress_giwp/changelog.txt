@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.22.0 =
+Fix: Barre admin Uptime Kuma — barres vertes rendues côté serveur (plus de dépendance JS), bandeau type dashboard, sous-menu détaillé au survol.
+
 = 2.21.9 =
 Update: Dashboard Uptime Kuma — KPIs disponibilité 30 jours et 1 an (événements Socket.IO) à la place de Monitor / Liens.
 
