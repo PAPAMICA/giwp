@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.23.1 =
+Fix: Suivi Matomo front — injection via wp_head/wp_body_open/wp_footer, cache invalidé, diagnostic dans les réglages.
+
 = 2.23.0 =
 Add: Module Site Debug — tableau de bord diagnostic complet (WordPress, PHP, serveur, BDD, extensions, cron, cache, GI-Toolkit, intégrations, debug.log) avec export JSON.
 

@@ -62,7 +62,7 @@ class Gi_Toolkit_Matomo {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_bar_assets' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_admin_bar_assets' ) );
 
-		Gi_Toolkit_Matomo_Tracking::init();
+		add_action( 'init', array( 'Gi_Toolkit_Matomo_Tracking', 'register_hooks' ), 5 );
 	}
 
 	/**
@@ -777,6 +777,12 @@ class Gi_Toolkit_Matomo {
 							</td>
 						</tr>
 						<tr>
+							<th scope="row"><?php esc_html_e( 'État', 'gi-toolkit' ); ?></th>
+							<td>
+								<?php self::render_tracking_status_panel( $settings ); ?>
+							</td>
+						</tr>
+						<tr>
 							<th scope="row"><?php esc_html_e( 'SSL', 'gi-toolkit' ); ?></th>
 							<td>
 								<label>
@@ -1207,6 +1213,49 @@ class Gi_Toolkit_Matomo {
 			);
 			?>
 		</section>
+		<?php
+	}
+
+	/**
+	 * Affiche l’état du suivi front dans les réglages.
+	 *
+	 * @param array<string, mixed> $settings Réglages.
+	 * @return void
+	 */
+	public static function render_tracking_status_panel( array $settings ) {
+		$status = Gi_Toolkit_Matomo_Tracking::get_tracking_status();
+		$class  = ! empty( $status['ready'] ) ? 'is-ok' : 'is-warn';
+		?>
+		<div class="gi-matomo-tracking-status <?php echo esc_attr( $class ); ?>">
+			<p class="gi-matomo-tracking-status__head">
+				<?php if ( ! empty( $status['ready'] ) ) : ?>
+					<strong><?php esc_html_e( 'Prêt — le snippet sera injecté sur le site public.', 'gi-toolkit' ); ?></strong>
+				<?php else : ?>
+					<strong><?php esc_html_e( 'Suivi inactif ou incomplet :', 'gi-toolkit' ); ?></strong>
+				<?php endif; ?>
+			</p>
+			<?php if ( ! empty( $status['reasons'] ) ) : ?>
+				<ul class="gi-matomo-tracking-status__reasons">
+					<?php foreach ( (array) $status['reasons'] as $reason ) : ?>
+						<li><?php echo esc_html( $reason ); ?></li>
+					<?php endforeach; ?>
+				</ul>
+			<?php endif; ?>
+			<ul class="gi-matomo-tracking-status__checks">
+				<li><?php echo esc_html( sprintf( __( 'Module actif : %s', 'gi-toolkit' ), ! empty( $status['checks']['module_active'] ) ? 'oui' : 'non' ) ); ?></li>
+				<li><?php echo esc_html( sprintf( __( 'Injection activée : %s', 'gi-toolkit' ), ! empty( $status['checks']['tracking_enabled'] ) ? 'oui' : 'non' ) ); ?></li>
+				<li><?php echo esc_html( sprintf( __( 'ID site Matomo : %s', 'gi-toolkit' ), (string) absint( $settings['site_id'] ?? 0 ) ) ); ?></li>
+				<li><?php echo esc_html( sprintf( __( 'URL Matomo : %s', 'gi-toolkit' ), '' !== ( $settings['matomo_url'] ?? '' ) ? (string) $settings['matomo_url'] : '—' ) ); ?></li>
+				<li><?php echo esc_html( sprintf( __( 'Mode : %s', 'gi-toolkit' ), (string) ( $status['mode'] ?? 'auto' ) ) ); ?></li>
+			</ul>
+			<?php if ( ! empty( $status['code'] ) ) : ?>
+				<details class="gi-matomo-tracking-status__preview">
+					<summary><?php esc_html_e( 'Aperçu du snippet généré', 'gi-toolkit' ); ?></summary>
+					<pre><?php echo esc_html( (string) $status['code'] ); ?></pre>
+				</details>
+			<?php endif; ?>
+			<p class="description"><?php esc_html_e( 'Le code est injecté via wp_head, wp_body_open et wp_footer (une seule fois). Videz le cache de page si besoin.', 'gi-toolkit' ); ?></p>
+		</div>
 		<?php
 	}
 

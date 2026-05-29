@@ -154,6 +154,7 @@ class Gi_Toolkit_Matomo_Site {
 		$site_id = absint( $settings['site_id'] ?? 0 );
 		delete_transient( self::TRANSIENT_TRACKING . '_' . $site_id );
 		delete_transient( self::TRANSIENT_TRACKING . '_v2_' . $site_id );
+		delete_transient( self::TRANSIENT_TRACKING . '_v3_' . $site_id );
 		delete_transient( self::TRANSIENT_TRACKING );
 	}
 }
