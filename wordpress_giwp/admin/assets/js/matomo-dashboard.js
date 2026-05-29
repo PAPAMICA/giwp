@@ -77,6 +77,16 @@
 			return;
 		}
 
+		var granularity = data.granularity || 'day';
+		var maxTicks = 12;
+		if ( 'hour' === granularity ) {
+			maxTicks = 8;
+		} elseif ( 'month' === granularity ) {
+			maxTicks = 12;
+		} elseif ( labels.length > 45 ) {
+			maxTicks = 10;
+		}
+
 		var chart = new window.Chart( canvas, {
 			type: 'line',
 			data: {
@@ -123,7 +133,7 @@
 				scales: {
 					x: {
 						grid: { display: false },
-						ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+						ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: maxTicks },
 					},
 					y: {
 						beginAtZero: true,

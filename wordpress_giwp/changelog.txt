@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.23.3 =
+Fix: Dashboard Statistiques — graphique « Évolution du trafic » aligné sur la période (heure/jour/mois selon le filtre).
+
 = 2.23.2 =
 Perf: Barre admin Matomo / Uptime Kuma — plus d’appels API synchrones au chargement (cache + cron 10 min), Chart.js chargé au survol uniquement, CSS barre admin allégé, sparkline Matomo en barres CSS.
 

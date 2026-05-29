@@ -101,13 +101,13 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 	 */
 	public static function chart_period_params( $site_id, $period_key ) {
 		$map = array(
-			'today'       => array( 'period' => 'day', 'date' => 'last14' ),
-			'yesterday'   => array( 'period' => 'day', 'date' => 'last14' ),
+			'today'       => array( 'period' => 'hour', 'date' => 'today' ),
+			'yesterday'   => array( 'period' => 'hour', 'date' => 'yesterday' ),
 			'last7'       => array( 'period' => 'day', 'date' => 'last7' ),
 			'last30'      => array( 'period' => 'day', 'date' => 'last30' ),
-			'month'       => array( 'period' => 'day', 'date' => 'last30' ),
+			'month'       => array( 'period' => 'day', 'date' => wp_date( 'Y-m' ) ),
 			'last3months' => array( 'period' => 'day', 'date' => 'last90' ),
-			'lastyear'    => array( 'period' => 'week', 'date' => 'last52' ),
+			'lastyear'    => array( 'period' => 'month', 'date' => 'last12' ),
 		);
 		$p = $map[ $period_key ] ?? $map['last7'];
 
@@ -116,6 +116,21 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 			'period' => $p['period'],
 			'date'   => $p['date'],
 		);
+	}
+
+	/**
+	 * Granularité du graphique d’évolution pour une période UI.
+	 *
+	 * @param string $period_key Clé UI.
+	 * @return string hour|day|month
+	 */
+	public static function chart_granularity( $period_key ) {
+		$params = self::chart_period_params( 0, $period_key );
+		$period = (string) ( $params['period'] ?? 'day' );
+		if ( in_array( $period, array( 'hour', 'day', 'month' ), true ) ) {
+			return $period;
+		}
+		return 'day';
 	}
 
 	/**
@@ -277,7 +292,12 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 			'site_url'     => Gi_Toolkit_Matomo_Site::get_wordpress_site_url(),
 			'kpis'         => $kpis,
 			'charts'       => array(
-				'timeline'  => self::normalize_timeline_chart( $visits_series ),
+				'timeline'  => array_merge(
+					self::normalize_timeline_chart( $visits_series ),
+					array(
+						'granularity' => self::chart_granularity( $period_key ),
+					)
+				),
 				'referrers' => self::normalize_pie_chart( self::normalize_report_rows( $referrers, 'label', 'nb_visits' ) ),
 				'countries' => self::normalize_pie_chart( self::normalize_report_rows( $countries, 'label', 'nb_visits' ) ),
 				'devices'   => self::normalize_pie_chart( self::normalize_report_rows( $devices, 'label', 'nb_visits' ) ),
@@ -448,9 +468,9 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 		}
 
 		if ( self::is_assoc_date_series( $data ) ) {
-			ksort( $data );
+			$data = self::sort_series_by_date_key( $data );
 			foreach ( $data as $date => $row ) {
-				$labels[]  = self::format_chart_label( (string) $date, true );
+				$labels[]  = self::format_chart_label( (string) $date );
 				$visits[]  = is_array( $row ) ? (int) ( $row['nb_visits'] ?? 0 ) : 0;
 				$unique[]  = is_array( $row ) ? (int) ( $row['nb_uniq_visitors'] ?? 0 ) : 0;
 				$actions[] = is_array( $row ) ? (int) ( $row['nb_actions'] ?? 0 ) : 0;
@@ -486,6 +506,47 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 	}
 
 	/**
+	 * Tri chronologique des clés Matomo (jour, heure, mois).
+	 *
+	 * @param array<string, mixed> $data Série API.
+	 * @return array<string, mixed>
+	 */
+	private static function sort_series_by_date_key( array $data ) {
+		uksort(
+			$data,
+			static function ( $a, $b ) {
+				$ta = self::parse_series_key_timestamp( $a );
+				$tb = self::parse_series_key_timestamp( $b );
+				if ( null === $ta || null === $tb ) {
+					return strcmp( $a, $b );
+				}
+				return $ta <=> $tb;
+			}
+		);
+		return $data;
+	}
+
+	/**
+	 * @param string $key Clé Matomo.
+	 * @return int|null Timestamp Unix.
+	 */
+	private static function parse_series_key_timestamp( $key ) {
+		if ( preg_match( '/^(\d{4}-\d{2}-\d{2}),(\d{1,2})$/', $key, $matches ) ) {
+			$ts = strtotime( $matches[1] . ' ' . (int) $matches[2] . ':00:00' );
+			return $ts ? (int) $ts : null;
+		}
+		if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $key ) ) {
+			$ts = strtotime( $key );
+			return $ts ? (int) $ts : null;
+		}
+		if ( preg_match( '/^\d{4}-\d{2}$/', $key ) ) {
+			$ts = strtotime( $key . '-01' );
+			return $ts ? (int) $ts : null;
+		}
+		return null;
+	}
+
+	/**
 	 * @param array<string, mixed> $data Données.
 	 * @return bool
 	 */
@@ -498,6 +559,9 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 				return false;
 			}
 			if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $key ) ) {
+				continue;
+			}
+			if ( preg_match( '/^\d{4}-\d{2}-\d{2},\d{1,2}$/', $key ) ) {
 				continue;
 			}
 			if ( preg_match( '/^\d{4}-\d{2}$/', $key ) ) {
@@ -596,22 +660,24 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 	}
 
 	/**
-	 * @param string $date       Date YYYY-MM-DD ou YYYY-MM (semaine).
-	 * @param bool   $week_label Libellé court pour séries hebdomadaires.
+	 * @param string $date Clé Matomo (jour, heure ou mois).
 	 * @return string
 	 */
-	private static function format_chart_label( $date, $week_label = false ) {
+	private static function format_chart_label( $date ) {
+		if ( preg_match( '/^(\d{4}-\d{2}-\d{2}),(\d{1,2})$/', $date, $matches ) ) {
+			return sprintf( '%02d:00', (int) $matches[2] );
+		}
+
 		if ( preg_match( '/^\d{4}-\d{2}$/', $date ) ) {
 			$ts = strtotime( $date . '-01' );
 			return $ts ? wp_date( 'M Y', $ts ) : $date;
 		}
+
 		$ts = strtotime( $date );
 		if ( ! $ts ) {
 			return $date;
 		}
-		if ( $week_label && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
-			return wp_date( 'j M', $ts );
-		}
+
 		return wp_date( 'j M', $ts );
 	}
 }
