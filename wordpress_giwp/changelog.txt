@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.23.0 =
+Add: Module Site Debug — tableau de bord diagnostic complet (WordPress, PHP, serveur, BDD, extensions, cron, cache, GI-Toolkit, intégrations, debug.log) avec export JSON.
+
 = 2.22.6 =
 Fix: Suivi Matomo front — wp_kses supprimait le JavaScript inline ; génération locale du snippet (URL + ID site), validation manuelle sans strip du script.
 

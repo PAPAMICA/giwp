@@ -564,6 +564,12 @@ class Gi_Toolkit_Modules_Data {
 				'pro'           => false,
 				'path'          => 'core/class-advanced-debug-mode.php',
 			),
+			'Gi_Toolkit_Site_Debug' => array(
+				'original_name' => 'Site Debug',
+				'group'         => 'debug',
+				'pro'           => false,
+				'path'          => 'core/class-site-debug.php',
+			),
 			'Gi_Toolkit_Multiple_User_Roles' => array(
 				'original_name' => "Multiple User Roles",
 				'group'         => 'users',
@@ -1175,6 +1181,10 @@ class Gi_Toolkit_Modules_Data {
 			'Gi_Toolkit_Advanced_Debug_Mode' => array(
 				'name' => esc_html_x( "Advanced Debug Mode", "Module name", 'gi-toolkit' ),
 				'desc' => esc_html_x( "Enable advanced debug mode to log PHP errors, notices, warnings, database queries, hooks and more to help troubleshoot issues on your site.", "Module description", 'gi-toolkit' ),
+			),
+			'Gi_Toolkit_Site_Debug' => array(
+				'name' => esc_html_x( 'Site Debug', 'Module name', 'gi-toolkit' ),
+				'desc' => esc_html_x( 'Tableau de bord diagnostic complet : WordPress, PHP, serveur, BDD, extensions, cron, cache, intégrations GI-Toolkit et export JSON.', 'Module description', 'gi-toolkit' ),
 			),
 			'Gi_Toolkit_Temporary_Login' => array(
 				'name' => esc_html_x( "Temporary Login", "Module name", 'gi-toolkit' ),

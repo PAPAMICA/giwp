@@ -4,7 +4,7 @@ Tags: all in one plugin, admin, security, disable features, easy to use
 Requires at least: 6.0.0
 Tested up to: 6.9.3
 Requires PHP: 7.4
-Stable tag: 2.22.6
+Stable tag: 2.23.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -193,6 +193,9 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 4. Code snippets
 
 == Changelog ==
+
+= 2.23.0 =
+* Add: Module Site Debug — page diagnostic exhaustive avec synthèse, sections détaillées et export JSON.
 
 = 2.22.6 =
 * Fix: Injection code suivi Matomo sur le site public (snippet généré localement, JS inline conservé).
