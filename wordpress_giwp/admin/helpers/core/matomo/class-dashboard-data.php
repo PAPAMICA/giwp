@@ -134,6 +134,177 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 	}
 
 	/**
+	 * Série temporelle pour le graphique principal (selon la période UI).
+	 *
+	 * @param Gi_Toolkit_Matomo_API $api        Client API.
+	 * @param int                   $site_id    ID site Matomo.
+	 * @param string                $period_key Clé UI.
+	 * @return array{labels:array<int,string>, visits:array<int,int>, unique:array<int,int>, actions:array<int,int>, granularity:string}
+	 */
+	public static function fetch_timeline_chart( Gi_Toolkit_Matomo_API $api, $site_id, $period_key ) {
+		$site_id = absint( $site_id );
+		if ( $site_id < 1 ) {
+			return self::empty_timeline_chart( 'day' );
+		}
+
+		if ( in_array( $period_key, array( 'today', 'yesterday' ), true ) ) {
+			$period = self::resolve_period( $period_key );
+			$hourly = $api->request(
+				'VisitTime.getVisitInformationPerServerTime',
+				array(
+					'idSite' => $site_id,
+					'period' => $period['period'],
+					'date'   => $period['date'],
+				)
+			);
+			$chart = self::normalize_hourly_visit_time( $hourly );
+			if ( ! empty( $chart['labels'] ) ) {
+				return $chart;
+			}
+
+			$date = 'today' === $period_key
+				? wp_date( 'Y-m-d' )
+				: wp_date( 'Y-m-d', strtotime( '-1 day', current_time( 'timestamp' ) ) );
+
+			$series = $api->request(
+				'VisitsSummary.get',
+				array(
+					'idSite' => $site_id,
+					'period' => 'hour',
+					'date'   => $date,
+				)
+			);
+
+			return array_merge(
+				self::normalize_timeline_chart( $series ),
+				array( 'granularity' => 'hour' )
+			);
+		}
+
+		$chart_period = self::chart_period_params( $site_id, $period_key );
+		$series       = $api->request( 'VisitsSummary.get', $chart_period );
+
+		return array_merge(
+			self::normalize_timeline_chart( $series ),
+			array( 'granularity' => self::chart_granularity( $period_key ) )
+		);
+	}
+
+	/**
+	 * @param string $granularity hour|day|month.
+	 * @return array{labels:array<int,string>, visits:array<int,int>, unique:array<int,int>, actions:array<int,int>, granularity:string}
+	 */
+	private static function empty_timeline_chart( $granularity = 'day' ) {
+		return array(
+			'labels'      => array(),
+			'visits'      => array(),
+			'unique'      => array(),
+			'actions'     => array(),
+			'granularity' => $granularity,
+		);
+	}
+
+	/**
+	 * Visites par heure (0–23) depuis VisitTime.getVisitInformationPerServerTime.
+	 *
+	 * @param mixed $data Réponse API.
+	 * @return array{labels:array<int,string>, visits:array<int,int>, unique:array<int,int>, actions:array<int,int>, granularity:string}
+	 */
+	private static function normalize_hourly_visit_time( $data ) {
+		$hours = array();
+		for ( $h = 0; $h < 24; $h++ ) {
+			$hours[ $h ] = array(
+				'visits'  => 0,
+				'unique'  => 0,
+				'actions' => 0,
+			);
+		}
+
+		$rows = self::unwrap_series_rows( $data );
+		if ( ! is_array( $rows ) ) {
+			return self::empty_timeline_chart( 'hour' );
+		}
+
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			$hour = self::parse_hour_label( $row['label'] ?? '' );
+			if ( null === $hour || $hour < 0 || $hour > 23 ) {
+				continue;
+			}
+			$hours[ $hour ]['visits']  = (int) ( $row['nb_visits'] ?? 0 );
+			$hours[ $hour ]['unique']  = (int) ( $row['nb_uniq_visitors'] ?? 0 );
+			$hours[ $hour ]['actions'] = (int) ( $row['nb_actions'] ?? 0 );
+		}
+
+		$labels  = array();
+		$visits  = array();
+		$unique  = array();
+		$actions = array();
+		for ( $h = 0; $h < 24; $h++ ) {
+			$labels[]  = sprintf( '%02d:00', $h );
+			$visits[]  = $hours[ $h ]['visits'];
+			$unique[]  = $hours[ $h ]['unique'];
+			$actions[] = $hours[ $h ]['actions'];
+		}
+
+		return array(
+			'labels'      => $labels,
+			'visits'      => $visits,
+			'unique'      => $unique,
+			'actions'     => $actions,
+			'granularity' => 'hour',
+		);
+	}
+
+	/**
+	 * Extrait les lignes d’une réponse Matomo (DataTable JSON).
+	 *
+	 * @param mixed $data Réponse API.
+	 * @return array<int|string, mixed>|null
+	 */
+	private static function unwrap_series_rows( $data ) {
+		if ( ! is_array( $data ) ) {
+			return null;
+		}
+		if ( isset( $data['rows'] ) && is_array( $data['rows'] ) ) {
+			return $data['rows'];
+		}
+		if ( isset( $data['subtable'] ) && is_array( $data['subtable'] ) ) {
+			return $data['subtable'];
+		}
+		return $data;
+	}
+
+	/**
+	 * @param mixed $label Libellé heure Matomo.
+	 * @return int|null
+	 */
+	private static function parse_hour_label( $label ) {
+		$label = trim( (string) $label );
+		if ( '' === $label ) {
+			return null;
+		}
+		if ( preg_match( '/^(\d{4}-\d{2}-\d{2}),(\d{1,2})$/', $label, $matches ) ) {
+			return (int) $matches[2];
+		}
+		if ( preg_match( '/^(\d{4}-\d{2}-\d{2})[ T](\d{1,2})/', $label, $matches ) ) {
+			return (int) $matches[2];
+		}
+		if ( preg_match( '/^(\d{1,2})\s*[-–]/u', $label, $matches ) ) {
+			return (int) $matches[1];
+		}
+		if ( preg_match( '/^(\d{1,2})h\b/u', $label, $matches ) ) {
+			return (int) $matches[1];
+		}
+		if ( preg_match( '/^\d{1,2}$/', $label ) ) {
+			return (int) $label;
+		}
+		return null;
+	}
+
+	/**
 	 * Données sparkline pour la barre d’administration (cache 15 min, préchauffé par cron).
 	 *
 	 * @param array<string, mixed> $settings      Réglages.
@@ -283,14 +454,7 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 			);
 		}
 
-		$chart_period = self::chart_period_params( $site_id, $period_key );
-		$visits_series  = $api->request(
-			'VisitsSummary.get',
-			array_merge(
-				$chart_period,
-				array( 'expanded' => 1 )
-			)
-		);
+		$timeline_chart = self::fetch_timeline_chart( $api, $site_id, $period_key );
 		$pages          = $api->request( 'Actions.getPageUrls', array_merge( $base, array( 'filter_limit' => 8, 'expanded' => 0 ) ) );
 		$referrers      = $api->request( 'Referrers.getReferrerType', array_merge( $base, array( 'filter_limit' => 8 ) ) );
 		$countries      = $api->request( 'UserCountry.getCountry', array_merge( $base, array( 'filter_limit' => 8 ) ) );
@@ -309,12 +473,7 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 			'site_url'     => Gi_Toolkit_Matomo_Site::get_wordpress_site_url(),
 			'kpis'         => $kpis,
 			'charts'       => array(
-				'timeline'  => array_merge(
-					self::normalize_timeline_chart( $visits_series ),
-					array(
-						'granularity' => self::chart_granularity( $period_key ),
-					)
-				),
+				'timeline'  => $timeline_chart,
 				'referrers' => self::normalize_pie_chart( self::normalize_report_rows( $referrers, 'label', 'nb_visits' ) ),
 				'countries' => self::normalize_pie_chart( self::normalize_report_rows( $countries, 'label', 'nb_visits' ) ),
 				'devices'   => self::normalize_pie_chart( self::normalize_report_rows( $devices, 'label', 'nb_visits' ) ),
@@ -480,6 +639,7 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 		$unique  = array();
 		$actions = array();
 
+		$data = self::unwrap_series_rows( $data );
 		if ( ! is_array( $data ) ) {
 			return compact( 'labels', 'visits', 'unique', 'actions' );
 		}

@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.23.6 =
+Fix: Graphique horaire Statistiques — API VisitTime (24 points) pour Aujourd’hui / Hier, avec repli VisitsSummary.
+
 = 2.23.5 =
 Fix: Graphique « Évolution du trafic » — prise en charge des séries horaires Matomo (Aujourd’hui / Hier).
 
