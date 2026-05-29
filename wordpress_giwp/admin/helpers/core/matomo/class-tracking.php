@@ -8,6 +8,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Gi_Toolkit_Matomo_Tracking {
 
+	/** @var string Suffixe cache (invalidation après correctif wp_kses). */
+	const TRANSIENT_SUFFIX = '_v2_';
+
 	/**
 	 * @return void
 	 */
@@ -63,7 +66,7 @@ class Gi_Toolkit_Matomo_Tracking {
 			return;
 		}
 
-		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- script Matomo fourni par l’API ou saisi par l’admin.
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- script Matomo validé ou généré localement.
 		echo "\n" . $code . "\n";
 	}
 
@@ -87,28 +90,62 @@ class Gi_Toolkit_Matomo_Tracking {
 		}
 
 		$site_id = absint( $settings['site_id'] ?? 0 );
-		$key     = Gi_Toolkit_Matomo_Site::TRANSIENT_TRACKING . '_' . $site_id;
+		$key     = Gi_Toolkit_Matomo_Site::TRANSIENT_TRACKING . self::TRANSIENT_SUFFIX . $site_id;
 		$cached  = get_transient( $key );
 		if ( is_string( $cached ) && '' !== $cached ) {
 			return (string) apply_filters( 'gi_toolkit_matomo_tracking_code', $cached, $settings );
 		}
 
-		$api = new Gi_Toolkit_Matomo_API( $settings );
-		$tag = $api->request(
-			'SitesManager.getJavascriptTag',
-			array(
-				'idSite' => $site_id,
-			)
-		);
-
-		if ( ! is_string( $tag ) || '' === $tag ) {
+		$tag = self::build_tracking_code( $settings );
+		if ( '' === $tag ) {
 			return '';
 		}
 
-		$tag = self::sanitize_tracking_code( $tag );
 		set_transient( $key, $tag, DAY_IN_SECONDS );
 
 		return (string) apply_filters( 'gi_toolkit_matomo_tracking_code', $tag, $settings );
+	}
+
+	/**
+	 * Génère le snippet Matomo standard à partir de l’URL et de l’ID site.
+	 *
+	 * @param array<string, mixed> $settings Réglages.
+	 * @return string
+	 */
+	public static function build_tracking_code( array $settings ) {
+		self::ensure_api_loaded();
+
+		$base    = Gi_Toolkit_Matomo_API::normalize_matomo_url( $settings['matomo_url'] ?? '' );
+		$site_id = absint( $settings['site_id'] ?? 0 );
+
+		if ( '' === $base || $site_id < 1 ) {
+			return '';
+		}
+
+		$tracker_base = trailingslashit( $base );
+		$pixel_url    = esc_url( $tracker_base . 'matomo.php?idsite=' . $site_id . '&rec=1' );
+
+		ob_start();
+		?>
+<!-- Matomo -->
+<script>
+var _paq = window._paq = window._paq || [];
+_paq.push(['trackPageView']);
+_paq.push(['enableLinkTracking']);
+(function () {
+	var u = <?php echo wp_json_encode( $tracker_base ); ?>;
+	_paq.push(['setTrackerUrl', u + 'matomo.php']);
+	_paq.push(['setSiteId', <?php echo wp_json_encode( (string) $site_id ); ?>]);
+	var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
+	g.async = true;
+	g.src = u + 'matomo.js';
+	s.parentNode.insertBefore(g, s);
+})();
+</script>
+<noscript><p><img referrerpolicy="no-referrer-when-downgrade" src="<?php echo esc_url( $pixel_url ); ?>" style="border:0;" alt="" /></p></noscript>
+<!-- End Matomo Code -->
+		<?php
+		return trim( (string) ob_get_clean() );
 	}
 
 	/**
@@ -120,25 +157,47 @@ class Gi_Toolkit_Matomo_Tracking {
 		if ( '' === $code ) {
 			return '';
 		}
-		// Autoriser script, noscript, commentaires Matomo.
-		$allowed = array(
-			'script'   => array(
-				'type'    => true,
-				'src'     => true,
-				'async'   => true,
-				'defer'   => true,
-				'charset' => true,
-			),
-			'noscript' => array(),
-			'img'      => array(
-				'src'    => true,
-				'alt'    => true,
-				'width'  => true,
-				'height' => true,
-				'style'  => true,
-			),
-			'p'        => array(),
-		);
-		return wp_kses( $code, $allowed );
+
+		if ( ! self::is_allowed_tracking_code( $code ) ) {
+			return '';
+		}
+
+		return $code;
+	}
+
+	/**
+	 * Valide un snippet Matomo sans wp_kses (qui supprime le JS inline).
+	 *
+	 * @param string $code Code brut.
+	 * @return bool
+	 */
+	public static function is_allowed_tracking_code( $code ) {
+		$code = trim( (string) $code );
+		if ( '' === $code ) {
+			return false;
+		}
+
+		if ( ! preg_match( '/_paq|matomo\.js|piwik\.js|matomo\.php|piwik\.php/i', $code ) ) {
+			return false;
+		}
+
+		if ( preg_match( '/\bon\w+\s*=|javascript\s*:/i', $code ) ) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * @return void
+	 */
+	private static function ensure_api_loaded() {
+		if ( class_exists( 'Gi_Toolkit_Matomo_API', false ) ) {
+			return;
+		}
+		$path = GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/matomo/class-api.php';
+		if ( is_readable( $path ) ) {
+			require_once $path;
+		}
 	}
 }

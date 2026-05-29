@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.22.6 =
+Fix: Suivi Matomo front — wp_kses supprimait le JavaScript inline ; génération locale du snippet (URL + ID site), validation manuelle sans strip du script.
+
 = 2.22.5 =
 Add: Module SMTP — variables dynamiques $website_name et $website_url (nom et domaine du site) pour expéditeur, résolues à l’envoi et compatibles déploiement MainWP.
 

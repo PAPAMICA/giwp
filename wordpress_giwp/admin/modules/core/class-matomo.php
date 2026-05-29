@@ -766,7 +766,7 @@ class Gi_Toolkit_Matomo {
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Mode', 'gi-toolkit' ); ?></th>
 							<td>
-								<label><input type="radio" name="track_mode" value="auto" <?php checked( 'auto', $settings['track_mode'] ); ?> /> <?php esc_html_e( 'Automatique (via API)', 'gi-toolkit' ); ?></label><br />
+								<label><input type="radio" name="track_mode" value="auto" <?php checked( 'auto', $settings['track_mode'] ); ?> /> <?php esc_html_e( 'Automatique (URL Matomo + ID site)', 'gi-toolkit' ); ?></label><br />
 								<label><input type="radio" name="track_mode" value="manual" <?php checked( 'manual', $settings['track_mode'] ); ?> /> <?php esc_html_e( 'Code manuel', 'gi-toolkit' ); ?></label>
 							</td>
 						</tr>
