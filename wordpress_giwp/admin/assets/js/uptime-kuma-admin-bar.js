@@ -3,8 +3,13 @@
 
 	var cfg = window.giToolkitUptimeKumaAdminBar || {};
 	var chartData = cfg.chart || {};
+	var chartInitialized = false;
 
 	function initPingChart() {
+		if ( chartInitialized ) {
+			return;
+		}
+
 		var canvas = document.getElementById( 'gi-uptime-kuma-ab-chart' );
 		if ( ! canvas || typeof window.Chart === 'undefined' ) {
 			return;
@@ -15,6 +20,8 @@
 		if ( ! values.length ) {
 			return;
 		}
+
+		chartInitialized = true;
 
 		var maxVal = Math.max.apply( null, values );
 		var yMax = Math.max( 50, Math.ceil( maxVal * 1.15 / 10 ) * 10 );
@@ -88,9 +95,49 @@
 		} );
 	}
 
+	function loadChartJs( callback ) {
+		if ( typeof window.Chart !== 'undefined' ) {
+			callback();
+			return;
+		}
+
+		var url = cfg.chartJsUrl;
+		if ( ! url ) {
+			return;
+		}
+
+		var existing = document.querySelector( 'script[data-gi-chartjs="1"]' );
+		if ( existing ) {
+			existing.addEventListener( 'load', callback, { once: true } );
+			return;
+		}
+
+		var script = document.createElement( 'script' );
+		script.src = url;
+		script.async = true;
+		script.setAttribute( 'data-gi-chartjs', '1' );
+		script.addEventListener( 'load', callback, { once: true } );
+		document.head.appendChild( script );
+	}
+
+	function bindLazyChart() {
+		var menu = document.getElementById( 'wp-admin-bar-gi-uptime-kuma-toolbar-stats' );
+		if ( ! menu ) {
+			return;
+		}
+
+		menu.addEventListener(
+			'mouseenter',
+			function () {
+				loadChartJs( initPingChart );
+			},
+			{ once: true }
+		);
+	}
+
 	if ( document.readyState === 'loading' ) {
-		document.addEventListener( 'DOMContentLoaded', initPingChart );
+		document.addEventListener( 'DOMContentLoaded', bindLazyChart );
 	} else {
-		initPingChart();
+		bindLazyChart();
 	}
 } )();

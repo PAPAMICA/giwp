@@ -302,10 +302,13 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 	}
 
 	/**
-	 * @param array<string, mixed> $settings Réglages.
+	 * @param array<string, mixed> $settings      Réglages.
+	 * @param bool                 $allow_network Autoriser un appel API (sinon cache / stale uniquement).
 	 * @return array<string, mixed>
 	 */
-	public static function fetch_toolbar( array $settings ) {
+	public static function fetch_toolbar( array $settings, $allow_network = true ) {
+		static $memo = array();
+
 		$monitor_id = absint( $settings['monitor_id'] ?? 0 );
 		if ( $monitor_id < 1 ) {
 			return array(
@@ -314,10 +317,31 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 			);
 		}
 
+		$memo_key = $monitor_id . '|' . ( $allow_network ? '1' : '0' );
+		if ( isset( $memo[ $memo_key ] ) ) {
+			return $memo[ $memo_key ];
+		}
+
 		$cache_key = self::TRANSIENT_TOOLBAR . $monitor_id;
 		$cached    = get_transient( $cache_key );
 		if ( is_array( $cached ) ) {
+			$memo[ $memo_key ] = $cached;
 			return $cached;
+		}
+
+		$stale_key = 'gi_uptime_kuma_toolbar_stale_' . $monitor_id;
+		$stale     = get_option( $stale_key, array() );
+		if ( ! $allow_network ) {
+			if ( is_array( $stale ) && ! empty( $stale['ready'] ) ) {
+				$stale['stale']      = true;
+				$memo[ $memo_key ] = $stale;
+				return $stale;
+			}
+			$memo[ $memo_key ] = array(
+				'ready'   => false,
+				'message' => __( 'Données en cours de synchronisation…', 'gi-toolkit' ),
+			);
+			return $memo[ $memo_key ];
 		}
 
 		$api = new Gi_Toolkit_Uptime_Kuma_API( $settings );
@@ -330,6 +354,11 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 
 		$beats = $api->get_monitor_beats( $monitor_id, 24 );
 		if ( ! is_array( $beats ) ) {
+			if ( is_array( $stale ) && ! empty( $stale['ready'] ) ) {
+				$stale['stale']      = true;
+				$memo[ $memo_key ] = $stale;
+				return $stale;
+			}
 			return array(
 				'ready'   => false,
 				'message' => $api->get_last_error() ?: __( 'Données indisponibles.', 'gi-toolkit' ),
@@ -374,8 +403,10 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 			'fetched_at'     => time(),
 		);
 
-		set_transient( $cache_key, $payload, 5 * MINUTE_IN_SECONDS );
+		set_transient( $cache_key, $payload, 15 * MINUTE_IN_SECONDS );
+		update_option( $stale_key, $payload, false );
 
+		$memo[ $memo_key ] = $payload;
 		return $payload;
 	}
 

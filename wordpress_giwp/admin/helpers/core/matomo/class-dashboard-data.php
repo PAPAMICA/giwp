@@ -119,21 +119,42 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 	}
 
 	/**
-	 * Données sparkline pour la barre d’administration (cache 5 min).
+	 * Données sparkline pour la barre d’administration (cache 15 min, préchauffé par cron).
 	 *
-	 * @param array<string, mixed> $settings Réglages.
-	 * @return array{success:bool, visits?:int, labels?:array<int,string>, values?:array<int,int>, message?:string}
+	 * @param array<string, mixed> $settings      Réglages.
+	 * @param bool                 $allow_network Autoriser un appel API (sinon cache / stale uniquement).
+	 * @return array{success:bool, visits?:int, labels?:array<int,string>, values?:array<int,int>, message?:string, stale?:bool}
 	 */
-	public static function fetch_toolbar_sparkline( array $settings ) {
+	public static function fetch_toolbar_sparkline( array $settings, $allow_network = true ) {
+		static $memo = array();
+
 		$site_id = absint( $settings['site_id'] ?? 0 );
 		if ( $site_id < 1 ) {
 			return array( 'success' => false );
 		}
 
-		$cache_key = 'gi_matomo_toolbar_v2_' . $site_id;
+		$memo_key = $site_id . '|' . ( $allow_network ? '1' : '0' );
+		if ( isset( $memo[ $memo_key ] ) ) {
+			return $memo[ $memo_key ];
+		}
+
+		$cache_key = 'gi_matomo_toolbar_v3_' . $site_id;
 		$cached    = get_transient( $cache_key );
 		if ( is_array( $cached ) && ! empty( $cached['success'] ) ) {
+			$memo[ $memo_key ] = $cached;
 			return $cached;
+		}
+
+		$stale_key = 'gi_matomo_toolbar_stale_' . $site_id;
+		$stale     = get_option( $stale_key, array() );
+		if ( ! $allow_network ) {
+			if ( is_array( $stale ) && ! empty( $stale['success'] ) ) {
+				$stale['stale']      = true;
+				$memo[ $memo_key ] = $stale;
+				return $stale;
+			}
+			$memo[ $memo_key ] = array( 'success' => false );
+			return $memo[ $memo_key ];
 		}
 
 		$api    = new Gi_Toolkit_Matomo_API( $settings );
@@ -147,6 +168,11 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 		);
 
 		if ( null === $series ) {
+			if ( is_array( $stale ) && ! empty( $stale['success'] ) ) {
+				$stale['stale']      = true;
+				$memo[ $memo_key ] = $stale;
+				return $stale;
+			}
 			return array(
 				'success' => false,
 				'message' => $api->get_last_error(),
@@ -174,10 +200,13 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 			'values'        => $visits7,
 			'chart_unique'  => $unique7,
 			'chart_actions' => $actions7,
+			'fetched_at'    => time(),
 		);
 
-		set_transient( $cache_key, $result, 5 * MINUTE_IN_SECONDS );
+		set_transient( $cache_key, $result, 15 * MINUTE_IN_SECONDS );
+		update_option( $stale_key, $result, false );
 
+		$memo[ $memo_key ] = $result;
 		return $result;
 	}
 

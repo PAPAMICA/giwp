@@ -603,6 +603,13 @@ class Gi_Toolkit_Matomo {
 		$site_id = absint( $settings['site_id'] ?? 0 );
 		if ( $site_id > 0 ) {
 			delete_transient( 'gi_matomo_toolbar_' . $site_id );
+			delete_transient( 'gi_matomo_toolbar_v2_' . $site_id );
+			delete_transient( 'gi_matomo_toolbar_v3_' . $site_id );
+			delete_option( 'gi_matomo_toolbar_stale_' . $site_id );
+		}
+
+		if ( class_exists( 'Gi_Toolkit_Monitoring_Toolbar_Cron', false ) ) {
+			wp_schedule_single_event( time() + 5, Gi_Toolkit_Monitoring_Toolbar_Cron::CRON_HOOK );
 		}
 
 		return array(
@@ -806,6 +813,62 @@ class Gi_Toolkit_Matomo {
 	}
 
 	/**
+	 * Données barre admin (une seule lecture par requête, sans appel API).
+	 *
+	 * @param array<string, mixed>|null $settings Réglages ou null pour les lire depuis les options.
+	 * @return array<string, mixed>
+	 */
+	public static function get_admin_bar_data( $settings = null ) {
+		static $data = null;
+
+		if ( null !== $data ) {
+			return $data;
+		}
+
+		if ( null === $settings ) {
+			$settings = self::get_settings_static();
+		}
+
+		if ( ! self::is_dashboard_ready( $settings ) ) {
+			$data = array( 'success' => false );
+			return $data;
+		}
+
+		$data = Gi_Toolkit_Matomo_Dashboard_Data::fetch_toolbar_sparkline( $settings, false );
+		return $data;
+	}
+
+	/**
+	 * Bandeau de barres visites (rendu serveur, sans Chart.js).
+	 *
+	 * @param array<int, int> $values Visites par jour.
+	 * @return string
+	 */
+	public static function render_admin_bar_bars_html( array $values ) {
+		if ( empty( $values ) ) {
+			return '<span class="gi-matomo-ab-bars gi-matomo-ab-bars--empty" aria-hidden="true"></span>';
+		}
+
+		$max = max( array_map( 'intval', $values ) );
+		if ( $max < 1 ) {
+			$max = 1;
+		}
+
+		$html = '<span class="gi-matomo-ab-bars" aria-hidden="true">';
+		foreach ( $values as $value ) {
+			$value = (int) $value;
+			$pct   = (int) max( 15, min( 100, round( ( $value / $max ) * 100 ) ) );
+			$html .= sprintf(
+				'<span class="gi-matomo-ab-bar" style="height:%d%%"></span>',
+				$pct
+			);
+		}
+		$html .= '</span>';
+
+		return $html;
+	}
+
+	/**
 	 * Graphique visites dans la barre d’administration (style wp-piwik).
 	 *
 	 * @param WP_Admin_Bar $wp_admin_bar Barre admin.
@@ -821,14 +884,15 @@ class Gi_Toolkit_Matomo {
 			return;
 		}
 
-		$data = Gi_Toolkit_Matomo_Dashboard_Data::fetch_toolbar_sparkline( $settings );
+		$data = self::get_admin_bar_data( $settings );
 		if ( empty( $data['success'] ) ) {
 			return;
 		}
 
 		$visits = number_format_i18n( (int) ( $data['visits'] ?? 0 ) );
 		$title  = sprintf(
-			'<span class="gi-matomo-ab-wrap"><span class="gi-matomo-ab-count"><strong>%1$s</strong> <small>%2$s</small></span><canvas id="gi-matomo-ab-chart" width="120" height="28" aria-hidden="true"></canvas></span>',
+			'<span class="gi-matomo-ab-wrap">%s<span class="gi-matomo-ab-count"><strong>%s</strong> <small>%s</small></span></span>',
+			self::render_admin_bar_bars_html( $data['values'] ?? array() ),
 			esc_html( $visits ),
 			esc_html__( '7 j', 'gi-toolkit' )
 		);
@@ -959,30 +1023,29 @@ class Gi_Toolkit_Matomo {
 			return;
 		}
 
-		$data = Gi_Toolkit_Matomo_Dashboard_Data::fetch_toolbar_sparkline( $settings );
+		$data = self::get_admin_bar_data( $settings );
 		if ( empty( $data['success'] ) ) {
 			return;
 		}
 
 		$version = defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '1.0.0';
+		$has_chart = ! empty( $data['values'] ) && is_array( $data['values'] );
 
 		wp_enqueue_style(
-			'gi-toolkit-matomo',
-			GI_TOOLKIT_PLUGIN_URL . 'admin/assets/css/matomo.css',
+			'gi-toolkit-matomo-admin-bar',
+			GI_TOOLKIT_PLUGIN_URL . 'admin/assets/css/matomo-admin-bar.css',
 			array(),
 			$version
 		);
-		wp_enqueue_script(
-			'chartjs',
-			'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
-			array(),
-			'4.4.1',
-			true
-		);
+
+		if ( ! $has_chart ) {
+			return;
+		}
+
 		wp_enqueue_script(
 			'gi-toolkit-matomo-admin-bar',
 			GI_TOOLKIT_PLUGIN_URL . 'admin/assets/js/matomo-admin-bar.js',
-			array( 'chartjs' ),
+			array(),
 			$version,
 			true
 		);
@@ -990,18 +1053,15 @@ class Gi_Toolkit_Matomo {
 			'gi-toolkit-matomo-admin-bar',
 			'giToolkitMatomoAdminBar',
 			array(
-				'sparkline' => array(
-					'labels' => $data['labels'] ?? array(),
-					'values' => $data['values'] ?? array(),
-				),
-				'flyout'    => array(
+				'chartJsUrl' => 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+				'flyout'     => array(
 					'labels'  => $data['labels'] ?? array(),
 					'visits'  => $data['values'] ?? array(),
 					'unique'  => $data['chart_unique'] ?? array(),
 					'actions' => $data['chart_actions'] ?? array(),
 				),
-				'statsUrl'  => admin_url( 'admin.php?page=' . self::STATS_PAGE_SLUG ),
-				'i18n'      => array(
+				'statsUrl'   => admin_url( 'admin.php?page=' . self::STATS_PAGE_SLUG ),
+				'i18n'       => array(
 					'visits'  => __( 'Visites', 'gi-toolkit' ),
 					'unique'  => __( 'Visiteurs uniques', 'gi-toolkit' ),
 					'actions' => __( 'Pages vues', 'gi-toolkit' ),

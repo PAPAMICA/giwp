@@ -2,9 +2,9 @@
 	'use strict';
 
 	var cfg = window.giToolkitMatomoAdminBar || {};
-	var sparkline = cfg.sparkline || {};
 	var flyout = cfg.flyout || {};
 	var i18n = cfg.i18n || {};
+	var chartInitialized = false;
 
 	function formatCount( value ) {
 		var n = Number( value ) || 0;
@@ -15,99 +15,11 @@
 		}
 	}
 
-	function buildChartOptions( showAxes ) {
-		var values = sparkline.values || [];
-		var maxVal = values.length ? Math.max.apply( null, values ) : 0;
-		var yMax = Math.max( 5, Math.ceil( maxVal * 1.15 ) );
-
-		return {
-			responsive: false,
-			maintainAspectRatio: false,
-			animation: false,
-			layout: {
-				padding: showAxes ? { left: 0, right: 4, top: 2, bottom: 0 } : { top: 0, bottom: 0, left: 0, right: 0 },
-			},
-			plugins: {
-				legend: { display: false },
-				tooltip: {
-					enabled: showAxes,
-					callbacks: {
-						label: function ( context ) {
-							return formatCount( context.parsed.y );
-						},
-					},
-				},
-			},
-			scales: showAxes
-				? {
-					x: {
-						display: true,
-						grid: { display: false },
-						ticks: {
-							maxTicksLimit: 4,
-							maxRotation: 0,
-							color: 'rgba(167, 170, 173, 0.95)',
-							font: { size: 9 },
-						},
-						border: { display: false },
-					},
-					y: {
-						display: true,
-						min: 0,
-						max: yMax,
-						grid: { color: 'rgba(255, 255, 255, 0.08)' },
-						ticks: {
-							maxTicksLimit: 3,
-							color: 'rgba(167, 170, 173, 0.95)',
-							font: { size: 9 },
-							callback: function ( value ) {
-								return formatCount( value );
-							},
-						},
-						border: { display: false },
-					},
-				}
-				: {
-					x: { display: false },
-					y: { display: false },
-				},
-		};
-	}
-
-	function initSparkline() {
-		var canvas = document.getElementById( 'gi-matomo-ab-chart' );
-		if ( ! canvas || typeof window.Chart === 'undefined' ) {
-			return;
-		}
-
-		var values = sparkline.values || [];
-		var labels = sparkline.labels || [];
-		if ( ! values.length ) {
-			return;
-		}
-
-		new window.Chart( canvas, {
-			type: 'line',
-			data: {
-				labels: labels,
-				datasets: [
-					{
-						data: values,
-						borderColor: 'rgba(255, 255, 255, 0.95)',
-						backgroundColor: 'rgba(114, 174, 230, 0.25)',
-						borderWidth: 2,
-						fill: true,
-						pointRadius: 0,
-						pointHoverRadius: 3,
-						tension: 0.35,
-					},
-				],
-			},
-			options: buildChartOptions( false ),
-		} );
-	}
-
 	function initFlyoutChart() {
+		if ( chartInitialized ) {
+			return;
+		}
+
 		var canvas = document.getElementById( 'gi-matomo-ab-chart-detail' );
 		if ( ! canvas || typeof window.Chart === 'undefined' ) {
 			return;
@@ -118,6 +30,8 @@
 		if ( ! visits.length ) {
 			return;
 		}
+
+		chartInitialized = true;
 
 		var flyoutMax = Math.max.apply( null, visits );
 		var yMax = Math.max( 5, Math.ceil( flyoutMax * 1.15 ) );
@@ -203,14 +117,49 @@
 		} );
 	}
 
-	function init() {
-		initSparkline();
-		initFlyoutChart();
+	function loadChartJs( callback ) {
+		if ( typeof window.Chart !== 'undefined' ) {
+			callback();
+			return;
+		}
+
+		var url = cfg.chartJsUrl;
+		if ( ! url ) {
+			return;
+		}
+
+		var existing = document.querySelector( 'script[data-gi-chartjs="1"]' );
+		if ( existing ) {
+			existing.addEventListener( 'load', callback, { once: true } );
+			return;
+		}
+
+		var script = document.createElement( 'script' );
+		script.src = url;
+		script.async = true;
+		script.setAttribute( 'data-gi-chartjs', '1' );
+		script.addEventListener( 'load', callback, { once: true } );
+		document.head.appendChild( script );
+	}
+
+	function bindLazyChart() {
+		var menu = document.getElementById( 'wp-admin-bar-gi-matomo-toolbar-stats' );
+		if ( ! menu ) {
+			return;
+		}
+
+		menu.addEventListener(
+			'mouseenter',
+			function () {
+				loadChartJs( initFlyoutChart );
+			},
+			{ once: true }
+		);
 	}
 
 	if ( document.readyState === 'loading' ) {
-		document.addEventListener( 'DOMContentLoaded', init );
+		document.addEventListener( 'DOMContentLoaded', bindLazyChart );
 	} else {
-		init();
+		bindLazyChart();
 	}
 } )();

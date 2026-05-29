@@ -150,6 +150,8 @@ class Gi_Toolkit {
 		 */
 		require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/class-modules-data.php';
 
+		require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/class-monitoring-toolbar-cron.php';
+
 		/**
 		 * The class responsible for handling the options of the plugin.
 		 */

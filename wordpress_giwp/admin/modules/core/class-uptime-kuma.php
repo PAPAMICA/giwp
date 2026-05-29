@@ -148,6 +148,11 @@ class Gi_Toolkit_Uptime_Kuma {
 		}
 		delete_transient( Gi_Toolkit_Uptime_Kuma_Status_Data::TRANSIENT_DASHBOARD . $monitor_id );
 		delete_transient( Gi_Toolkit_Uptime_Kuma_Status_Data::TRANSIENT_TOOLBAR . $monitor_id );
+		delete_option( 'gi_uptime_kuma_toolbar_stale_' . $monitor_id );
+
+		if ( class_exists( 'Gi_Toolkit_Monitoring_Toolbar_Cron', false ) ) {
+			wp_schedule_single_event( time() + 5, Gi_Toolkit_Monitoring_Toolbar_Cron::CRON_HOOK );
+		}
 	}
 
 	/**
@@ -613,11 +618,32 @@ class Gi_Toolkit_Uptime_Kuma {
 		return $settings;
 	}
 
+	/**
+	 * Données barre admin (une seule lecture par requête, sans appel API).
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function get_admin_bar_data() {
+		static $data = null;
+
+		if ( null !== $data ) {
+			return $data;
+		}
+
+		if ( ! self::is_toolbar_ready() ) {
+			$data = array( 'ready' => false );
+			return $data;
+		}
+
+		$data = Gi_Toolkit_Uptime_Kuma_Status_Data::fetch_toolbar( self::get_settings_static(), false );
+		return $data;
+	}
+
 	public function register_admin_bar_stats( $wp_admin_bar ) {
 		if ( ! is_admin_bar_showing() || ! current_user_can( 'manage_options' ) || ! self::is_toolbar_ready() ) {
 			return;
 		}
-		$data = Gi_Toolkit_Uptime_Kuma_Status_Data::fetch_toolbar( self::get_settings_static() );
+		$data = self::get_admin_bar_data();
 		if ( empty( $data['ready'] ) ) {
 			return;
 		}
@@ -860,26 +886,24 @@ class Gi_Toolkit_Uptime_Kuma {
 		if ( ! is_admin_bar_showing() || ! current_user_can( 'manage_options' ) || ! self::is_toolbar_ready() ) {
 			return;
 		}
-		$data    = Gi_Toolkit_Uptime_Kuma_Status_Data::fetch_toolbar( self::get_settings_static() );
+		$data    = self::get_admin_bar_data();
 		$version = defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '1.0.0';
 
-		wp_enqueue_style( 'gi-toolkit-uptime-kuma', GI_TOOLKIT_PLUGIN_URL . 'admin/assets/css/uptime-kuma.css', array(), $version );
+		wp_enqueue_style(
+			'gi-toolkit-uptime-kuma-admin-bar',
+			GI_TOOLKIT_PLUGIN_URL . 'admin/assets/css/uptime-kuma-admin-bar.css',
+			array(),
+			$version
+		);
 
 		if ( empty( $data['ready'] ) || empty( $data['chart_data'] ) ) {
 			return;
 		}
 
 		wp_enqueue_script(
-			'chartjs',
-			'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
-			array(),
-			'4.4.1',
-			true
-		);
-		wp_enqueue_script(
 			'gi-toolkit-uptime-kuma-admin-bar',
 			GI_TOOLKIT_PLUGIN_URL . 'admin/assets/js/uptime-kuma-admin-bar.js',
-			array( 'chartjs' ),
+			array(),
 			$version,
 			true
 		);
@@ -887,7 +911,8 @@ class Gi_Toolkit_Uptime_Kuma {
 			'gi-toolkit-uptime-kuma-admin-bar',
 			'giToolkitUptimeKumaAdminBar',
 			array(
-				'chart' => array(
+				'chartJsUrl' => 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+				'chart'      => array(
 					'labels' => $data['chart_labels'] ?? array(),
 					'values' => $data['chart_data'] ?? array(),
 				),

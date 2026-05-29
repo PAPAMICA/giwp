@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.23.2 =
+Perf: Barre admin Matomo / Uptime Kuma — plus d’appels API synchrones au chargement (cache + cron 10 min), Chart.js chargé au survol uniquement, CSS barre admin allégé, sparkline Matomo en barres CSS.
+
 = 2.23.1 =
 Fix: Suivi Matomo front — injection via wp_head/wp_body_open/wp_footer, cache invalidé, diagnostic dans les réglages.
 
