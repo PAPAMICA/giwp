@@ -835,6 +835,9 @@ class Gi_Toolkit_Matomo {
 		}
 
 		$data = Gi_Toolkit_Matomo_Dashboard_Data::fetch_toolbar_sparkline( $settings, false );
+		if ( empty( $data['success'] ) ) {
+			$data = Gi_Toolkit_Matomo_Dashboard_Data::fetch_toolbar_sparkline( $settings, true );
+		}
 		return $data;
 	}
 

@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.23.4 =
+Fix: Barre admin Matomo / Uptime Kuma — réapparition des widgets (repli API si cache vide, migration cache v2).
+
 = 2.23.3 =
 Fix: Dashboard Statistiques — graphique « Évolution du trafic » aligné sur la période (heure/jour/mois selon le filtre).
 

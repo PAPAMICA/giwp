@@ -81,9 +81,9 @@
 		var maxTicks = 12;
 		if ( 'hour' === granularity ) {
 			maxTicks = 8;
-		} elseif ( 'month' === granularity ) {
+		} else if ( 'month' === granularity ) {
 			maxTicks = 12;
-		} elseif ( labels.length > 45 ) {
+		} else if ( labels.length > 45 ) {
 			maxTicks = 10;
 		}
 

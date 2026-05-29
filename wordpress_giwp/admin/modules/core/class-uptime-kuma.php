@@ -636,6 +636,9 @@ class Gi_Toolkit_Uptime_Kuma {
 		}
 
 		$data = Gi_Toolkit_Uptime_Kuma_Status_Data::fetch_toolbar( self::get_settings_static(), false );
+		if ( empty( $data['ready'] ) ) {
+			$data = Gi_Toolkit_Uptime_Kuma_Status_Data::fetch_toolbar( self::get_settings_static(), true );
+		}
 		return $data;
 	}
 

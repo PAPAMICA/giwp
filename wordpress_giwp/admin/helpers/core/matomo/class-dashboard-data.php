@@ -154,14 +154,25 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 		}
 
 		$cache_key = 'gi_matomo_toolbar_v3_' . $site_id;
+		$stale_key = 'gi_matomo_toolbar_stale_' . $site_id;
 		$cached    = get_transient( $cache_key );
+		if ( ! is_array( $cached ) || empty( $cached['success'] ) ) {
+			foreach ( array( 'gi_matomo_toolbar_v2_', 'gi_matomo_toolbar_' ) as $legacy_prefix ) {
+				$legacy = get_transient( $legacy_prefix . $site_id );
+				if ( is_array( $legacy ) && ! empty( $legacy['success'] ) ) {
+					$cached = $legacy;
+					set_transient( $cache_key, $cached, 15 * MINUTE_IN_SECONDS );
+					update_option( $stale_key, $cached, false );
+					break;
+				}
+			}
+		}
 		if ( is_array( $cached ) && ! empty( $cached['success'] ) ) {
 			$memo[ $memo_key ] = $cached;
 			return $cached;
 		}
 
-		$stale_key = 'gi_matomo_toolbar_stale_' . $site_id;
-		$stale     = get_option( $stale_key, array() );
+		$stale = get_option( $stale_key, array() );
 		if ( ! $allow_network ) {
 			if ( is_array( $stale ) && ! empty( $stale['success'] ) ) {
 				$stale['stale']      = true;

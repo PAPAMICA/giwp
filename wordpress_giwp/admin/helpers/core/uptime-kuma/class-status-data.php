@@ -323,14 +323,14 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 		}
 
 		$cache_key = self::TRANSIENT_TOOLBAR . $monitor_id;
+		$stale_key = 'gi_uptime_kuma_toolbar_stale_' . $monitor_id;
 		$cached    = get_transient( $cache_key );
-		if ( is_array( $cached ) ) {
+		if ( is_array( $cached ) && ! empty( $cached['ready'] ) ) {
 			$memo[ $memo_key ] = $cached;
 			return $cached;
 		}
 
-		$stale_key = 'gi_uptime_kuma_toolbar_stale_' . $monitor_id;
-		$stale     = get_option( $stale_key, array() );
+		$stale = get_option( $stale_key, array() );
 		if ( ! $allow_network ) {
 			if ( is_array( $stale ) && ! empty( $stale['ready'] ) ) {
 				$stale['stale']      = true;
