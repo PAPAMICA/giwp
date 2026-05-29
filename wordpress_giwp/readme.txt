@@ -4,7 +4,7 @@ Tags: all in one plugin, admin, security, disable features, easy to use
 Requires at least: 6.0.0
 Tested up to: 6.9.3
 Requires PHP: 7.4
-Stable tag: 2.22.4
+Stable tag: 2.22.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -193,6 +193,9 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 4. Code snippets
 
 == Changelog ==
+
+= 2.22.5 =
+* Add: Module SMTP — variables dynamiques $website_name et $website_url pour expéditeur (déploiement MainWP).
 
 = 2.22.4 =
 * Update: Barre admin Matomo — panneau survol avec KPIs, graphique visites et échelle (comme Uptime Kuma).

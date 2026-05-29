@@ -210,6 +210,55 @@ class Gi_Toolkit_SMTP_Mailer {
 	}
 
 	/**
+	 * Nom de domaine du site (sans protocole ni www).
+	 *
+	 * @since 2.22.5
+	 * @return string
+	 */
+	public static function get_website_host() {
+		$host = wp_parse_url( home_url(), PHP_URL_HOST );
+		if ( ! is_string( $host ) || '' === $host ) {
+			$host = wp_parse_url( network_home_url(), PHP_URL_HOST );
+		}
+
+		if ( is_string( $host ) && 'www.' === substr( $host, 0, 4 ) ) {
+			$host = substr( $host, 4 );
+		}
+
+		return is_string( $host ) ? $host : '';
+	}
+
+	/**
+	 * Variables dynamiques pour configuration multi-sites (déploiement MainWP).
+	 *
+	 * @since 2.22.5
+	 * @return array<string, string>
+	 */
+	public static function get_deployment_variables() {
+		return array(
+			'$website_name' => (string) get_bloginfo( 'name' ),
+			'$website_url'  => self::get_website_host(),
+		);
+	}
+
+	/**
+	 * Remplace les variables dynamiques dans une valeur de réglage.
+	 *
+	 * @since 2.22.5
+	 * @param mixed $value Valeur brute.
+	 * @return string
+	 */
+	public static function replace_deployment_variables( $value ) {
+		if ( ! is_string( $value ) || '' === $value || false === strpos( $value, '$website_' ) ) {
+			return (string) $value;
+		}
+
+		$variables = self::get_deployment_variables();
+
+		return str_replace( array_keys( $variables ), array_values( $variables ), $value );
+	}
+
+	/**
 	 * Filter mail from email
 	 * 
 	 * @since   2.14.0
@@ -219,7 +268,7 @@ class Gi_Toolkit_SMTP_Mailer {
 		$this->default_settings = $this->get_default_settings();
 
 		$force_sender = $this->settings['force_sender'] ?? $this->default_settings['force_sender'];
-		$sender_email = $this->settings['sender_email'] ?? $this->default_settings['sender_email'];
+		$sender_email = self::replace_deployment_variables( $this->settings['sender_email'] ?? $this->default_settings['sender_email'] );
 		$def_email    = $this->get_default_email();
 
 		// Save the original from address.
@@ -253,7 +302,7 @@ class Gi_Toolkit_SMTP_Mailer {
 		$this->default_settings = $this->get_default_settings();
 
 		$force_sender = $this->settings['force_sender'] ?? $this->default_settings['force_sender'];
-		$sender_name  = $this->settings['sender_name'] ?? $this->default_settings['sender_name'];
+		$sender_name  = self::replace_deployment_variables( $this->settings['sender_name'] ?? $this->default_settings['sender_name'] );
 
 		// Save the original from name.
 		$this->filtered_from_name = $name;
@@ -1050,6 +1099,18 @@ class Gi_Toolkit_SMTP_Mailer {
 							<div class="gi-toolkit__section__body__item__title"><?php esc_html_e( 'Sender Config', 'gi-toolkit' ); ?></div>
 							<div class="gi-toolkit__section__body__item__content">
 								<div class="description"><?php esc_html_e( 'If set, the following sender name/email overrides WordPress core defaults but can still be overridden by other plugins that enables custom sender name/email, e.g. form plugins.', 'gi-toolkit' ); ?></div>
+								<p class="description">
+									<?php
+									echo esc_html__(
+										'Dynamic variables (resolved when sending, useful for MainWP deployment):',
+										'gi-toolkit'
+									);
+									?>
+									<code>$website_name</code>
+									<?php esc_html_e( '(site title)', 'gi-toolkit' ); ?>,
+									<code>$website_url</code>
+									<?php esc_html_e( '(site domain, e.g. example.com)', 'gi-toolkit' ); ?>.
+								</p>
 								<br>
 								<div class="gi-toolkit__input-text flex">
 									<div><input type="text" class="" name="<?php echo esc_attr( $this->option_id . '[sender_name]' ); ?>" value="<?php echo esc_attr( $sender_name ); ?>" placeholder="<?php esc_attr_e( 'Sender name', 'gi-toolkit' ); ?>"></div>
