@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.23.5 =
+Fix: Graphique « Évolution du trafic » — prise en charge des séries horaires Matomo (Aujourd’hui / Hier).
+
 = 2.23.4 =
 Fix: Barre admin Matomo / Uptime Kuma — réapparition des widgets (repli API si cache vide, migration cache v2).
 

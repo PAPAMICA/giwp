@@ -284,7 +284,13 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 		}
 
 		$chart_period = self::chart_period_params( $site_id, $period_key );
-		$visits_series  = $api->request( 'VisitsSummary.get', $chart_period );
+		$visits_series  = $api->request(
+			'VisitsSummary.get',
+			array_merge(
+				$chart_period,
+				array( 'expanded' => 1 )
+			)
+		);
 		$pages          = $api->request( 'Actions.getPageUrls', array_merge( $base, array( 'filter_limit' => 8, 'expanded' => 0 ) ) );
 		$referrers      = $api->request( 'Referrers.getReferrerType', array_merge( $base, array( 'filter_limit' => 8 ) ) );
 		$countries      = $api->request( 'UserCountry.getCountry', array_merge( $base, array( 'filter_limit' => 8 ) ) );
@@ -489,6 +495,23 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 			return compact( 'labels', 'visits', 'unique', 'actions' );
 		}
 
+		if ( self::is_indexed_series( $data ) ) {
+			foreach ( $data as $row ) {
+				if ( ! is_array( $row ) ) {
+					continue;
+				}
+				$key = (string) ( $row['label'] ?? '' );
+				if ( '' === $key && isset( $row['date'] ) ) {
+					$key = (string) $row['date'];
+				}
+				$labels[]  = self::format_chart_label( $key );
+				$visits[]  = (int) ( $row['nb_visits'] ?? 0 );
+				$unique[]  = (int) ( $row['nb_uniq_visitors'] ?? 0 );
+				$actions[] = (int) ( $row['nb_actions'] ?? 0 );
+			}
+			return compact( 'labels', 'visits', 'unique', 'actions' );
+		}
+
 		if ( isset( $data['nb_visits'] ) ) {
 			$labels[]  = '';
 			$visits[]  = (int) $data['nb_visits'];
@@ -546,6 +569,10 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 			$ts = strtotime( $matches[1] . ' ' . (int) $matches[2] . ':00:00' );
 			return $ts ? (int) $ts : null;
 		}
+		if ( preg_match( '/^(\d{4}-\d{2}-\d{2})[ T](\d{1,2})/', $key, $matches ) ) {
+			$ts = strtotime( $matches[1] . ' ' . (int) $matches[2] . ':00:00' );
+			return $ts ? (int) $ts : null;
+		}
 		if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $key ) ) {
 			$ts = strtotime( $key );
 			return $ts ? (int) $ts : null;
@@ -554,7 +581,51 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 			$ts = strtotime( $key . '-01' );
 			return $ts ? (int) $ts : null;
 		}
+		if ( preg_match( '/^\d{1,2}$/', $key ) ) {
+			return (int) $key;
+		}
 		return null;
+	}
+
+	/**
+	 * Série Matomo au format DataTable JSON (tableau indexé de lignes).
+	 *
+	 * @param array<int|string, mixed> $data Données API.
+	 * @return bool
+	 */
+	private static function is_indexed_series( array $data ) {
+		if ( empty( $data ) || isset( $data['nb_visits'] ) || self::is_assoc_date_series( $data ) ) {
+			return false;
+		}
+
+		$first = reset( $data );
+		return is_array( $first ) && ( isset( $first['nb_visits'] ) || isset( $first['label'] ) );
+	}
+
+	/**
+	 * @param string $key Clé Matomo.
+	 * @return bool
+	 */
+	private static function is_series_date_key( $key ) {
+		if ( ! is_string( $key ) || '' === $key ) {
+			return false;
+		}
+		if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $key ) ) {
+			return true;
+		}
+		if ( preg_match( '/^\d{4}-\d{2}-\d{2},\d{1,2}$/', $key ) ) {
+			return true;
+		}
+		if ( preg_match( '/^\d{4}-\d{2}-\d{2}[ T]\d{1,2}/', $key ) ) {
+			return true;
+		}
+		if ( preg_match( '/^\d{4}-\d{2}$/', $key ) ) {
+			return true;
+		}
+		if ( preg_match( '/^\d{1,2}$/', $key ) ) {
+			return true;
+		}
+		return false;
 	}
 
 	/**
@@ -566,19 +637,9 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 			return false;
 		}
 		foreach ( array_keys( $data ) as $key ) {
-			if ( ! is_string( $key ) ) {
+			if ( ! self::is_series_date_key( (string) $key ) ) {
 				return false;
 			}
-			if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $key ) ) {
-				continue;
-			}
-			if ( preg_match( '/^\d{4}-\d{2}-\d{2},\d{1,2}$/', $key ) ) {
-				continue;
-			}
-			if ( preg_match( '/^\d{4}-\d{2}$/', $key ) ) {
-				continue;
-			}
-			return false;
 		}
 		return ! empty( $data );
 	}
@@ -677,6 +738,14 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 	private static function format_chart_label( $date ) {
 		if ( preg_match( '/^(\d{4}-\d{2}-\d{2}),(\d{1,2})$/', $date, $matches ) ) {
 			return sprintf( '%02d:00', (int) $matches[2] );
+		}
+
+		if ( preg_match( '/^(\d{4}-\d{2}-\d{2})[ T](\d{1,2})/', $date, $matches ) ) {
+			return sprintf( '%02d:00', (int) $matches[2] );
+		}
+
+		if ( preg_match( '/^\d{1,2}$/', $date ) ) {
+			return sprintf( '%02d:00', (int) $date );
 		}
 
 		if ( preg_match( '/^\d{4}-\d{2}$/', $date ) ) {
