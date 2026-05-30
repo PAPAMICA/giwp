@@ -564,6 +564,12 @@ class Gi_Toolkit_Modules_Data {
 				'pro'           => false,
 				'path'          => 'core/class-advanced-debug-mode.php',
 			),
+			'Gi_Toolkit_WordPress_Debug_Switch' => array(
+				'original_name' => 'WordPress Debug Switch',
+				'group'         => 'debug',
+				'pro'           => false,
+				'path'          => 'core/class-wordpress-debug-switch.php',
+			),
 			'Gi_Toolkit_Site_Debug' => array(
 				'original_name' => 'Site Debug',
 				'group'         => 'debug',
@@ -1181,6 +1187,10 @@ class Gi_Toolkit_Modules_Data {
 			'Gi_Toolkit_Advanced_Debug_Mode' => array(
 				'name' => esc_html_x( "Advanced Debug Mode", "Module name", 'gi-toolkit' ),
 				'desc' => esc_html_x( "Enable advanced debug mode to log PHP errors, notices, warnings, database queries, hooks and more to help troubleshoot issues on your site.", "Module description", 'gi-toolkit' ),
+			),
+			'Gi_Toolkit_WordPress_Debug_Switch' => array(
+				'name' => esc_html_x( 'Mode debug WordPress', 'Module name', 'gi-toolkit' ),
+				'desc' => esc_html_x( 'Active ou désactive WP_DEBUG, WP_DEBUG_DISPLAY et WP_DEBUG_LOG (wp-config + PHP), en écrasant la configuration existante.', 'Module description', 'gi-toolkit' ),
 			),
 			'Gi_Toolkit_Site_Debug' => array(
 				'name' => esc_html_x( 'Site Debug', 'Module name', 'gi-toolkit' ),

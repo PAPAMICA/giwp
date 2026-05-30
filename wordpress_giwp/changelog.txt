@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.23.7 =
+Add: Module « Mode debug WordPress » — force WP_DEBUG / WP_DEBUG_DISPLAY / WP_DEBUG_LOG et error_reporting (écrase wp-config.php).
+
 = 2.23.6 =
 Fix: Graphique horaire Statistiques — API VisitTime (24 points) pour Aujourd’hui / Hier, avec repli VisitsSummary.
 
