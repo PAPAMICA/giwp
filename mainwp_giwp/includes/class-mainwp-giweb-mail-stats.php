@@ -290,6 +290,33 @@ class MainWP_GIWeb_Mail_Stats {
 	}
 
 	/**
+	 * Stats mail d’un site (agrégat puis cache statut).
+	 *
+	 * @param int $site_id ID MainWP.
+	 * @return array<string, mixed>|null
+	 */
+	public static function get_site_mail( $site_id ) {
+		$site_id = absint( $site_id );
+		if ( ! $site_id ) {
+			return null;
+		}
+
+		$agg  = self::get_aggregate();
+		$sites = $agg['sites'] ?? array();
+		if ( is_array( $sites ) && isset( $sites[ $site_id ]['mail'] ) ) {
+			$mail = $sites[ $site_id ]['mail'];
+			return is_array( $mail ) ? $mail : null;
+		}
+
+		$cache = MainWP_GIWeb_Status_Cache::get_all();
+		if ( ! isset( $cache[ $site_id ] ) || ! is_array( $cache[ $site_id ] ) ) {
+			return null;
+		}
+
+		return self::extract_mail( $cache[ $site_id ]['data'] ?? array() );
+	}
+
+	/**
 	 * @param array<string, mixed>|null $mail Stats mail site.
 	 * @return string HTML badge / texte.
 	 */

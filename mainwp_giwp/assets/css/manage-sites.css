@@ -1,0 +1,105 @@
+/**
+ * Colonnes GI-Toolkit dans la liste Manage Sites MainWP.
+ */
+.mainwp-giweb-ms-col {
+	font-size: 11px;
+	line-height: 1.35;
+	min-width: 120px;
+	vertical-align: top;
+}
+
+.mainwp-giweb-ms-col .mainwp-giweb-mail-site,
+.mainwp-giweb-ms-col .mainwp-giweb-ukw-site {
+	max-width: 220px;
+}
+
+.mainwp-giweb-ukw-site {
+	display: block;
+}
+
+.mainwp-giweb-ukw-site--inactive .mainwp-giweb-ukw-site__hint,
+.mainwp-giweb-ukw-site--pending .mainwp-giweb-ukw-site__hint {
+	color: var(--font-light-color, #646970);
+	font-size: 11px;
+}
+
+.mainwp-giweb-ukw-site__head {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 4px;
+}
+
+.mainwp-giweb-ukw-site__badge {
+	border-radius: 999px;
+	font-size: 10px;
+	font-weight: 600;
+	line-height: 1;
+	padding: 3px 8px;
+	text-transform: uppercase;
+}
+
+.mainwp-giweb-ukw-site__badge.status-ok {
+	background: rgba(18, 183, 106, 0.15);
+	color: #12b76a;
+}
+
+.mainwp-giweb-ukw-site__badge.status-warn {
+	background: rgba(247, 144, 9, 0.15);
+	color: #f79009;
+}
+
+.mainwp-giweb-ukw-site__badge.status-down {
+	background: rgba(240, 68, 56, 0.15);
+	color: #f04438;
+}
+
+.mainwp-giweb-ukw-site__badge.status-paused,
+.mainwp-giweb-ukw-site__badge.status-missing,
+.mainwp-giweb-ukw-site__badge.status-unknown {
+	background: rgba(152, 162, 179, 0.15);
+	color: #667085;
+}
+
+.mainwp-giweb-ukw-site__ping {
+	color: var(--font-light-color, #646970);
+	font-size: 10px;
+}
+
+.mainwp-giweb-ukw-site__metrics {
+	color: var(--font-color, #1d2327);
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.mainwp-giweb-ukw-site__metric {
+	font-size: 11px;
+}
+
+.mainwp-giweb-ukw-site__metric small {
+	color: var(--font-light-color, #646970);
+	font-size: 10px;
+	margin-left: 2px;
+}
+
+.mainwp-giweb-ukw-site--single {
+	padding: 2px 0;
+}
+
+.mainwp-giweb-ukw-site--single .giweb-ukw-card {
+	margin: 0;
+}
+
+.mainwp-giweb-mail-widget--single-site .mainwp-giweb-mail-widget__layout {
+	grid-template-columns: 1fr;
+}
+
+.mainwp-giweb-mail-widget--single-site .mainwp-giweb-mail-widget__donut-block {
+	display: none;
+}
+
+.mainwp-giweb-mail-widget--single-site .mainwp-giweb-mail-widget__sites {
+	display: none;
+}

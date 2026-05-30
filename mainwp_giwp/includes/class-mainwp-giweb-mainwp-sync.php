@@ -55,6 +55,7 @@ class MainWP_GIWeb_MainWP_Sync {
 		MainWP_GIWeb_Status_Cache::set_site( $site_id, $result['api'] );
 
 		MainWP_GIWeb_Mail_Stats::record_site_sync( $site_id, $label, $url, $result['api'] );
+		MainWP_GIWeb_Uptime_Kuma_Widget::schedule_refresh_on_sync();
 	}
 }
 

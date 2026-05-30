@@ -120,6 +120,10 @@
 		var body = new URLSearchParams();
 		body.append('action', 'mainwp_giweb_uptime_kuma_refresh');
 		body.append('nonce', nonce);
+		var siteId = root.getAttribute('data-site-id');
+		if (siteId && parseInt(siteId, 10) > 0) {
+			body.append('site_id', siteId);
+		}
 
 		fetch(ajaxurl, {
 			method: 'POST',

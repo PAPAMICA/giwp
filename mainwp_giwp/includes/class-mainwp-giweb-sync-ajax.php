@@ -203,6 +203,7 @@ class MainWP_GIWeb_Sync_Ajax {
 			$row = MainWP_GIWeb_Sites::find_by_id( $site_id, self::activator() );
 			$url = is_array( $row ) ? (string) ( $row['url'] ?? '' ) : '';
 			MainWP_GIWeb_Mail_Stats::record_site_sync( $site_id, $label, $url, $result['api'] );
+			MainWP_GIWeb_Uptime_Kuma_Widget::schedule_refresh_on_sync();
 
 			$result['mail_summary'] = MainWP_GIWeb_Mail_Stats::get_client_summary();
 			$result['mail_html']    = MainWP_GIWeb_Mail_Stats::format_site_mail_cell(

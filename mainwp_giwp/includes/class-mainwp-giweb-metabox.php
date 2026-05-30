@@ -8,6 +8,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class MainWP_GIWeb_Metabox {
 
+	/** @var int */
+	private static $render_site_id = 0;
+
 	/** @var string[] */
 	private static $widget_ids = array(
 		'mainwp-giweb-mail-widget',
@@ -74,7 +77,37 @@ class MainWP_GIWeb_Metabox {
 	 * @param callable|array<int, mixed>               $callback  Callback rendu.
 	 * @return array<int, array<string, mixed>>
 	 */
-	public static function append( $metaboxes, $id, $title, $callback ) {
+	/**
+	 * @return int
+	 */
+	public static function get_render_site_id() {
+		return self::$render_site_id;
+	}
+
+	/**
+	 * @param callable|array<int, mixed> $callback  Callback rendu.
+	 * @param int                          $site_id   ID site MainWP (0 = réseau).
+	 * @return callable
+	 */
+	public static function scoped_callback( $callback, $site_id ) {
+		$site_id = absint( $site_id );
+
+		return static function () use ( $callback, $site_id ) {
+			self::$render_site_id = $site_id;
+			call_user_func( $callback );
+			self::$render_site_id = 0;
+		};
+	}
+
+	/**
+	 * @param array<int, array<string, mixed>>|mixed $metaboxes       Liste existante.
+	 * @param string                                   $id              ID widget.
+	 * @param string                                   $title           Titre.
+	 * @param callable|array<int, mixed>               $callback        Callback réseau.
+	 * @param int|null                                 $dashboard_siteid ID site (Overview individuel).
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function append( $metaboxes, $id, $title, $callback, $dashboard_siteid = null ) {
 		if ( ! self::can_register() ) {
 			return is_array( $metaboxes ) ? $metaboxes : array();
 		}
@@ -88,12 +121,14 @@ class MainWP_GIWeb_Metabox {
 			return $metaboxes;
 		}
 
+		$site_id  = null !== $dashboard_siteid ? absint( $dashboard_siteid ) : 0;
+		$render   = $site_id > 0 ? self::scoped_callback( $callback, $site_id ) : $callback;
 		$metaboxes[] = array(
 			'id'            => $id,
 			'plugin'        => $plugin,
 			'key'           => self::child_key(),
 			'metabox_title' => $title,
-			'callback'      => $callback,
+			'callback'      => $render,
 			'layout'        => array( -1, -1, 6, 30 ),
 		);
 

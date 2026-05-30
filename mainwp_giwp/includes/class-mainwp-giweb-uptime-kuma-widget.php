@@ -13,6 +13,7 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 	const CACHE_OPTION     = 'mainwp_giweb_uptime_kuma_cache';
 	const CACHE_SCHEMA     = 2;
 	const SYNC_LOCK_KEY    = 'mainwp_giweb_uptime_kuma_sync_lock';
+	const SYNC_DEFER_KEY   = 'mainwp_giweb_uptime_kuma_sync_defer';
 
 	/**
 	 * @return void
@@ -64,14 +65,16 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 
 	/**
 	 * @param array<int, array<string, mixed>>|mixed $metaboxes Metaboxes.
+	 * @param int|null                               $dashboard_siteid Site Overview (Manage Sites).
 	 * @return array<int, array<string, mixed>>
 	 */
-	public static function register_metabox( $metaboxes ) {
+	public static function register_metabox( $metaboxes, $dashboard_siteid = null ) {
 		return MainWP_GIWeb_Metabox::append(
 			$metaboxes,
 			self::WIDGET_ID,
 			__( 'GI-Toolkit — Uptime Kuma', 'mainwp-giweb' ),
-			array( __CLASS__, 'render_metabox' )
+			array( __CLASS__, 'render_metabox' ),
+			$dashboard_siteid
 		);
 	}
 
@@ -93,7 +96,7 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 	 */
 	public static function enqueue_assets( $hook ) {
 		unset( $hook );
-		if ( ! self::is_overview_screen() ) {
+		if ( ! self::should_enqueue_assets() ) {
 			return;
 		}
 		wp_enqueue_style(
@@ -114,12 +117,117 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 	/**
 	 * @return bool
 	 */
-	private static function is_overview_screen() {
+	private static function should_enqueue_assets() {
+		if ( isset( $_GET['page'] ) && 'managesites' === sanitize_text_field( wp_unslash( $_GET['page'] ) ) && ! empty( $_GET['dashboard'] ) ) {
+			return true;
+		}
+
 		if ( ! isset( $_GET['page'] ) ) {
 			return false;
 		}
+
 		$page = sanitize_text_field( wp_unslash( $_GET['page'] ) );
 		return in_array( $page, array( 'mainwp_tab', 'mainwp-setup' ), true );
+	}
+
+	/**
+	 * Rafraîchit le cache Uptime Kuma une fois à la fin d’une vague de sync MainWP/GI.
+	 *
+	 * @return void
+	 */
+	public static function schedule_refresh_on_sync() {
+		if ( ! MainWP_GIWeb_Uptime_Kuma::is_configured() ) {
+			return;
+		}
+
+		if ( get_transient( self::SYNC_DEFER_KEY ) ) {
+			return;
+		}
+
+		set_transient( self::SYNC_DEFER_KEY, '1', 30 );
+		add_action( 'shutdown', array( __CLASS__, 'refresh_cache_on_shutdown' ), 20 );
+	}
+
+	/**
+	 * @return void
+	 */
+	public static function refresh_cache_on_shutdown() {
+		delete_transient( self::SYNC_DEFER_KEY );
+		self::refresh_cache( true );
+	}
+
+	/**
+	 * @param int $site_id ID site MainWP.
+	 * @return array<string, mixed>|null
+	 */
+	public static function get_site_row( $site_id ) {
+		$site_id = absint( $site_id );
+		if ( ! $site_id ) {
+			return null;
+		}
+
+		$sites = self::get_cache()['sites'] ?? array();
+		if ( ! is_array( $sites ) ) {
+			return null;
+		}
+
+		foreach ( $sites as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			if ( (int) ( $row['site_id'] ?? 0 ) === $site_id ) {
+				return $row;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param int $site_id ID site MainWP.
+	 * @return string HTML compact.
+	 */
+	public static function format_site_cell( $site_id ) {
+		if ( ! MainWP_GIWeb_Uptime_Kuma::is_configured() ) {
+			return '<span class="mainwp-giweb-ukw-site mainwp-giweb-ukw-site--inactive"><span class="mainwp-giweb-ukw-site__hint">' . esc_html__( 'Non configuré', 'mainwp-giweb' ) . '</span></span>';
+		}
+
+		$row = self::get_site_row( $site_id );
+		if ( ! is_array( $row ) ) {
+			return '<span class="mainwp-giweb-ukw-site mainwp-giweb-ukw-site--pending"><span class="mainwp-giweb-ukw-site__hint">' . esc_html__( 'En attente de sync', 'mainwp-giweb' ) . '</span></span>';
+		}
+
+		$status = (string) ( $row['status'] ?? 'unknown' );
+		$labels = array(
+			'ok'      => __( 'En ligne', 'mainwp-giweb' ),
+			'warn'    => __( 'Dégradé', 'mainwp-giweb' ),
+			'down'    => __( 'Hors ligne', 'mainwp-giweb' ),
+			'paused'  => __( 'Pause', 'mainwp-giweb' ),
+			'missing' => __( 'Sans monitor', 'mainwp-giweb' ),
+			'unknown' => __( 'Inconnu', 'mainwp-giweb' ),
+		);
+		$status_text = $labels[ $status ] ?? $labels['unknown'];
+		$uptime24    = null !== ( $row['uptime_24h'] ?? null ) ? (float) $row['uptime_24h'] : null;
+		$uptime30    = null !== ( $row['uptime_30d'] ?? null ) ? (float) $row['uptime_30d'] : null;
+		$ping        = (int) ( $row['avg_ping'] ?? 0 );
+
+		$html  = '<div class="mainwp-giweb-ukw-site">';
+		$html .= '<div class="mainwp-giweb-ukw-site__head">';
+		$html .= '<span class="mainwp-giweb-ukw-site__badge status-' . esc_attr( $status ) . '">' . esc_html( $status_text ) . '</span>';
+		if ( $ping > 0 ) {
+			$html .= '<span class="mainwp-giweb-ukw-site__ping">' . esc_html( (string) $ping ) . ' ms</span>';
+		}
+		$html .= '</div>';
+
+		if ( 'missing' !== $status ) {
+			$html .= '<div class="mainwp-giweb-ukw-site__metrics">';
+			$html .= '<span class="mainwp-giweb-ukw-site__metric">' . esc_html( self::format_uptime( $uptime24 ) ) . '<small>24 h</small></span>';
+			$html .= '<span class="mainwp-giweb-ukw-site__metric">' . esc_html( self::format_uptime( $uptime30 ) ) . '<small>30 j</small></span>';
+			$html .= '</div>';
+		}
+
+		$html .= '</div>';
+		return $html;
 	}
 
 	/**
@@ -140,8 +248,14 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 			);
 		}
 
+		$site_id = isset( $_POST['site_id'] ) ? absint( $_POST['site_id'] ) : 0;
+
 		ob_start();
-		self::render_metabox_body();
+		if ( $site_id > 0 ) {
+			self::render_site_metabox_body( $site_id );
+		} else {
+			self::render_metabox_body();
+		}
 		$html = ob_get_clean();
 
 		wp_send_json_success(
@@ -534,6 +648,12 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 	 * @return void
 	 */
 	public static function render_metabox() {
+		$site_id = MainWP_GIWeb_Metabox::get_render_site_id();
+		if ( $site_id > 0 ) {
+			self::render_site_metabox( $site_id );
+			return;
+		}
+
 		$is_dark = MainWP_GIWeb_UI::is_dark_theme();
 		$classes = 'mainwp-giweb-uptime-kuma-widget' . ( $is_dark ? ' mainwp-giweb-uptime-kuma-widget--dark' : ' mainwp-giweb-uptime-kuma-widget--light' );
 		echo '<div class="' . esc_attr( $classes ) . '" id="mainwp-giweb-uptime-kuma-widget-root">';
@@ -549,6 +669,87 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 
 		self::render_metabox_body();
 		echo '</div>';
+	}
+
+	/**
+	 * Widget compact pour un site (Overview Manage Sites).
+	 *
+	 * @param int $site_id ID site MainWP.
+	 * @return void
+	 */
+	public static function render_site_metabox( $site_id ) {
+		$site_id = absint( $site_id );
+		$is_dark = MainWP_GIWeb_UI::is_dark_theme();
+		$classes = 'mainwp-giweb-uptime-kuma-widget mainwp-giweb-uptime-kuma-widget--single' . ( $is_dark ? ' mainwp-giweb-uptime-kuma-widget--dark' : ' mainwp-giweb-uptime-kuma-widget--light' );
+		echo '<div class="' . esc_attr( $classes ) . '" id="mainwp-giweb-uptime-kuma-widget-root" data-site-id="' . esc_attr( (string) $site_id ) . '">';
+
+		if ( ! MainWP_GIWeb_Uptime_Kuma::is_configured() ) {
+			echo '<p class="giweb-ukw-hint">' . esc_html__( 'Configurez Uptime Kuma dans GI-Toolkit Manager → Réglages.', 'mainwp-giweb' ) . '</p>';
+			echo '</div>';
+			return;
+		}
+
+		self::maybe_refresh_cache( false );
+		self::render_site_metabox_body( $site_id );
+		echo '</div>';
+	}
+
+	/**
+	 * @param int $site_id ID site MainWP.
+	 * @return void
+	 */
+	public static function render_site_metabox_body( $site_id ) {
+		$site_id       = absint( $site_id );
+		$row           = self::get_site_row( $site_id );
+		$cache         = self::get_cache();
+		$updated_at    = absint( $cache['updated_at'] ?? 0 );
+		$error         = isset( $cache['error'] ) ? (string) $cache['error'] : '';
+		$refresh_nonce = wp_create_nonce( 'mainwp_giweb_uptime_kuma_refresh' );
+		?>
+		<div class="giweb-ukw giweb-ukw--single">
+			<header class="giweb-ukw-header">
+				<div class="giweb-ukw-header__row">
+					<div class="giweb-ukw-brand">
+						<span class="giweb-ukw-brand__icon" aria-hidden="true"></span>
+						<div>
+							<p class="giweb-ukw-brand__title"><?php esc_html_e( 'Uptime Kuma', 'mainwp-giweb' ); ?></p>
+							<p class="giweb-ukw-brand__sub"><?php esc_html_e( 'Monitor de ce site', 'mainwp-giweb' ); ?></p>
+						</div>
+					</div>
+					<div class="giweb-ukw-header__actions">
+						<?php if ( $updated_at ) : ?>
+							<time class="giweb-ukw-sync" datetime="<?php echo esc_attr( gmdate( 'c', $updated_at ) ); ?>">
+								<?php
+								printf(
+									/* translators: %s: human time diff */
+									esc_html__( 'Sync il y a %s', 'mainwp-giweb' ),
+									esc_html( human_time_diff( $updated_at, time() ) )
+								);
+								?>
+							</time>
+						<?php endif; ?>
+						<button type="button" class="giweb-ukw-btn giweb-ukw-refresh" data-nonce="<?php echo esc_attr( $refresh_nonce ); ?>">
+							<?php esc_html_e( 'Actualiser', 'mainwp-giweb' ); ?>
+						</button>
+					</div>
+				</div>
+			</header>
+
+			<?php if ( '' !== $error ) : ?>
+				<p class="giweb-ukw-alert giweb-ukw-alert--error" role="alert"><?php echo esc_html( $error ); ?></p>
+			<?php endif; ?>
+
+			<?php if ( ! is_array( $row ) ) : ?>
+				<div class="giweb-ukw-empty-state">
+					<p><?php esc_html_e( 'Aucune donnée pour ce site. Synchronisez MainWP ou actualisez.', 'mainwp-giweb' ); ?></p>
+				</div>
+			<?php else : ?>
+				<div class="mainwp-giweb-ukw-site--single">
+					<?php self::render_site_card( $row ); ?>
+				</div>
+			<?php endif; ?>
+		</div>
+		<?php
 	}
 
 	/**

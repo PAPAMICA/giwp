@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'MAINWP_GIWEB_VERSION' ) ) {
-	define( 'MAINWP_GIWEB_VERSION', '1.5.6' );
+	define( 'MAINWP_GIWEB_VERSION', '1.5.7' );
 }
 if ( ! defined( 'MAINWP_GIWEB_PLUGIN_FILE' ) ) {
 	define( 'MAINWP_GIWEB_PLUGIN_FILE', __DIR__ . '/mainwp-giwp.php' );
@@ -50,6 +50,7 @@ require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-mail-stats.
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-status-cache.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-mainwp-sync.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-dashboard-widget.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-manage-sites.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-sync-ajax.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb.php';
 
@@ -171,6 +172,7 @@ class MainWP_GIWeb_Extension_Activator {
 		add_action( 'admin_enqueue_scripts', array( 'MainWP_GIWeb_Dashboard_Widget', 'enqueue_assets' ) );
 		add_action( 'admin_enqueue_scripts', array( 'MainWP_GIWeb_Uptime_Kuma_Widget', 'enqueue_assets' ) );
 
+		MainWP_GIWeb_Manage_Sites::init();
 		MainWP_GIWeb_Uptime_Kuma_Widget::activate_cron();
 	}
 
