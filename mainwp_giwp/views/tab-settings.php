@@ -113,6 +113,40 @@ $logs            = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 			</td>
 		</tr>
 		<tr>
+			<th scope="row"><?php esc_html_e( 'Zabbix (monitoring)', 'mainwp-giweb' ); ?></th>
+			<td>
+				<p>
+					<label for="mainwp_giweb_zabbix_url"><?php esc_html_e( 'URL serveur Zabbix', 'mainwp-giweb' ); ?></label><br />
+					<input type="url" class="large-text code" id="mainwp_giweb_zabbix_url" name="zabbix_url" value="<?php echo esc_attr( (string) ( $settings['zabbix_url'] ?? '' ) ); ?>" placeholder="https://zabbix.example.com" />
+				</p>
+				<p>
+					<label for="mainwp_giweb_zabbix_api_token"><?php esc_html_e( 'Clé API Zabbix (Bearer)', 'mainwp-giweb' ); ?></label><br />
+					<input type="password" class="large-text code" id="mainwp_giweb_zabbix_api_token" name="zabbix_api_token" value="" autocomplete="new-password" placeholder="<?php echo ! empty( $settings['zabbix_api_token'] ) ? esc_attr__( '•••••••• (laisser vide pour conserver)', 'mainwp-giweb' ) : ''; ?>" />
+				</p>
+				<p>
+					<label>
+						<input type="checkbox" name="zabbix_auto_create" value="1" <?php checked( '1', $settings['zabbix_auto_create'] ?? '0' ); ?> />
+						<?php esc_html_e( 'Créer automatiquement un host Zabbix à l’ajout d’un site MainWP', 'mainwp-giweb' ); ?>
+					</label>
+				</p>
+				<p class="description">
+					<?php esc_html_e( 'Host : WEB - domaine.tld — groupes WEBSITES (27) et GENEVOIS-INFORMATIQUE (26) — templates MainWP, PageSpeed et Website by Browser — macro {$WEBSITE.DOMAIN}. Les doublons sont ignorés.', 'mainwp-giweb' ); ?>
+				</p>
+				<?php if ( MainWP_GIWeb_Zabbix::is_configured() ) : ?>
+					<p class="description" style="color:#15803d;"><?php esc_html_e( 'Zabbix configuré — compatible API 7.4 (Authorization: Bearer).', 'mainwp-giweb' ); ?></p>
+				<?php endif; ?>
+				<p style="margin-top:12px;">
+					<button type="button" class="button button-secondary" id="mainwp-giweb-zabbix-test" <?php disabled( ! MainWP_GIWeb_Zabbix::is_configured() ); ?>>
+						<?php esc_html_e( 'Tester la connexion Zabbix', 'mainwp-giweb' ); ?>
+					</button>
+					<button type="button" class="button button-secondary" id="mainwp-giweb-zabbix-provision-all" <?php disabled( ! MainWP_GIWeb_Zabbix::is_configured() ); ?>>
+						<?php esc_html_e( 'Créer les hosts pour tous les sites', 'mainwp-giweb' ); ?>
+					</button>
+				</p>
+				<p id="mainwp-giweb-zabbix-feedback" class="description" hidden></p>
+			</td>
+		</tr>
+		<tr>
 			<th scope="row"><?php esc_html_e( 'Synchronisation', 'mainwp-giweb' ); ?></th>
 			<td>
 				<label for="mainwp_giweb_sync_concurrency"><?php esc_html_e( 'Sites interrogés en parallèle (sync et déploiement)', 'mainwp-giweb' ); ?></label>

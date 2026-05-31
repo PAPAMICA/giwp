@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'MAINWP_GIWEB_VERSION' ) ) {
-	define( 'MAINWP_GIWEB_VERSION', '1.5.7' );
+	define( 'MAINWP_GIWEB_VERSION', '1.5.8' );
 }
 if ( ! defined( 'MAINWP_GIWEB_PLUGIN_FILE' ) ) {
 	define( 'MAINWP_GIWEB_PLUGIN_FILE', __DIR__ . '/mainwp-giwp.php' );
@@ -32,6 +32,7 @@ require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-catalog.php
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-settings.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-matomo.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-uptime-kuma.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-zabbix.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-metabox.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-uptime-kuma-widget.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-overrides.php';

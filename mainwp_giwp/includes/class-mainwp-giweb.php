@@ -148,6 +148,9 @@ class MainWP_GIWeb {
 					'mailAlertSync'    => __( '%d site(s) ont des emails en échec. Consultez l’onglet Vue d’ensemble ou le widget MainWP.', 'mainwp-giweb' ),
 					'mailColTotal'     => __( 'Mails', 'mainwp-giweb' ),
 					'mailTodayShort'   => __( 'auj.', 'mainwp-giweb' ),
+					'zabbixTesting'    => __( 'Test de connexion Zabbix…', 'mainwp-giweb' ),
+					'zabbixProvisioning' => __( 'Création des hosts Zabbix…', 'mainwp-giweb' ),
+					'zabbixError'      => __( 'Erreur Zabbix.', 'mainwp-giweb' ),
 				),
 		);
 	}
@@ -307,6 +310,9 @@ class MainWP_GIWeb {
 						'kuma_url'                   => isset( $_POST['kuma_url'] ) ? esc_url_raw( wp_unslash( $_POST['kuma_url'] ) ) : '',
 						'kuma_username'              => isset( $_POST['kuma_username'] ) ? sanitize_text_field( wp_unslash( $_POST['kuma_username'] ) ) : '',
 						'kuma_password'              => isset( $_POST['kuma_password'] ) ? sanitize_text_field( wp_unslash( $_POST['kuma_password'] ) ) : '',
+						'zabbix_url'                 => isset( $_POST['zabbix_url'] ) ? esc_url_raw( wp_unslash( $_POST['zabbix_url'] ) ) : '',
+						'zabbix_api_token'           => isset( $_POST['zabbix_api_token'] ) ? sanitize_text_field( wp_unslash( $_POST['zabbix_api_token'] ) ) : '',
+						'zabbix_auto_create'         => ! empty( $_POST['zabbix_auto_create'] ),
 					)
 				);
 				MainWP_GIWeb_Notices::add( 'success', __( 'Réglages enregistrés.', 'mainwp-giweb' ) );

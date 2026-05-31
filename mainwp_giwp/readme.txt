@@ -3,7 +3,7 @@ Contributors: genevois-informatique
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.5.7
+Stable tag: 1.5.8
 License: GPLv2 or later
 
 Gérez et déployez GI-Toolkit sur tous vos sites WordPress via MainWP.
@@ -54,6 +54,9 @@ MainWP > Extensions > GI-Toolkit Manager
 - [ ] Modèle « Default » défini comme profil par défaut dans Réglages
 
 == Changelog ==
+
+= 1.5.8 =
+* Add: intégration Zabbix 7.4 — réglages URL + clé API, création auto des hosts à l’ajout de site, boutons test et provisionnement massif.
 
 = 1.5.7 =
 * Add: colonnes Uptime Kuma et Mails dans la liste Manage Sites MainWP.

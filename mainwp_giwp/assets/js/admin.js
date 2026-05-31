@@ -673,6 +673,45 @@
 		}
 	}
 
+	function showZabbixFeedback( message, isOk ) {
+		var $fb = $( '#mainwp-giweb-zabbix-feedback' );
+		if ( ! $fb.length ) {
+			return;
+		}
+		$fb.removeAttr( 'hidden' ).css( 'color', false === isOk ? '#b45309' : '#15803d' ).text( message );
+	}
+
+	function runZabbixAction( action, loadingText ) {
+		if ( ! hasAjax() ) {
+			return;
+		}
+		var $test = $( '#mainwp-giweb-zabbix-test' );
+		var $all = $( '#mainwp-giweb-zabbix-provision-all' );
+		$test.add( $all ).prop( 'disabled', true );
+		showZabbixFeedback( loadingText, null );
+
+		postAjax( action, {} )
+			.done( function ( response ) {
+				if ( response && response.success && response.data ) {
+					showZabbixFeedback( response.data.message || i18n( 'badgeOk', 'OK' ), true );
+					if ( response.data.messages && response.data.messages.length ) {
+						log( 'zabbix provision', response.data.messages );
+					}
+				} else {
+					showZabbixFeedback(
+						( response && response.data && response.data.message ) || i18n( 'zabbixError', 'Erreur Zabbix.' ),
+						false
+					);
+				}
+			} )
+			.fail( function () {
+				showZabbixFeedback( i18n( 'syncError', 'Erreur réseau' ), false );
+			} )
+			.always( function () {
+				$test.add( $all ).prop( 'disabled', false );
+			} );
+	}
+
 	function onReady() {
 		log( 'document.ready', { pulls: $( '.mainwp-giweb-pull-config' ).length } );
 		initConfig();
@@ -1034,6 +1073,14 @@
 				.fail( function () {
 					showInlineNotice( i18n( 'syncError', 'Erreur réseau' ), 'error' );
 				} );
+		} );
+
+		$( '#mainwp-giweb-zabbix-test' ).on( 'click', function () {
+			runZabbixAction( 'mainwp_giweb_zabbix_test', i18n( 'zabbixTesting', 'Test de connexion Zabbix…' ) );
+		} );
+
+		$( '#mainwp-giweb-zabbix-provision-all' ).on( 'click', function () {
+			runZabbixAction( 'mainwp_giweb_zabbix_provision_all', i18n( 'zabbixProvisioning', 'Création des hosts Zabbix…' ) );
 		} );
 	}
 

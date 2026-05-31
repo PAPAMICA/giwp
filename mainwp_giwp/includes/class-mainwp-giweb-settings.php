@@ -41,6 +41,9 @@ class MainWP_GIWeb_Settings {
 			'kuma_url'                      => '',
 			'kuma_username'                 => '',
 			'kuma_password'                 => '',
+			'zabbix_url'                    => '',
+			'zabbix_api_token'              => '',
+			'zabbix_auto_create'            => '0',
 		);
 	}
 
@@ -99,6 +102,21 @@ class MainWP_GIWeb_Settings {
 		} else {
 			$clean['kuma_password'] = (string) ( $current['kuma_password'] ?? '' );
 		}
+
+		if ( isset( $data['zabbix_url'] ) ) {
+			$zurl = esc_url_raw( rtrim( trim( (string) $data['zabbix_url'] ), '/' ) );
+			$clean['zabbix_url'] = ( '' !== $zurl && filter_var( $zurl, FILTER_VALIDATE_URL ) ) ? $zurl : '';
+		} else {
+			$clean['zabbix_url'] = (string) ( $current['zabbix_url'] ?? '' );
+		}
+
+		if ( ! empty( $data['zabbix_api_token'] ) ) {
+			$clean['zabbix_api_token'] = sanitize_text_field( (string) $data['zabbix_api_token'] );
+		} else {
+			$clean['zabbix_api_token'] = (string) ( $current['zabbix_api_token'] ?? '' );
+		}
+
+		$clean['zabbix_auto_create'] = ! empty( $data['zabbix_auto_create'] ) ? '1' : '0';
 
 		return update_option( self::OPTION_KEY, $clean, false );
 	}
