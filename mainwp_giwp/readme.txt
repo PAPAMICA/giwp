@@ -57,6 +57,7 @@ MainWP > Extensions > GI-Toolkit Manager
 
 = 1.5.8 =
 * Add: intégration Zabbix 7.4 — réglages URL + clé API, création auto des hosts à l’ajout de site, boutons test et provisionnement massif.
+* Fix: test connexion sans header Authorization sur `apiinfo.version` ; création host avec champ `ip` requis par l’API.
 
 = 1.5.7 =
 * Add: colonnes Uptime Kuma et Mails dans la liste Manage Sites MainWP.

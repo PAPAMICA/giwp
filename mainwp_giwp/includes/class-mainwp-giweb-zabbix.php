@@ -85,21 +85,32 @@ class MainWP_GIWeb_Zabbix {
 	}
 
 	/**
-	 * @param string               $method Méthode API.
-	 * @param array<string, mixed> $params Paramètres.
+	 * @param string               $method  Méthode API.
+	 * @param array<string, mixed> $params  Paramètres.
+	 * @param array<string, bool>  $options skip_auth — sans header Authorization (apiinfo.version).
 	 * @return array{success:bool, data?:mixed, error?:string, code?:string}
 	 */
-	public static function api_request( $method, array $params = array() ) {
-		if ( ! self::is_configured() ) {
+	public static function api_request( $method, array $params = array(), array $options = array() ) {
+		$skip_auth = ! empty( $options['skip_auth'] );
+		$creds     = self::get_credentials();
+
+		if ( '' === $creds['url'] ) {
 			return array(
 				'success' => false,
-				'error'   => __( 'Zabbix non configuré.', 'mainwp-giweb' ),
+				'error'   => __( 'URL Zabbix manquante.', 'mainwp-giweb' ),
 				'code'    => 'not_configured',
 			);
 		}
 
-		$creds = self::get_credentials();
-		$body  = wp_json_encode(
+		if ( ! $skip_auth && '' === $creds['api_token'] ) {
+			return array(
+				'success' => false,
+				'error'   => __( 'Clé API Zabbix manquante.', 'mainwp-giweb' ),
+				'code'    => 'not_configured',
+			);
+		}
+
+		$body = wp_json_encode(
 			array(
 				'jsonrpc' => '2.0',
 				'method'  => (string) $method,
@@ -116,14 +127,18 @@ class MainWP_GIWeb_Zabbix {
 			);
 		}
 
+		$headers = array(
+			'Content-Type' => 'application/json-rpc',
+		);
+		if ( ! $skip_auth ) {
+			$headers['Authorization'] = 'Bearer ' . $creds['api_token'];
+		}
+
 		$response = wp_remote_post(
 			self::api_endpoint(),
 			array(
 				'timeout' => 45,
-				'headers' => array(
-					'Content-Type'  => 'application/json-rpc',
-					'Authorization' => 'Bearer ' . $creds['api_token'],
-				),
+				'headers' => $headers,
 				'body'    => $body,
 			)
 		);
@@ -177,16 +192,56 @@ class MainWP_GIWeb_Zabbix {
 	 * @return array{success:bool, message:string, version?:string, error?:string}
 	 */
 	public static function test_connection() {
-		$result = self::api_request( 'apiinfo.version', array() );
-		if ( empty( $result['success'] ) ) {
+		$version_result = self::api_request(
+			'apiinfo.version',
+			array(),
+			array( 'skip_auth' => true )
+		);
+		if ( empty( $version_result['success'] ) ) {
 			return array(
 				'success' => false,
-				'message' => $result['error'] ?? __( 'Connexion impossible.', 'mainwp-giweb' ),
-				'error'   => $result['error'] ?? '',
+				'message' => $version_result['error'] ?? __( 'Connexion impossible.', 'mainwp-giweb' ),
+				'error'   => $version_result['error'] ?? '',
 			);
 		}
 
-		$version = is_string( $result['data'] ) ? $result['data'] : '';
+		$version = is_string( $version_result['data'] ) ? $version_result['data'] : '';
+
+		if ( ! self::is_configured() ) {
+			return array(
+				'success' => false,
+				'message' => $version
+					? sprintf(
+						/* translators: 1: Zabbix version */
+						__( 'Serveur Zabbix %1$s joignable — clé API manquante.', 'mainwp-giweb' ),
+						$version
+					)
+					: __( 'Serveur joignable — clé API manquante.', 'mainwp-giweb' ),
+				'version' => $version,
+			);
+		}
+
+		$auth_result = self::api_request(
+			'user.get',
+			array(
+				'output' => array( 'userid' ),
+				'limit'  => 1,
+			)
+		);
+		if ( empty( $auth_result['success'] ) ) {
+			return array(
+				'success' => false,
+				'message' => sprintf(
+					/* translators: 1: Zabbix version, 2: error message */
+					__( 'Zabbix %1$s — clé API refusée : %2$s', 'mainwp-giweb' ),
+					$version ?: '?',
+					(string) ( $auth_result['error'] ?? __( 'Erreur inconnue.', 'mainwp-giweb' ) )
+				),
+				'version' => $version,
+				'error'   => $auth_result['error'] ?? '',
+			);
+		}
+
 		return array(
 			'success' => true,
 			'message' => $version
@@ -365,6 +420,7 @@ class MainWP_GIWeb_Zabbix {
 						'type'  => 1,
 						'main'  => 1,
 						'useip' => 0,
+						'ip'    => '',
 						'dns'   => $domain,
 						'port'  => '443',
 					),
