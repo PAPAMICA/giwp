@@ -330,16 +330,120 @@
 		applyFilters();
 	}
 
+	function collectGiwebGw(root) {
+		if (!root || root === document) {
+			return Array.prototype.slice.call(
+				document.querySelectorAll('.giweb-gw')
+			);
+		}
+		if (root.classList && root.classList.contains('giweb-gw')) {
+			return [root];
+		}
+		return Array.prototype.slice.call(root.querySelectorAll('.giweb-gw'));
+	}
+
+	function initGiwebGw(root) {
+		root = root || document;
+
+		collectGiwebGw(root).forEach(function (gw) {
+			var widget = gw.closest(
+				'.mainwp-giweb-mail-widget--detailed, .mainwp-giweb-backup-widget--detailed, .mainwp-giweb-uptime-kuma-widget--detailed'
+			);
+			if (widget && widget.contains(gw)) {
+				delete gw.dataset.giwebGwBound;
+				bindPanel(gw);
+			}
+
+			var header = gw.querySelector('.giweb-gw-header');
+			if (header) {
+				bindStripTooltips(gw);
+			}
+		});
+
+		bindRefreshButtons(root);
+		refreshSyncLabels(root);
+	}
+
+	function bindRefreshButtons(root) {
+		(root || document).querySelectorAll('.giweb-gw-refresh:not([data-giweb-refresh-bound])').forEach(function (btn) {
+			btn.dataset.giwebRefreshBound = '1';
+			btn.addEventListener('click', function () {
+				handleWidgetRefresh(btn);
+			});
+		});
+	}
+
+	function handleWidgetRefresh(btn) {
+		var cfg = window.mainwpGiwebWidgetShell;
+		if (!cfg || !cfg.ajaxUrl || !cfg.action) {
+			return;
+		}
+		if (btn.classList.contains('is-loading')) {
+			return;
+		}
+
+		var gw = btn.closest('.giweb-gw');
+		if (!gw) {
+			return;
+		}
+
+		var parent = gw.parentElement;
+		var scope = btn.getAttribute('data-refresh-scope') || '';
+		var siteId = btn.getAttribute('data-refresh-site-id') || '0';
+		var detailed = btn.getAttribute('data-refresh-detailed') || '0';
+		var body = new FormData();
+
+		body.append('action', cfg.action);
+		body.append('nonce', cfg.nonce);
+		body.append('scope', scope);
+		body.append('site_id', siteId);
+		body.append('detailed', detailed);
+
+		btn.classList.add('is-loading');
+		btn.disabled = true;
+
+		fetch(cfg.ajaxUrl, {
+			method: 'POST',
+			body: body,
+			credentials: 'same-origin'
+		})
+			.then(function (response) {
+				return response.json();
+			})
+			.then(function (payload) {
+				if (!payload || !payload.success || !payload.data || !payload.data.html) {
+					var message =
+						(payload && payload.data && payload.data.message) ||
+						(cfg.i18n && cfg.i18n.refreshError) ||
+						'';
+					if (message) {
+						window.alert(message);
+					}
+					return;
+				}
+
+				gw.outerHTML = payload.data.html;
+				var freshGw = parent ? parent.querySelector('.giweb-gw') : null;
+				if (freshGw) {
+					initGiwebGw(freshGw);
+				} else {
+					initGiwebGw(document);
+				}
+			})
+			.catch(function () {
+				var message = (cfg.i18n && cfg.i18n.refreshError) || '';
+				if (message) {
+					window.alert(message);
+				}
+			})
+			.finally(function () {
+				btn.classList.remove('is-loading');
+				btn.disabled = false;
+			});
+	}
+
 	function init() {
-		document
-			.querySelectorAll(
-				'.mainwp-giweb-mail-widget--detailed .giweb-gw, .mainwp-giweb-backup-widget--detailed .giweb-gw, .mainwp-giweb-uptime-kuma-widget--detailed .giweb-gw'
-			)
-			.forEach(bindPanel);
-		document
-			.querySelectorAll('.mainwp-giweb-mail-widget .giweb-gw-header, .mainwp-giweb-backup-widget .giweb-gw-header, .mainwp-giweb-uptime-kuma-widget .giweb-gw-header')
-			.forEach(bindStripTooltips);
-		refreshSyncLabels();
+		initGiwebGw(document);
 	}
 
 	if (document.readyState === 'loading') {

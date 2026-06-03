@@ -126,13 +126,7 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 			array( 'mainwp-giweb-widget-shell' ),
 			MAINWP_GIWEB_VERSION
 		);
-		wp_enqueue_script(
-			'mainwp-giweb-widget-shell',
-			MAINWP_GIWEB_PLUGIN_URL . 'assets/js/giweb-widget-shell.js',
-			array(),
-			MAINWP_GIWEB_VERSION,
-			true
-		);
+		MainWP_GIWeb_Metabox::enqueue_widget_shell_script();
 		wp_enqueue_script(
 			'mainwp-giweb-uptime-kuma-widget',
 			MAINWP_GIWEB_PLUGIN_URL . 'assets/js/uptime-kuma-widget.js',
@@ -771,7 +765,13 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 					'kuma',
 					__( 'Uptime Kuma', 'mainwp-giweb' ),
 					__( 'Monitor de ce site', 'mainwp-giweb' ),
-					$updated_at
+					$updated_at,
+					'',
+					array(
+						'scope'    => 'kuma',
+						'site_id'  => $site_id,
+						'detailed' => false,
+					)
 				);
 				?>
 			</header>
@@ -940,7 +940,13 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 						(int) $summary['monitored'],
 						(int) $summary['total']
 					),
-					$updated_at
+					$updated_at,
+					'',
+					array(
+						'scope'    => 'kuma',
+						'site_id'  => 0,
+						'detailed' => $detailed,
+					)
 				);
 				?>
 				<?php if ( ! empty( $sites ) ) : ?>

@@ -50,6 +50,36 @@ class MainWP_GIWeb_Metabox {
 	}
 
 	/**
+	 * Script coquille widgets + configuration AJAX refresh.
+	 *
+	 * @return void
+	 */
+	public static function enqueue_widget_shell_script() {
+		wp_enqueue_script(
+			'mainwp-giweb-widget-shell',
+			MAINWP_GIWEB_PLUGIN_URL . 'assets/js/giweb-widget-shell.js',
+			array(),
+			MAINWP_GIWEB_VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'mainwp-giweb-widget-shell',
+			'mainwpGiwebWidgetShell',
+			array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( MainWP_GIWeb_Sync_Ajax::NONCE_ACTION ),
+				'action'  => 'mainwp_giweb_widget_refresh',
+				'i18n'    => array(
+					'refresh'      => __( 'Actualiser les données', 'mainwp-giweb' ),
+					'refreshing'   => __( 'Actualisation…', 'mainwp-giweb' ),
+					'refreshError' => __( 'Impossible d’actualiser les données.', 'mainwp-giweb' ),
+				),
+			)
+		);
+	}
+
+	/**
 	 * @return bool
 	 */
 	public static function should_enqueue_on_mainwp_dashboard() {

@@ -165,6 +165,48 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget {
 	gap: 8px;
 }
 
+.giweb-gw-sync-wrap {
+	align-items: center;
+	display: inline-flex;
+	flex-shrink: 0;
+	gap: 2px;
+}
+
+.giweb-gw-refresh {
+	align-items: center;
+	background: transparent;
+	border: 0;
+	border-radius: 4px;
+	color: var(--giweb-gw-muted);
+	cursor: pointer;
+	display: inline-flex;
+	flex-shrink: 0;
+	height: 22px;
+	justify-content: center;
+	padding: 0;
+	width: 22px;
+}
+
+.giweb-gw-refresh:hover:not(:disabled) {
+	background: var(--giweb-gw-surface-2);
+	color: var(--giweb-gw-text);
+}
+
+.giweb-gw-refresh:disabled {
+	cursor: wait;
+	opacity: 0.65;
+}
+
+.giweb-gw-refresh.is-loading .giweb-gw-refresh__icon {
+	animation: giweb-gw-refresh-spin 0.85s linear infinite;
+}
+
+@keyframes giweb-gw-refresh-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
 .giweb-gw-sync {
 	color: var(--giweb-gw-muted);
 	font-size: 11px;

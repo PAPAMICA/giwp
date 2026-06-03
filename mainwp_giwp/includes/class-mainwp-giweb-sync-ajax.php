@@ -29,6 +29,7 @@ class MainWP_GIWeb_Sync_Ajax {
 		add_action( 'wp_ajax_mainwp_giweb_plugin_deploy_init', array( __CLASS__, 'ajax_plugin_deploy_init' ) );
 		add_action( 'wp_ajax_mainwp_giweb_plugin_deploy_site', array( __CLASS__, 'ajax_plugin_deploy_site' ) );
 		add_action( 'wp_ajax_mainwp_giweb_plugin_deploy_cleanup', array( __CLASS__, 'ajax_plugin_deploy_cleanup' ) );
+		add_action( 'wp_ajax_mainwp_giweb_widget_refresh', array( __CLASS__, 'ajax_widget_refresh' ) );
 	}
 
 	/**
@@ -216,6 +217,172 @@ class MainWP_GIWeb_Sync_Ajax {
 			);
 
 			wp_send_json_success( $result );
+		} catch ( Throwable $e ) {
+			self::send_exception( $e );
+		} catch ( Exception $e ) {
+			self::send_exception( $e );
+		}
+	}
+
+	/**
+	 * Interroge un ou tous les sites enfants et met à jour mails / backups.
+	 *
+	 * @param int $site_id 0 = tous les sites.
+	 * @return array<string, mixed>
+	 */
+	public static function refresh_child_sites_data( $site_id = 0 ) {
+		$act = self::activator();
+		if ( ! $act ) {
+			return array(
+				'error' => __( 'Extension MainWP non initialisée.', 'mainwp-giweb' ),
+			);
+		}
+
+		$site_id = absint( $site_id );
+
+		if ( $site_id <= 0 ) {
+			MainWP_GIWeb_Status_Cache::mark_sync_started();
+			update_option(
+				MainWP_GIWeb_Mail_Stats::AGGREGATE_OPTION,
+				array(
+					'sites'      => array(),
+					'network'    => MainWP_GIWeb_Mail_Stats::compute_network( array() ),
+					'updated_at' => 0,
+				),
+				false
+			);
+			update_option(
+				MainWP_GIWeb_Backup_Stats::AGGREGATE_OPTION,
+				array(
+					'sites'      => array(),
+					'network'    => MainWP_GIWeb_Backup_Stats::compute_network( array() ),
+					'updated_at' => 0,
+				),
+				false
+			);
+			MainWP_GIWeb_Mail_Stats::clear_alert();
+			$sites = MainWP_GIWeb_Sites::fetch_all( $act );
+		} else {
+			$row = MainWP_GIWeb_Sites::find_by_id( $site_id, $act );
+			$sites = is_array( $row ) ? array( $row ) : array();
+		}
+
+		foreach ( $sites as $site ) {
+			$row = MainWP_GIWeb_Sites::normalize_one( $site );
+			$id  = (int) ( $row['id'] ?? 0 );
+			if ( $id <= 0 ) {
+				continue;
+			}
+
+			$label  = (string) ( $row['name'] ?: $row['url'] ?: ( '#' . $id ) );
+			$url    = (string) ( $row['url'] ?? '' );
+			$result = MainWP_GIWeb_Deploy::sync_site_status( $id, $label );
+
+			MainWP_GIWeb_Status_Cache::set_site( $id, $result['api'] );
+			MainWP_GIWeb_Mail_Stats::record_site_sync( $id, $label, $url, $result['api'] );
+			MainWP_GIWeb_Backup_Stats::record_site_sync( $id, $label, $url, $result['api'] );
+		}
+
+		if ( $site_id <= 0 ) {
+			MainWP_GIWeb_Status_Cache::mark_sync_completed();
+		}
+
+		$mail_agg    = MainWP_GIWeb_Mail_Stats::get_aggregate();
+		$backup_agg  = MainWP_GIWeb_Backup_Stats::get_aggregate();
+		$updated_at  = max(
+			(int) ( $mail_agg['updated_at'] ?? 0 ),
+			(int) ( $backup_agg['updated_at'] ?? 0 )
+		);
+
+		return array(
+			'updated_at' => $updated_at,
+		);
+	}
+
+	/**
+	 * Force le rafraîchissement des données affichées dans un widget dashboard.
+	 *
+	 * @return void
+	 */
+	public static function ajax_widget_refresh() {
+		self::bootstrap_ajax();
+		try {
+			self::verify_request();
+
+			$scope    = isset( $_POST['scope'] ) ? sanitize_key( wp_unslash( $_POST['scope'] ) ) : '';
+			$site_id  = isset( $_POST['site_id'] ) ? absint( $_POST['site_id'] ) : 0;
+			$detailed = ! empty( $_POST['detailed'] );
+
+			if ( ! in_array( $scope, array( 'mail', 'backup', 'kuma' ), true ) ) {
+				wp_send_json_error(
+					array( 'message' => __( 'Type de widget invalide.', 'mainwp-giweb' ) )
+				);
+			}
+
+			$updated_at = 0;
+
+			if ( 'kuma' === $scope ) {
+				if ( ! MainWP_GIWeb_Uptime_Kuma::is_configured() ) {
+					wp_send_json_error(
+						array( 'message' => __( 'Uptime Kuma non configuré.', 'mainwp-giweb' ) )
+					);
+				}
+
+				$result = MainWP_GIWeb_Uptime_Kuma_Widget::refresh_cache( true );
+				if ( empty( $result['success'] ) ) {
+					wp_send_json_error(
+						array(
+							'message' => $result['error'] ?? __( 'Synchronisation Uptime Kuma impossible.', 'mainwp-giweb' ),
+						)
+					);
+				}
+				$updated_at = (int) ( $result['updated_at'] ?? 0 );
+			} else {
+				$sync = self::refresh_child_sites_data( $site_id );
+				if ( ! empty( $sync['error'] ) ) {
+					wp_send_json_error(
+						array( 'message' => (string) $sync['error'] )
+					);
+				}
+				$updated_at = (int) ( $sync['updated_at'] ?? 0 );
+
+				if ( MainWP_GIWeb_Uptime_Kuma::is_configured() ) {
+					MainWP_GIWeb_Uptime_Kuma_Widget::refresh_cache( true );
+				}
+			}
+
+			ob_start();
+			switch ( $scope ) {
+				case 'mail':
+					if ( $site_id > 0 ) {
+						MainWP_GIWeb_Dashboard_Widget::render_site_body( $site_id );
+					} else {
+						MainWP_GIWeb_Dashboard_Widget::render_network_body( $detailed );
+					}
+					break;
+				case 'backup':
+					if ( $site_id > 0 ) {
+						MainWP_GIWeb_Backup_Widget::render_site_body( $site_id );
+					} else {
+						MainWP_GIWeb_Backup_Widget::render_network_body( $detailed );
+					}
+					break;
+				case 'kuma':
+					if ( $site_id > 0 ) {
+						MainWP_GIWeb_Uptime_Kuma_Widget::render_site_metabox_body( $site_id );
+					} else {
+						MainWP_GIWeb_Uptime_Kuma_Widget::render_metabox_body( $detailed );
+					}
+					break;
+			}
+			$html = ob_get_clean();
+
+			wp_send_json_success(
+				array(
+					'html'       => $html,
+					'updated_at' => $updated_at,
+				)
+			);
 		} catch ( Throwable $e ) {
 			self::send_exception( $e );
 		} catch ( Exception $e ) {

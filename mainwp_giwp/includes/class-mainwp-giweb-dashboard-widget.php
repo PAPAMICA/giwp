@@ -76,13 +76,7 @@ class MainWP_GIWeb_Dashboard_Widget {
 			MAINWP_GIWEB_VERSION
 		);
 
-		wp_enqueue_script(
-			'mainwp-giweb-widget-shell',
-			MAINWP_GIWEB_PLUGIN_URL . 'assets/js/giweb-widget-shell.js',
-			array(),
-			MAINWP_GIWEB_VERSION,
-			true
-		);
+		MainWP_GIWeb_Metabox::enqueue_widget_shell_script();
 	}
 
 	/**
@@ -132,43 +126,55 @@ class MainWP_GIWeb_Dashboard_Widget {
 	 * @return void
 	 */
 	private static function render_network_metabox( $detailed ) {
-		$ctx     = self::get_network_context();
 		$is_dark = MainWP_GIWeb_UI::is_dark_theme();
 		$mod     = $detailed ? ' mainwp-giweb-mail-widget--detailed' : ' mainwp-giweb-mail-widget--simple';
 		$theme   = $is_dark ? ' mainwp-giweb-mail-widget--dark' : ' mainwp-giweb-mail-widget--light';
 		?>
 		<div class="mainwp-giweb-mail-widget<?php echo esc_attr( $mod . $theme ); ?>">
-			<div class="giweb-gw">
-				<header class="giweb-gw-header">
-					<?php self::render_network_header( $ctx ); ?>
-					<?php self::render_network_overview( $ctx ); ?>
-				</header>
+			<?php self::render_network_body( $detailed ); ?>
+		</div>
+		<?php
+	}
 
-				<?php if ( $detailed ) : ?>
-					<?php self::render_donut_panel( $ctx['sites'] ); ?>
-					<?php self::render_chart_panel( $ctx['network'] ); ?>
+	/**
+	 * Corps HTML du widget réseau (AJAX refresh).
+	 *
+	 * @param bool $detailed Afficher donut, graphique, liste.
+	 * @return void
+	 */
+	public static function render_network_body( $detailed ) {
+		$ctx = self::get_network_context();
+		?>
+		<div class="giweb-gw">
+			<header class="giweb-gw-header">
+				<?php self::render_network_header( $ctx, $detailed ); ?>
+				<?php self::render_network_overview( $ctx ); ?>
+			</header>
 
-					<?php if ( empty( $ctx['rows'] ) ) : ?>
-						<div class="giweb-gw-empty-state">
-							<p><?php esc_html_e( 'Aucun site avec Mail Catcher actif remonté pour le moment.', 'mainwp-giweb' ); ?></p>
+			<?php if ( $detailed ) : ?>
+				<?php self::render_donut_panel( $ctx['sites'] ); ?>
+				<?php self::render_chart_panel( $ctx['network'] ); ?>
+
+				<?php if ( empty( $ctx['rows'] ) ) : ?>
+					<div class="giweb-gw-empty-state">
+						<p><?php esc_html_e( 'Aucun site avec Mail Catcher actif remonté pour le moment.', 'mainwp-giweb' ); ?></p>
+					</div>
+				<?php else : ?>
+					<?php
+					$list_mode = (string) ( MainWP_GIWeb_Settings::get()['mail_widget_list_mode'] ?? 'cards' );
+					self::render_list_toolbar( $ctx, $list_mode );
+					?>
+					<div class="giweb-gw-list" data-default-view="<?php echo esc_attr( MainWP_GIWeb_Widget_UI::is_table_mode( $list_mode ) ? 'table' : 'cards' ); ?>" data-storage-key="giweb_gw_view_mail">
+						<div class="giweb-gw-grid<?php echo esc_attr( MainWP_GIWeb_Widget_UI::list_view_class( $list_mode, 'cards' ) ); ?>">
+							<?php foreach ( $ctx['rows'] as $row ) : ?>
+								<?php self::render_mail_card( $row ); ?>
+							<?php endforeach; ?>
 						</div>
-					<?php else : ?>
-						<?php
-						$list_mode = (string) ( MainWP_GIWeb_Settings::get()['mail_widget_list_mode'] ?? 'cards' );
-						self::render_list_toolbar( $ctx, $list_mode );
-						?>
-						<div class="giweb-gw-list" data-default-view="<?php echo esc_attr( MainWP_GIWeb_Widget_UI::is_table_mode( $list_mode ) ? 'table' : 'cards' ); ?>" data-storage-key="giweb_gw_view_mail">
-							<div class="giweb-gw-grid<?php echo esc_attr( MainWP_GIWeb_Widget_UI::list_view_class( $list_mode, 'cards' ) ); ?>">
-								<?php foreach ( $ctx['rows'] as $row ) : ?>
-									<?php self::render_mail_card( $row ); ?>
-								<?php endforeach; ?>
-							</div>
-							<?php self::render_mail_table( $ctx['rows'], $list_mode ); ?>
-						</div>
-						<p class="giweb-gw-no-match" hidden><?php esc_html_e( 'Aucun site ne correspond à votre recherche.', 'mainwp-giweb' ); ?></p>
-					<?php endif; ?>
+						<?php self::render_mail_table( $ctx['rows'], $list_mode ); ?>
+					</div>
+					<p class="giweb-gw-no-match" hidden><?php esc_html_e( 'Aucun site ne correspond à votre recherche.', 'mainwp-giweb' ); ?></p>
 				<?php endif; ?>
-			</div>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -231,10 +237,11 @@ class MainWP_GIWeb_Dashboard_Widget {
 	}
 
 	/**
-	 * @param array<string, mixed> $ctx Contexte réseau.
+	 * @param array<string, mixed> $ctx      Contexte réseau.
+	 * @param bool                 $detailed Vue détaillée (refresh AJAX).
 	 * @return void
 	 */
-	private static function render_network_header( array $ctx ) {
+	private static function render_network_header( array $ctx, $detailed = false ) {
 		$subtitle = sprintf(
 			/* translators: 1: tracked sites, 2: total MainWP sites */
 			__( '%1$d / %2$d sites suivis', 'mainwp-giweb' ),
@@ -250,7 +257,12 @@ class MainWP_GIWeb_Dashboard_Widget {
 			__( 'Mails', 'mainwp-giweb' ),
 			$subtitle,
 			(int) $ctx['updated_at'],
-			$empty_sync
+			$empty_sync,
+			array(
+				'scope'    => 'mail',
+				'site_id'  => 0,
+				'detailed' => $detailed,
+			)
 		);
 	}
 
@@ -459,12 +471,27 @@ class MainWP_GIWeb_Dashboard_Widget {
 	 */
 	public static function render_site_metabox( $site_id ) {
 		$site_id = absint( $site_id );
+		$is_dark = MainWP_GIWeb_UI::is_dark_theme();
+		?>
+		<div class="mainwp-giweb-mail-widget mainwp-giweb-mail-widget--single-site<?php echo $is_dark ? ' mainwp-giweb-mail-widget--dark' : ' mainwp-giweb-mail-widget--light'; ?>">
+			<?php self::render_site_body( $site_id ); ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Corps HTML du widget site (AJAX refresh).
+	 *
+	 * @param int $site_id ID site MainWP.
+	 * @return void
+	 */
+	public static function render_site_body( $site_id ) {
+		$site_id = absint( $site_id );
 		$agg     = MainWP_GIWeb_Mail_Stats::get_aggregate();
 		$sites   = is_array( $agg['sites'] ?? null ) ? $agg['sites'] : array();
 		$row     = $sites[ $site_id ] ?? null;
 		$mail    = is_array( $row ) && isset( $row['mail'] ) ? $row['mail'] : MainWP_GIWeb_Mail_Stats::get_site_mail( $site_id );
 		$updated_at = ! empty( $row['synced_at'] ) ? (int) $row['synced_at'] : (int) ( $agg['updated_at'] ?? 0 );
-		$is_dark    = MainWP_GIWeb_UI::is_dark_theme();
 		$labels     = is_array( $mail ) && isset( $mail['chart_labels'] ) && is_array( $mail['chart_labels'] ) ? $mail['chart_labels'] : array();
 		$sent       = is_array( $mail ) && isset( $mail['chart_sent'] ) && is_array( $mail['chart_sent'] ) ? $mail['chart_sent'] : array();
 		$failed     = is_array( $mail ) && isset( $mail['chart_failed'] ) && is_array( $mail['chart_failed'] ) ? $mail['chart_failed'] : array();
@@ -476,62 +503,65 @@ class MainWP_GIWeb_Dashboard_Widget {
 		}
 		$mail_row = self::build_mail_row_from_site( $site_id, is_array( $row ) ? $row : array( 'label' => '#' . $site_id ), is_array( $mail ) ? $mail : array() );
 		?>
-		<div class="mainwp-giweb-mail-widget mainwp-giweb-mail-widget--single-site<?php echo $is_dark ? ' mainwp-giweb-mail-widget--dark' : ' mainwp-giweb-mail-widget--light'; ?>">
-			<div class="giweb-gw giweb-gw--single">
-				<header class="giweb-gw-header">
-					<?php
-					MainWP_GIWeb_Widget_UI::render_header_row(
-						'mail',
-						__( 'Mails', 'mainwp-giweb' ),
-						__( 'Monitor de ce site', 'mainwp-giweb' ),
-						$updated_at,
-						__( 'Synchronisez ce site MainWP pour alimenter ce widget', 'mainwp-giweb' )
-					);
-					?>
-				</header>
+		<div class="giweb-gw giweb-gw--single">
+			<header class="giweb-gw-header">
+				<?php
+				MainWP_GIWeb_Widget_UI::render_header_row(
+					'mail',
+					__( 'Mails', 'mainwp-giweb' ),
+					__( 'Monitor de ce site', 'mainwp-giweb' ),
+					$updated_at,
+					__( 'Synchronisez ce site MainWP pour alimenter ce widget', 'mainwp-giweb' ),
+					array(
+						'scope'    => 'mail',
+						'site_id'  => $site_id,
+						'detailed' => false,
+					)
+				);
+				?>
+			</header>
 
-				<?php if ( ! is_array( $mail ) || empty( $mail['module_active'] ) ) : ?>
-					<div class="giweb-gw-empty-state">
-						<p><?php esc_html_e( 'Mail Catcher inactif sur ce site.', 'mainwp-giweb' ); ?></p>
-					</div>
-				<?php elseif ( empty( $mail['table_ready'] ) ) : ?>
-					<div class="giweb-gw-empty-state">
-						<p><?php esc_html_e( 'Module actif — en attente de données.', 'mainwp-giweb' ); ?></p>
-					</div>
-				<?php else : ?>
-					<?php self::render_mail_card( $mail_row ); ?>
+			<?php if ( ! is_array( $mail ) || empty( $mail['module_active'] ) ) : ?>
+				<div class="giweb-gw-empty-state">
+					<p><?php esc_html_e( 'Mail Catcher inactif sur ce site.', 'mainwp-giweb' ); ?></p>
+				</div>
+			<?php elseif ( empty( $mail['table_ready'] ) ) : ?>
+				<div class="giweb-gw-empty-state">
+					<p><?php esc_html_e( 'Module actif — en attente de données.', 'mainwp-giweb' ); ?></p>
+				</div>
+			<?php else : ?>
+				<?php self::render_mail_card( $mail_row ); ?>
 
-					<?php if ( ! empty( $labels ) ) : ?>
-						<div class="giweb-gw-panel">
-							<h4 class="giweb-gw-panel__title"><?php esc_html_e( '7 derniers jours', 'mainwp-giweb' ); ?></h4>
-							<div class="mainwp-giweb-mail-widget__chart-bars" aria-hidden="true">
-								<?php foreach ( $labels as $i => $label ) : ?>
-									<?php
-									$s      = (int) ( $sent[ $i ] ?? 0 );
-									$f      = (int) ( $failed[ $i ] ?? 0 );
-									$ok_h   = ( $max > 0 && $s > 0 ) ? max( 4, (int) round( ( $s / $max ) * $bar_h ) ) : 0;
-									$fail_h = ( $max > 0 && $f > 0 ) ? max( 3, (int) round( ( $f / $max ) * $bar_h ) ) : 0;
-									?>
-									<div class="mainwp-giweb-mail-widget__bar-col" title="<?php echo esc_attr( $label . ' — ' . $s . ' OK / ' . $f . ' KO' ); ?>">
-										<div class="mainwp-giweb-mail-widget__bar-stack" style="height:<?php echo esc_attr( (string) $bar_h ); ?>px">
-											<?php if ( $fail_h > 0 ) : ?>
-												<span class="mainwp-giweb-mail-widget__bar mainwp-giweb-mail-widget__bar--fail" style="height:<?php echo esc_attr( (string) $fail_h ); ?>px"></span>
-											<?php endif; ?>
-											<?php if ( $ok_h > 0 ) : ?>
-												<span class="mainwp-giweb-mail-widget__bar mainwp-giweb-mail-widget__bar--ok" style="height:<?php echo esc_attr( (string) $ok_h ); ?>px"></span>
-											<?php endif; ?>
-											<?php if ( $ok_h <= 0 && $fail_h <= 0 ) : ?>
-												<span class="mainwp-giweb-mail-widget__bar mainwp-giweb-mail-widget__bar--empty"></span>
-											<?php endif; ?>
-										</div>
-										<span class="mainwp-giweb-mail-widget__bar-label"><?php echo esc_html( wp_trim_words( $label, 1, '' ) ); ?></span>
+				<?php if ( ! empty( $labels ) ) : ?>
+					<div class="giweb-gw-panel">
+						<h4 class="giweb-gw-panel__title"><?php esc_html_e( '7 derniers jours', 'mainwp-giweb' ); ?></h4>
+						<div class="mainwp-giweb-mail-widget__chart-bars" aria-hidden="true">
+							<?php foreach ( $labels as $i => $label ) : ?>
+								<?php
+								$s      = (int) ( $sent[ $i ] ?? 0 );
+								$f      = (int) ( $failed[ $i ] ?? 0 );
+								$ok_h   = ( $max > 0 && $s > 0 ) ? max( 4, (int) round( ( $s / $max ) * $bar_h ) ) : 0;
+								$fail_h = ( $max > 0 && $f > 0 ) ? max( 3, (int) round( ( $f / $max ) * $bar_h ) ) : 0;
+								?>
+								<div class="mainwp-giweb-mail-widget__bar-col" title="<?php echo esc_attr( $label . ' — ' . $s . ' OK / ' . $f . ' KO' ); ?>">
+									<div class="mainwp-giweb-mail-widget__bar-stack" style="height:<?php echo esc_attr( (string) $bar_h ); ?>px">
+										<?php if ( $fail_h > 0 ) : ?>
+											<span class="mainwp-giweb-mail-widget__bar mainwp-giweb-mail-widget__bar--fail" style="height:<?php echo esc_attr( (string) $fail_h ); ?>px"></span>
+										<?php endif; ?>
+										<?php if ( $ok_h > 0 ) : ?>
+											<span class="mainwp-giweb-mail-widget__bar mainwp-giweb-mail-widget__bar--ok" style="height:<?php echo esc_attr( (string) $ok_h ); ?>px"></span>
+										<?php endif; ?>
+										<?php if ( $ok_h <= 0 && $fail_h <= 0 ) : ?>
+											<span class="mainwp-giweb-mail-widget__bar mainwp-giweb-mail-widget__bar--empty"></span>
+										<?php endif; ?>
 									</div>
-								<?php endforeach; ?>
-							</div>
+									<span class="mainwp-giweb-mail-widget__bar-label"><?php echo esc_html( wp_trim_words( $label, 1, '' ) ); ?></span>
+								</div>
+							<?php endforeach; ?>
 						</div>
-					<?php endif; ?>
+					</div>
 				<?php endif; ?>
-			</div>
+			<?php endif; ?>
 		</div>
 		<?php
 	}

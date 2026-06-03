@@ -171,6 +171,35 @@ class MainWP_GIWeb_Widget_UI {
 	}
 
 	/**
+	 * @param array<string, mixed> $refresh scope, site_id, detailed.
+	 * @return void
+	 */
+	public static function render_refresh_button( array $refresh ) {
+		$scope    = sanitize_key( (string) ( $refresh['scope'] ?? '' ) );
+		$site_id  = absint( $refresh['site_id'] ?? 0 );
+		$detailed = ! empty( $refresh['detailed'] ) ? '1' : '0';
+
+		if ( ! in_array( $scope, array( 'mail', 'backup', 'kuma' ), true ) ) {
+			return;
+		}
+		?>
+		<button
+			type="button"
+			class="giweb-gw-refresh"
+			data-refresh-scope="<?php echo esc_attr( $scope ); ?>"
+			data-refresh-site-id="<?php echo esc_attr( (string) $site_id ); ?>"
+			data-refresh-detailed="<?php echo esc_attr( $detailed ); ?>"
+			title="<?php esc_attr_e( 'Actualiser les données depuis les sites', 'mainwp-giweb' ); ?>"
+			aria-label="<?php esc_attr_e( 'Actualiser les données', 'mainwp-giweb' ); ?>"
+		>
+			<svg class="giweb-gw-refresh__icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+				<path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08a5.99 5.99 0 0 1-5.65 4c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+			</svg>
+		</button>
+		<?php
+	}
+
+	/**
 	 * @param int    $updated_at   Timestamp sync.
 	 * @param string $empty_message Message si pas de sync.
 	 * @return void
@@ -207,16 +236,24 @@ class MainWP_GIWeb_Widget_UI {
 	 * @param string $icon_modifier mail|backup|kuma.
 	 * @param string $title         Titre.
 	 * @param string $subtitle      Sous-titre.
-	 * @param int    $updated_at    Timestamp sync.
-	 * @param string $empty_sync    Message sync vide.
+	 * @param int                         $updated_at    Timestamp sync.
+	 * @param string                      $empty_sync    Message sync vide.
+	 * @param array<string, mixed>|null   $refresh       scope, site_id, detailed (optionnel).
 	 * @return void
 	 */
-	public static function render_header_row( $icon_modifier, $title, $subtitle, $updated_at, $empty_sync = '' ) {
+	public static function render_header_row( $icon_modifier, $title, $subtitle, $updated_at, $empty_sync = '', $refresh = null ) {
 		?>
 		<div class="giweb-gw-header__row">
 			<?php self::render_brand( $icon_modifier, $title, $subtitle ); ?>
 			<div class="giweb-gw-header__actions">
-				<?php self::render_sync( $updated_at, $empty_sync ); ?>
+				<div class="giweb-gw-sync-wrap">
+					<?php self::render_sync( $updated_at, $empty_sync ); ?>
+					<?php
+					if ( is_array( $refresh ) && ! empty( $refresh['scope'] ) ) {
+						self::render_refresh_button( $refresh );
+					}
+					?>
+				</div>
 			</div>
 		</div>
 		<?php
