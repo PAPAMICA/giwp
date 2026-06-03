@@ -907,7 +907,6 @@ class Gi_Toolkit_Matomo {
 				'href'  => admin_url( 'admin.php?page=' . self::STATS_PAGE_SLUG ),
 				'meta'  => array(
 					'class' => 'gi-matomo-ab-stats-menu',
-					'html'  => true,
 					'title' => self::build_admin_bar_tooltip( $data ),
 				),
 			)
@@ -919,7 +918,6 @@ class Gi_Toolkit_Matomo {
 				'id'     => 'gi-matomo-toolbar-flyout',
 				'title'  => self::render_admin_bar_flyout_html( $data ),
 				'meta'   => array(
-					'html'     => true,
 					'class'    => 'gi-matomo-ab-flyout-item',
 					'tabindex' => -1,
 				),

@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.24.1 =
+* Fix: Barre admin Matomo / Uptime Kuma — retrait du « 1 » parasite (`meta['html']` interprété comme contenu HTML par WordPress).
+
 = 2.24.0 =
 * Update: injection complète du statut GI-Toolkit (mails + backups + meta) dans la synchro globale MainWP.
 

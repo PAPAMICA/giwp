@@ -4,7 +4,7 @@ Tags: all in one plugin, admin, security, disable features, easy to use
 Requires at least: 6.0.0
 Tested up to: 6.9.3
 Requires PHP: 7.4
-Stable tag: 2.23.1
+Stable tag: 2.24.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -193,6 +193,36 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 4. Code snippets
 
 == Changelog ==
+
+= 2.24.1 =
+* Fix: Barre admin Matomo / Uptime Kuma — retrait du « 1 » parasite (`meta['html']` interprété comme contenu HTML par WordPress).
+
+= 2.24.0 =
+* Update: injection complète du statut GI-Toolkit (mails + backups + meta) dans la synchro globale MainWP.
+
+= 2.23.9 =
+* Add: injection statut UpdraftPlus dans la synchro globale MainWP (`mainwp_site_sync_others_data`).
+
+= 2.23.8 =
+* Add: remontée statut UpdraftPlus vers MainWP (dernier backup, taille, envoi stockage externe).
+
+= 2.23.7 =
+* Add: Module « Mode debug WordPress » — force WP_DEBUG / WP_DEBUG_DISPLAY / WP_DEBUG_LOG et error_reporting (écrase wp-config.php).
+
+= 2.23.6 =
+* Fix: Graphique horaire Statistiques — API VisitTime (24 points) pour Aujourd’hui / Hier, avec repli VisitsSummary.
+
+= 2.23.5 =
+* Fix: Graphique « Évolution du trafic » — prise en charge des séries horaires Matomo (Aujourd’hui / Hier).
+
+= 2.23.4 =
+* Fix: Barre admin Matomo / Uptime Kuma — réapparition des widgets (repli API si cache vide, migration cache v2).
+
+= 2.23.3 =
+* Fix: Dashboard Statistiques — graphique « Évolution du trafic » aligné sur la période (heure/jour/mois selon le filtre).
+
+= 2.23.2 =
+* Perf: Barre admin Matomo / Uptime Kuma — cache + cron 10 min, Chart.js au survol, sparkline Matomo en barres CSS.
 
 = 2.23.1 =
 * Fix: Suivi Matomo — injection renforcée (3 hooks), panneau diagnostic dans Connect Matomo.

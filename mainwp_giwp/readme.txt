@@ -3,7 +3,7 @@ Contributors: genevois-informatique
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.6.2
+Stable tag: 1.6.3
 License: GPLv2 or later
 
 Gérez et déployez GI-Toolkit sur tous vos sites WordPress via MainWP.
@@ -54,6 +54,14 @@ MainWP > Extensions > GI-Toolkit Manager
 - [ ] Modèle « Default » défini comme profil par défaut dans Réglages
 
 == Changelog ==
+
+= 1.6.3 =
+* Add: bouton Actualiser (↻) sur les widgets Mails, Backups et Uptime Kuma — sync forcée des données enfant + rechargement AJAX du widget.
+* Update: refonte widgets dashboard — tooltips enrichis sur le bandeau statut, tableaux lisibles clair/sombre, bascule cartes/tableau, légende donut scrollable.
+* Update: vue d’ensemble — colonne URL retirée (lien sous le nom), colonnes Mails/Backup élargies, badge statut compact.
+* Update: page Réglages — navigation par ancres, sections en cartes, barre Enregistrer sticky.
+* Fix: masquage widgets MainWP (décocher dans Options de l’écran) — correction du préfixe ID `advanced-`.
+* Fix: score backup « no backup » sur le total MainWP ; pourcentages affichés sans décimales.
 
 = 1.6.2 =
 * Update: sync globale MainWP — mails, backups et Uptime Kuma alimentés automatiquement (payload GI-Toolkit injecté côté enfant, repli API, refresh Kuma à la fin du batch).

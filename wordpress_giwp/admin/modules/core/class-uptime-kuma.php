@@ -668,7 +668,6 @@ class Gi_Toolkit_Uptime_Kuma {
 				'title' => $title,
 				'href'  => self::get_settings_admin_url(),
 				'meta'  => array(
-					'html'  => true,
 					'class' => 'gi-uptime-kuma-ab-menu',
 					'title' => self::build_admin_bar_tooltip( $data ),
 				),
@@ -681,7 +680,6 @@ class Gi_Toolkit_Uptime_Kuma {
 				'id'     => 'gi-uptime-kuma-toolbar-flyout',
 				'title'  => self::render_admin_bar_flyout_html( $data ),
 				'meta'   => array(
-					'html'     => true,
 					'class'    => 'gi-uptime-kuma-ab-flyout-item',
 					'tabindex' => -1,
 				),
