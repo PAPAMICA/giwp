@@ -147,6 +147,65 @@ $logs            = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 			</td>
 		</tr>
 		<tr>
+			<th scope="row"><?php esc_html_e( 'Backup FTP', 'mainwp-giweb' ); ?></th>
+			<td>
+				<p>
+					<label for="mainwp_giweb_ftp_host"><?php esc_html_e( 'Hôte FTP', 'mainwp-giweb' ); ?></label><br />
+					<input type="text" class="regular-text code" id="mainwp_giweb_ftp_host" name="ftp_host" value="<?php echo esc_attr( (string) ( $settings['ftp_host'] ?? '' ) ); ?>" placeholder="ftp.example.com" autocomplete="off" />
+				</p>
+				<p>
+					<label for="mainwp_giweb_ftp_port"><?php esc_html_e( 'Port', 'mainwp-giweb' ); ?></label><br />
+					<input type="number" min="1" max="65535" step="1" class="small-text" id="mainwp_giweb_ftp_port" name="ftp_port" value="<?php echo esc_attr( (string) (int) ( $settings['ftp_port'] ?? 21 ) ); ?>" />
+				</p>
+				<p>
+					<label for="mainwp_giweb_ftp_username"><?php esc_html_e( 'Utilisateur FTP', 'mainwp-giweb' ); ?></label><br />
+					<input type="text" class="regular-text" id="mainwp_giweb_ftp_username" name="ftp_username" value="<?php echo esc_attr( (string) ( $settings['ftp_username'] ?? '' ) ); ?>" autocomplete="username" />
+				</p>
+				<p>
+					<label for="mainwp_giweb_ftp_password"><?php esc_html_e( 'Mot de passe FTP', 'mainwp-giweb' ); ?></label><br />
+					<input type="password" class="large-text code" id="mainwp_giweb_ftp_password" name="ftp_password" value="" autocomplete="new-password" placeholder="<?php echo ! empty( $settings['ftp_password'] ) ? esc_attr__( '•••••••• (laisser vide pour conserver)', 'mainwp-giweb' ) : ''; ?>" />
+				</p>
+				<p>
+					<label for="mainwp_giweb_ftp_path"><?php esc_html_e( 'Chemin du dossier de backup', 'mainwp-giweb' ); ?></label><br />
+					<input type="text" class="large-text code" id="mainwp_giweb_ftp_path" name="ftp_path" value="<?php echo esc_attr( (string) ( $settings['ftp_path'] ?? '/BACKUPS_WORDPRESS/%siteurl%' ) ); ?>" placeholder="/BACKUPS_WORDPRESS/%siteurl%" />
+				</p>
+				<p class="description">
+					<?php esc_html_e( 'Variables : %siteurl% (nom de domaine sans www) et %sitename% (nom du site MainWP). Exemple : /BACKUPS_WORDPRESS/%siteurl%', 'mainwp-giweb' ); ?>
+				</p>
+				<p>
+					<label>
+						<input type="checkbox" name="ftp_passive" value="1" <?php checked( '1', $settings['ftp_passive'] ?? '1' ); ?> />
+						<?php esc_html_e( 'Mode passif FTP', 'mainwp-giweb' ); ?>
+					</label>
+				</p>
+				<p>
+					<label>
+						<input type="checkbox" name="ftp_ssl" value="1" <?php checked( '1', $settings['ftp_ssl'] ?? '0' ); ?> />
+						<?php esc_html_e( 'Connexion FTPS (FTP over SSL)', 'mainwp-giweb' ); ?>
+					</label>
+				</p>
+				<p>
+					<label>
+						<input type="checkbox" name="ftp_auto_on_deploy" value="1" <?php checked( '1', $settings['ftp_auto_on_deploy'] ?? '1' ); ?> />
+						<?php esc_html_e( 'Créer ou vérifier le dossier FTP à chaque déploiement de configuration', 'mainwp-giweb' ); ?>
+					</label>
+				</p>
+				<?php if ( MainWP_GIWeb_Ftp_Backup::is_configured() ) : ?>
+					<p class="description" style="color:#15803d;"><?php esc_html_e( 'Backup FTP configuré — dossier créé automatiquement si absent.', 'mainwp-giweb' ); ?></p>
+				<?php endif; ?>
+				<p style="margin-top:12px;">
+					<button type="button" class="button button-secondary" id="mainwp-giweb-ftp-test" <?php disabled( ! MainWP_GIWeb_Ftp_Backup::is_configured() ); ?>>
+						<?php esc_html_e( 'Tester la connexion FTP', 'mainwp-giweb' ); ?>
+					</button>
+					<button type="button" class="button button-secondary" id="mainwp-giweb-ftp-verify-all" <?php disabled( ! MainWP_GIWeb_Ftp_Backup::is_configured() ); ?>>
+						<?php esc_html_e( 'Vérifier tous les sites', 'mainwp-giweb' ); ?>
+					</button>
+				</p>
+				<p id="mainwp-giweb-ftp-feedback" class="description" hidden></p>
+				<div id="mainwp-giweb-ftp-results" hidden></div>
+			</td>
+		</tr>
+		<tr>
 			<th scope="row"><?php esc_html_e( 'Synchronisation', 'mainwp-giweb' ); ?></th>
 			<td>
 				<label for="mainwp_giweb_sync_concurrency"><?php esc_html_e( 'Sites interrogés en parallèle (sync et déploiement)', 'mainwp-giweb' ); ?></label>

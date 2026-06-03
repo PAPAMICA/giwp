@@ -40,6 +40,14 @@
 		return ( cfg.i18n && cfg.i18n[ key ] ) ? cfg.i18n[ key ] : fallback;
 	}
 
+	function escapeHtml( value ) {
+		return String( value == null ? '' : value )
+			.replace( /&/g, '&amp;' )
+			.replace( /</g, '&lt;' )
+			.replace( />/g, '&gt;' )
+			.replace( /"/g, '&quot;' );
+	}
+
 	function hasAjax() {
 		return !!( cfg.ajaxUrl && cfg.nonce );
 	}
@@ -712,6 +720,86 @@
 			} );
 	}
 
+	function showFtpFeedback( message, isOk ) {
+		var $fb = $( '#mainwp-giweb-ftp-feedback' );
+		if ( ! $fb.length ) {
+			return;
+		}
+		$fb.removeAttr( 'hidden' ).css( 'color', false === isOk ? '#b45309' : '#15803d' ).text( message || '' );
+	}
+
+	function renderFtpResults( sites ) {
+		var $wrap = $( '#mainwp-giweb-ftp-results' );
+		if ( ! $wrap.length || ! sites || ! sites.length ) {
+			if ( $wrap.length ) {
+				$wrap.attr( 'hidden', 'hidden' ).empty();
+			}
+			return;
+		}
+
+		var html = '<table class="widefat striped" style="margin-top:12px;"><thead><tr>';
+		html += '<th>' + escapeHtml( i18n( 'ftpColSite', 'Site' ) ) + '</th>';
+		html += '<th>' + escapeHtml( i18n( 'ftpColPath', 'Dossier' ) ) + '</th>';
+		html += '<th>' + escapeHtml( i18n( 'ftpColSize', 'Taille' ) ) + '</th>';
+		html += '<th>' + escapeHtml( i18n( 'ftpColLastFile', 'Dernier fichier' ) ) + '</th>';
+		html += '<th>' + escapeHtml( i18n( 'ftpColStatus', 'Statut' ) ) + '</th>';
+		html += '</tr></thead><tbody>';
+
+		sites.forEach( function ( site ) {
+			var ok = site && site.success;
+			var status = ok
+				? ( site.created ? i18n( 'badgeCreated', 'Créé' ) : i18n( 'badgeOk', 'OK' ) )
+				: i18n( 'badgeError', 'Erreur' );
+			html += '<tr>';
+			html += '<td>' + escapeHtml( ( site && site.label ) || '—' ) + '</td>';
+			html += '<td><code>' + escapeHtml( ( site && site.path ) || '—' ) + '</code></td>';
+			html += '<td>' + escapeHtml( ( site && site.size_human ) || '—' ) + '</td>';
+			html += '<td>' + escapeHtml( ( site && site.last_file_relative ) || '—' ) + '</td>';
+			html += '<td style="color:' + ( ok ? '#15803d' : '#b45309' ) + ';">' + escapeHtml( status ) + '</td>';
+			html += '</tr>';
+		} );
+
+		html += '</tbody></table>';
+		$wrap.html( html ).removeAttr( 'hidden' );
+	}
+
+	function runFtpAction( action, loadingText, withTable ) {
+		if ( ! hasAjax() ) {
+			return;
+		}
+		var $test = $( '#mainwp-giweb-ftp-test' );
+		var $all = $( '#mainwp-giweb-ftp-verify-all' );
+		$test.add( $all ).prop( 'disabled', true );
+		showFtpFeedback( loadingText, null );
+		if ( ! withTable ) {
+			renderFtpResults( [] );
+		}
+
+		postAjax( action, {} )
+			.done( function ( response ) {
+				if ( response && response.success && response.data ) {
+					showFtpFeedback( response.data.message || i18n( 'badgeOk', 'OK' ), true );
+					if ( withTable && response.data.sites ) {
+						renderFtpResults( response.data.sites );
+						log( 'ftp verify', response.data.sites );
+					}
+				} else {
+					showFtpFeedback(
+						( response && response.data && response.data.message ) || i18n( 'ftpError', 'Erreur FTP.' ),
+						false
+					);
+					renderFtpResults( [] );
+				}
+			} )
+			.fail( function () {
+				showFtpFeedback( i18n( 'syncError', 'Erreur réseau' ), false );
+				renderFtpResults( [] );
+			} )
+			.always( function () {
+				$test.add( $all ).prop( 'disabled', false );
+			} );
+	}
+
 	function onReady() {
 		log( 'document.ready', { pulls: $( '.mainwp-giweb-pull-config' ).length } );
 		initConfig();
@@ -1081,6 +1169,14 @@
 
 		$( '#mainwp-giweb-zabbix-provision-all' ).on( 'click', function () {
 			runZabbixAction( 'mainwp_giweb_zabbix_provision_all', i18n( 'zabbixProvisioning', 'Création des hosts Zabbix…' ) );
+		} );
+
+		$( '#mainwp-giweb-ftp-test' ).on( 'click', function () {
+			runFtpAction( 'mainwp_giweb_ftp_test', i18n( 'ftpTesting', 'Test de connexion FTP…' ), false );
+		} );
+
+		$( '#mainwp-giweb-ftp-verify-all' ).on( 'click', function () {
+			runFtpAction( 'mainwp_giweb_ftp_verify_all', i18n( 'ftpVerifying', 'Vérification des dossiers FTP…' ), true );
 		} );
 	}
 

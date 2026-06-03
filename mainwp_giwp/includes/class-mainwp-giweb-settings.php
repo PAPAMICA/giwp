@@ -44,6 +44,14 @@ class MainWP_GIWeb_Settings {
 			'zabbix_url'                    => '',
 			'zabbix_api_token'              => '',
 			'zabbix_auto_create'            => '0',
+			'ftp_host'                      => '',
+			'ftp_port'                      => 21,
+			'ftp_username'                  => '',
+			'ftp_password'                  => '',
+			'ftp_path'                      => '/BACKUPS_WORDPRESS/%siteurl%',
+			'ftp_passive'                   => '1',
+			'ftp_ssl'                       => '0',
+			'ftp_auto_on_deploy'            => '1',
 		);
 	}
 
@@ -117,6 +125,37 @@ class MainWP_GIWeb_Settings {
 		}
 
 		$clean['zabbix_auto_create'] = ! empty( $data['zabbix_auto_create'] ) ? '1' : '0';
+
+		if ( isset( $data['ftp_host'] ) ) {
+			$clean['ftp_host'] = sanitize_text_field( (string) $data['ftp_host'] );
+		} else {
+			$clean['ftp_host'] = (string) ( $current['ftp_host'] ?? '' );
+		}
+
+		$clean['ftp_port'] = max( 1, min( 65535, absint( $data['ftp_port'] ?? ( $current['ftp_port'] ?? 21 ) ) ) );
+
+		if ( isset( $data['ftp_username'] ) ) {
+			$clean['ftp_username'] = sanitize_text_field( (string) $data['ftp_username'] );
+		} else {
+			$clean['ftp_username'] = (string) ( $current['ftp_username'] ?? '' );
+		}
+
+		if ( ! empty( $data['ftp_password'] ) ) {
+			$clean['ftp_password'] = sanitize_text_field( (string) $data['ftp_password'] );
+		} else {
+			$clean['ftp_password'] = (string) ( $current['ftp_password'] ?? '' );
+		}
+
+		if ( isset( $data['ftp_path'] ) ) {
+			$path = trim( str_replace( '\\', '/', (string) $data['ftp_path'] ) );
+			$clean['ftp_path'] = '' !== $path ? $path : '/BACKUPS_WORDPRESS/%siteurl%';
+		} else {
+			$clean['ftp_path'] = (string) ( $current['ftp_path'] ?? '/BACKUPS_WORDPRESS/%siteurl%' );
+		}
+
+		$clean['ftp_passive']        = ! empty( $data['ftp_passive'] ) ? '1' : '0';
+		$clean['ftp_ssl']            = ! empty( $data['ftp_ssl'] ) ? '1' : '0';
+		$clean['ftp_auto_on_deploy'] = ! empty( $data['ftp_auto_on_deploy'] ) ? '1' : '0';
 
 		return update_option( self::OPTION_KEY, $clean, false );
 	}

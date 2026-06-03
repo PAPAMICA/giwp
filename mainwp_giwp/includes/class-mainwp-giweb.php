@@ -151,6 +151,16 @@ class MainWP_GIWeb {
 					'zabbixTesting'    => __( 'Test de connexion Zabbix…', 'mainwp-giweb' ),
 					'zabbixProvisioning' => __( 'Création des hosts Zabbix…', 'mainwp-giweb' ),
 					'zabbixError'      => __( 'Erreur Zabbix.', 'mainwp-giweb' ),
+					'ftpTesting'       => __( 'Test de connexion FTP…', 'mainwp-giweb' ),
+					'ftpVerifying'     => __( 'Vérification des dossiers FTP…', 'mainwp-giweb' ),
+					'ftpError'         => __( 'Erreur FTP.', 'mainwp-giweb' ),
+					'ftpColSite'       => __( 'Site', 'mainwp-giweb' ),
+					'ftpColPath'       => __( 'Dossier', 'mainwp-giweb' ),
+					'ftpColSize'       => __( 'Taille', 'mainwp-giweb' ),
+					'ftpColLastFile'   => __( 'Dernier fichier', 'mainwp-giweb' ),
+					'ftpColStatus'     => __( 'Statut', 'mainwp-giweb' ),
+					'badgeCreated'     => __( 'Créé', 'mainwp-giweb' ),
+					'badgeError'       => __( 'Erreur', 'mainwp-giweb' ),
 				),
 		);
 	}
@@ -313,6 +323,14 @@ class MainWP_GIWeb {
 						'zabbix_url'                 => isset( $_POST['zabbix_url'] ) ? esc_url_raw( wp_unslash( $_POST['zabbix_url'] ) ) : '',
 						'zabbix_api_token'           => isset( $_POST['zabbix_api_token'] ) ? sanitize_text_field( wp_unslash( $_POST['zabbix_api_token'] ) ) : '',
 						'zabbix_auto_create'         => ! empty( $_POST['zabbix_auto_create'] ),
+						'ftp_host'                   => isset( $_POST['ftp_host'] ) ? sanitize_text_field( wp_unslash( $_POST['ftp_host'] ) ) : '',
+						'ftp_port'                   => absint( $_POST['ftp_port'] ?? 21 ),
+						'ftp_username'               => isset( $_POST['ftp_username'] ) ? sanitize_text_field( wp_unslash( $_POST['ftp_username'] ) ) : '',
+						'ftp_password'               => isset( $_POST['ftp_password'] ) ? sanitize_text_field( wp_unslash( $_POST['ftp_password'] ) ) : '',
+						'ftp_path'                   => isset( $_POST['ftp_path'] ) ? sanitize_text_field( wp_unslash( $_POST['ftp_path'] ) ) : '',
+						'ftp_passive'                => ! empty( $_POST['ftp_passive'] ),
+						'ftp_ssl'                    => ! empty( $_POST['ftp_ssl'] ),
+						'ftp_auto_on_deploy'         => ! empty( $_POST['ftp_auto_on_deploy'] ),
 					)
 				);
 				MainWP_GIWeb_Notices::add( 'success', __( 'Réglages enregistrés.', 'mainwp-giweb' ) );
