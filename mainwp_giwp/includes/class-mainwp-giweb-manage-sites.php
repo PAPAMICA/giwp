@@ -10,6 +10,7 @@ class MainWP_GIWeb_Manage_Sites {
 
 	const COL_UPTIME = 'giweb_uptime_kuma';
 	const COL_MAIL   = 'giweb_mail';
+	const COL_BACKUP = 'giweb_backup';
 
 	/**
 	 * @return void
@@ -62,6 +63,7 @@ class MainWP_GIWeb_Manage_Sites {
 		$insert = array(
 			self::COL_UPTIME => __( 'Uptime Kuma', 'mainwp-giweb' ),
 			self::COL_MAIL   => __( 'Mails', 'mainwp-giweb' ),
+			self::COL_BACKUP => __( 'Backup', 'mainwp-giweb' ),
 		);
 
 		$out = array();
@@ -106,6 +108,12 @@ class MainWP_GIWeb_Manage_Sites {
 			);
 		}
 
+		if ( self::COL_BACKUP === $column_name ) {
+			$item[ self::COL_BACKUP ] = MainWP_GIWeb_Backup_Stats::format_site_backup_cell(
+				MainWP_GIWeb_Backup_Stats::get_site_backup( $site_id )
+			);
+		}
+
 		return $item;
 	}
 
@@ -137,6 +145,13 @@ class MainWP_GIWeb_Manage_Sites {
 		wp_enqueue_style(
 			'mainwp-giweb-uptime-kuma-widget',
 			MAINWP_GIWEB_PLUGIN_URL . 'assets/css/uptime-kuma-widget.css',
+			array( 'mainwp-giweb-manage-sites' ),
+			MAINWP_GIWEB_VERSION
+		);
+
+		wp_enqueue_style(
+			'mainwp-giweb-backup-widget',
+			MAINWP_GIWEB_PLUGIN_URL . 'assets/css/backup-widget.css',
 			array( 'mainwp-giweb-manage-sites' ),
 			MAINWP_GIWEB_VERSION
 		);

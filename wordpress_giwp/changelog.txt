@@ -1,5 +1,14 @@
 == Changelog ==
 
+= 2.24.0 =
+* Update: injection complète du statut GI-Toolkit (mails + backups + meta) dans la synchro globale MainWP.
+
+= 2.23.9 =
+* Add: injection statut UpdraftPlus dans la synchro globale MainWP (`mainwp_site_sync_others_data`).
+
+= 2.23.8 =
+Add: remontée statut UpdraftPlus vers MainWP (dernier backup, taille, envoi stockage externe).
+
 = 2.23.7 =
 Add: Module « Mode debug WordPress » — force WP_DEBUG / WP_DEBUG_DISPLAY / WP_DEBUG_LOG et error_reporting (écrase wp-config.php).
 

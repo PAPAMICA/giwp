@@ -90,4 +90,22 @@ class MainWP_GIWeb_Status_Cache {
 		$cache['_meta']['sync_started_at'] = time();
 		update_option( self::OPTION_KEY, $cache, false );
 	}
+
+	/**
+	 * Marque la fin d’une synchronisation globale MainWP.
+	 *
+	 * @return void
+	 */
+	public static function mark_sync_completed() {
+		$cache = get_option( self::OPTION_KEY, array() );
+		if ( ! is_array( $cache ) ) {
+			$cache = array();
+		}
+		if ( ! isset( $cache['_meta'] ) || ! is_array( $cache['_meta'] ) ) {
+			$cache['_meta'] = array();
+		}
+		$cache['_meta']['updated_at']        = time();
+		$cache['_meta']['sync_completed_at'] = time();
+		update_option( self::OPTION_KEY, $cache, false );
+	}
 }

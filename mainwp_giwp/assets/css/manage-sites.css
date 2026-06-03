@@ -9,7 +9,8 @@
 }
 
 .mainwp-giweb-ms-col .mainwp-giweb-mail-site,
-.mainwp-giweb-ms-col .mainwp-giweb-ukw-site {
+.mainwp-giweb-ms-col .mainwp-giweb-ukw-site,
+.mainwp-giweb-ms-col .mainwp-giweb-backup-site {
 	max-width: 220px;
 }
 

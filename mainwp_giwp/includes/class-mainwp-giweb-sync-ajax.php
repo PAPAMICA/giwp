@@ -163,6 +163,7 @@ class MainWP_GIWeb_Sync_Ajax {
 
 			MainWP_GIWeb_Status_Cache::mark_sync_started();
 			update_option( MainWP_GIWeb_Mail_Stats::AGGREGATE_OPTION, array( 'sites' => array(), 'network' => MainWP_GIWeb_Mail_Stats::compute_network( array() ), 'updated_at' => 0 ), false );
+			update_option( MainWP_GIWeb_Backup_Stats::AGGREGATE_OPTION, array( 'sites' => array(), 'network' => MainWP_GIWeb_Backup_Stats::compute_network( array() ), 'updated_at' => 0 ), false );
 			MainWP_GIWeb_Mail_Stats::clear_alert();
 
 			wp_send_json_success(
@@ -203,11 +204,15 @@ class MainWP_GIWeb_Sync_Ajax {
 			$row = MainWP_GIWeb_Sites::find_by_id( $site_id, self::activator() );
 			$url = is_array( $row ) ? (string) ( $row['url'] ?? '' ) : '';
 			MainWP_GIWeb_Mail_Stats::record_site_sync( $site_id, $label, $url, $result['api'] );
+			MainWP_GIWeb_Backup_Stats::record_site_sync( $site_id, $label, $url, $result['api'] );
 			MainWP_GIWeb_Uptime_Kuma_Widget::schedule_refresh_on_sync();
 
 			$result['mail_summary'] = MainWP_GIWeb_Mail_Stats::get_client_summary();
 			$result['mail_html']    = MainWP_GIWeb_Mail_Stats::format_site_mail_cell(
 				MainWP_GIWeb_Mail_Stats::extract_mail( $result['data'] ?? array() )
+			);
+			$result['backup_html']  = MainWP_GIWeb_Backup_Stats::format_site_backup_cell(
+				MainWP_GIWeb_Backup_Stats::extract_backup( $result['data'] ?? array() )
 			);
 
 			wp_send_json_success( $result );

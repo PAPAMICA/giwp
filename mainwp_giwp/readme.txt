@@ -3,7 +3,7 @@ Contributors: genevois-informatique
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.5.9
+Stable tag: 1.6.2
 License: GPLv2 or later
 
 Gérez et déployez GI-Toolkit sur tous vos sites WordPress via MainWP.
@@ -54,6 +54,15 @@ MainWP > Extensions > GI-Toolkit Manager
 - [ ] Modèle « Default » défini comme profil par défaut dans Réglages
 
 == Changelog ==
+
+= 1.6.2 =
+* Update: sync globale MainWP — mails, backups et Uptime Kuma alimentés automatiquement (payload GI-Toolkit injecté côté enfant, repli API, refresh Kuma à la fin du batch).
+
+= 1.6.1 =
+* Fix: backups UpdraftPlus synchronisés avec la sync globale MainWP (`mainwp_site_synced`) — sans blocage de droits UI, agrégat réinitialisé par batch.
+
+= 1.6.0 =
+* Add: remontée UpdraftPlus via API enfant — widget dashboard, colonne Manage Sites / vue d’ensemble, statut date/taille/remote (<10 j = vert, ≥10 j = rouge).
 
 = 1.5.9 =
 * Add: backup FTP — réglages connexion + chemin avec %siteurl% / %sitename%, création auto à chaque déploiement, vérification globale avec taille et date du dernier fichier.

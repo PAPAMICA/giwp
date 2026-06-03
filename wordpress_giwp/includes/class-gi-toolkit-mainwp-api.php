@@ -148,6 +148,13 @@ class Gi_Toolkit_MainWP_API {
 			);
 		}
 
+		if ( ! class_exists( 'Gi_Toolkit_UpdraftPlus_Status', false ) && defined( 'GI_TOOLKIT_PLUGIN_PATH' ) ) {
+			require_once GI_TOOLKIT_PLUGIN_PATH . 'includes/class-gi-toolkit-updraftplus-status.php';
+		}
+		if ( class_exists( 'Gi_Toolkit_UpdraftPlus_Status' ) ) {
+			$payload['updraftplus'] = Gi_Toolkit_UpdraftPlus_Status::get_mainwp_status_payload();
+		}
+
 		return $payload;
 	}
 

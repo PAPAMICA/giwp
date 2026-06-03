@@ -30,19 +30,54 @@ class MainWP_GIWeb_Mail_Stats {
 	}
 
 	/**
+	 * @param array<string, mixed>|null $information Données sync MainWP.
+	 * @return array<string, mixed>|null
+	 */
+	public static function extract_mail_from_sync( $information ) {
+		if ( ! is_array( $information ) ) {
+			return null;
+		}
+
+		if ( ! empty( $information['gi_toolkit_mail_catcher'] ) && is_array( $information['gi_toolkit_mail_catcher'] ) ) {
+			return $information['gi_toolkit_mail_catcher'];
+		}
+
+		if ( ! empty( $information['gi_toolkit_sync']['mail_catcher'] ) && is_array( $information['gi_toolkit_sync']['mail_catcher'] ) ) {
+			return $information['gi_toolkit_sync']['mail_catcher'];
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param array<string, mixed>|null $api_data    Données API GI-Toolkit.
+	 * @param array<string, mixed>|null $information Données sync MainWP.
+	 * @return array<string, mixed>|null
+	 */
+	public static function resolve_mail_payload( $api_data, $information = null ) {
+		$from_api = is_array( $api_data ) ? self::extract_mail( $api_data ) : null;
+		if ( is_array( $from_api ) ) {
+			return $from_api;
+		}
+
+		return self::extract_mail_from_sync( $information );
+	}
+
+	/**
 	 * Met à jour l’agrégat réseau après synchro d’un site.
 	 *
-	 * @param int                  $site_id ID MainWP.
-	 * @param string               $label   Nom site.
-	 * @param string               $url     URL site.
-	 * @param array<string, mixed> $api     Réponse API complète.
+	 * @param int                       $site_id     ID MainWP.
+	 * @param string                    $label       Nom site.
+	 * @param string                    $url         URL site.
+	 * @param array<string, mixed>      $api         Réponse API complète.
+	 * @param array<string, mixed>|null $information Données sync MainWP (optionnel).
 	 * @return array<string, mixed>
 	 */
-	public static function record_site_sync( $site_id, $label, $url, $api ) {
+	public static function record_site_sync( $site_id, $label, $url, $api, $information = null ) {
 		$site_id = absint( $site_id );
 		$ok      = ! empty( $api['success'] );
 		$data    = is_array( $api['data'] ?? null ) ? $api['data'] : array();
-		$mail    = self::extract_mail( $data );
+		$mail    = self::resolve_mail_payload( $data, $information );
 
 		$aggregate = self::get_aggregate();
 		if ( ! isset( $aggregate['sites'] ) || ! is_array( $aggregate['sites'] ) ) {

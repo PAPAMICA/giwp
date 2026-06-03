@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'MAINWP_GIWEB_VERSION' ) ) {
-	define( 'MAINWP_GIWEB_VERSION', '1.5.9' );
+	define( 'MAINWP_GIWEB_VERSION', '1.6.2' );
 }
 if ( ! defined( 'MAINWP_GIWEB_PLUGIN_FILE' ) ) {
 	define( 'MAINWP_GIWEB_PLUGIN_FILE', __DIR__ . '/mainwp-giwp.php' );
@@ -49,6 +49,8 @@ require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-api.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-deploy.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-notices.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-mail-stats.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-backup-stats.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-backup-widget.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-status-cache.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-mainwp-sync.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-dashboard-widget.php';
@@ -168,10 +170,13 @@ class MainWP_GIWeb_Extension_Activator {
 		MainWP_GIWeb_Metabox::init();
 
 		add_filter( 'mainwp_getmetaboxes', array( 'MainWP_GIWeb_Dashboard_Widget', 'register_metabox' ), 20, 1 );
+		add_filter( 'mainwp_getmetaboxes', array( 'MainWP_GIWeb_Backup_Widget', 'register_metabox' ), 22, 1 );
 		add_filter( 'mainwp_getmetaboxes', array( 'MainWP_GIWeb_Uptime_Kuma_Widget', 'register_metabox' ), 25, 1 );
 		add_filter( 'mainwp_widgets_screen_options', array( 'MainWP_GIWeb_Dashboard_Widget', 'widgets_screen_options' ), 10, 1 );
+		add_filter( 'mainwp_widgets_screen_options', array( 'MainWP_GIWeb_Backup_Widget', 'widgets_screen_options' ), 10, 1 );
 		add_filter( 'mainwp_widgets_screen_options', array( 'MainWP_GIWeb_Uptime_Kuma_Widget', 'widgets_screen_options' ), 10, 1 );
 		add_action( 'admin_enqueue_scripts', array( 'MainWP_GIWeb_Dashboard_Widget', 'enqueue_assets' ) );
+		add_action( 'admin_enqueue_scripts', array( 'MainWP_GIWeb_Backup_Widget', 'enqueue_assets' ) );
 		add_action( 'admin_enqueue_scripts', array( 'MainWP_GIWeb_Uptime_Kuma_Widget', 'enqueue_assets' ) );
 
 		MainWP_GIWeb_Manage_Sites::init();

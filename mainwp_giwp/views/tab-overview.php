@@ -42,12 +42,13 @@ if ( is_array( $bundle_modules ) ) {
 			<th class="mainwp-giweb-col-version"><?php esc_html_e( 'Version', 'mainwp-giweb' ); ?></th>
 			<th class="mainwp-giweb-col-modules"><?php esc_html_e( 'Modules actifs', 'mainwp-giweb' ); ?></th>
 			<th class="mainwp-giweb-col-mail"><?php esc_html_e( 'Mails', 'mainwp-giweb' ); ?></th>
+			<th class="mainwp-giweb-col-backup"><?php esc_html_e( 'Backup', 'mainwp-giweb' ); ?></th>
 			<th class="mainwp-giweb-col-actions"><?php esc_html_e( 'Actions', 'mainwp-giweb' ); ?></th>
 		</tr>
 	</thead>
 	<tbody>
 		<?php if ( empty( $websites ) ) : ?>
-			<tr><td colspan="7"><?php esc_html_e( 'Aucun site enfant trouvé.', 'mainwp-giweb' ); ?></td></tr>
+			<tr><td colspan="8"><?php esc_html_e( 'Aucun site enfant trouvé.', 'mainwp-giweb' ); ?></td></tr>
 		<?php else : ?>
 			<?php foreach ( $websites as $site ) :
 				$row    = MainWP_GIWeb_Sites::normalize_one( $site );
@@ -78,6 +79,15 @@ if ( is_array( $bundle_modules ) ) {
 						echo wp_kses_post(
 							MainWP_GIWeb_Mail_Stats::format_site_mail_cell(
 								MainWP_GIWeb_Mail_Stats::extract_mail( $data )
+							)
+						);
+						?>
+					</td>
+					<td class="mainwp-giweb-col-backup">
+						<?php
+						echo wp_kses_post(
+							MainWP_GIWeb_Backup_Stats::format_site_backup_cell(
+								MainWP_GIWeb_Backup_Stats::extract_backup( $data )
 							)
 						);
 						?>

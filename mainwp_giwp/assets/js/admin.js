@@ -218,6 +218,13 @@
 				$mailCol.html( payload.mail_html );
 			}
 		}
+
+		var $backupCol = $row.find( '.mainwp-giweb-col-backup' );
+		if ( $backupCol.length ) {
+			if ( payload.backup_html ) {
+				$backupCol.html( payload.backup_html );
+			}
+		}
 	}
 
 	function showMailSyncAlert( mailSummary ) {

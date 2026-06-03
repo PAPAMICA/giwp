@@ -72,6 +72,12 @@ class MainWP_GIWeb {
 			array( 'mainwp-giweb-admin' ),
 			MAINWP_GIWEB_VERSION
 		);
+		wp_enqueue_style(
+			'mainwp-giweb-backup-widget',
+			MAINWP_GIWEB_PLUGIN_URL . 'assets/css/backup-widget.css',
+			array( 'mainwp-giweb-admin' ),
+			MAINWP_GIWEB_VERSION
+		);
 		wp_enqueue_script(
 			'mainwp-giweb-admin',
 			MAINWP_GIWEB_PLUGIN_URL . 'assets/js/admin.js',
