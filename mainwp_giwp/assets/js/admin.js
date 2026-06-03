@@ -201,10 +201,11 @@
 		if ( ok ) {
 			$status.html( '<span class="mainwp-giweb-badge ok">' + i18n( 'badgeOk', 'OK' ) + '</span>' );
 		} else {
-			$status.html(
-				'<span class="mainwp-giweb-badge err">' + i18n( 'badgeErr', 'Erreur' ) + '</span>' +
-					( errMsg ? '<span class="mainwp-giweb-error-hint">' + $( '<div/>' ).text( errMsg ).html() + '</span>' : '' )
-			);
+			var $badge = $( '<span class="mainwp-giweb-badge err">' ).text( i18n( 'badgeErr', 'Erreur' ) );
+			if ( errMsg ) {
+				$badge.attr( 'title', errMsg );
+			}
+			$status.empty().append( $badge );
 		}
 
 		$row.find( '.mainwp-giweb-col-version' ).text( data.gi_toolkit_version || '—' );

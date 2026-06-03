@@ -33,92 +33,99 @@ if ( is_array( $bundle_modules ) ) {
 	<?php endif; ?>
 </div>
 
-<table class="widefat striped mainwp-giweb-table" id="mainwp-giweb-sites-table">
-	<thead>
-		<tr>
-			<th class="mainwp-giweb-col-site"><?php esc_html_e( 'Site', 'mainwp-giweb' ); ?></th>
-			<th class="mainwp-giweb-col-url"><?php esc_html_e( 'URL', 'mainwp-giweb' ); ?></th>
-			<th class="mainwp-giweb-col-status"><?php esc_html_e( 'GI-Toolkit', 'mainwp-giweb' ); ?></th>
-			<th class="mainwp-giweb-col-version"><?php esc_html_e( 'Version', 'mainwp-giweb' ); ?></th>
-			<th class="mainwp-giweb-col-modules"><?php esc_html_e( 'Modules actifs', 'mainwp-giweb' ); ?></th>
-			<th class="mainwp-giweb-col-mail"><?php esc_html_e( 'Mails', 'mainwp-giweb' ); ?></th>
-			<th class="mainwp-giweb-col-backup"><?php esc_html_e( 'Backup', 'mainwp-giweb' ); ?></th>
-			<th class="mainwp-giweb-col-actions"><?php esc_html_e( 'Actions', 'mainwp-giweb' ); ?></th>
-		</tr>
-	</thead>
-	<tbody>
-		<?php if ( empty( $websites ) ) : ?>
-			<tr><td colspan="8"><?php esc_html_e( 'Aucun site enfant trouvé.', 'mainwp-giweb' ); ?></td></tr>
-		<?php else : ?>
-			<?php foreach ( $websites as $site ) :
-				$row    = MainWP_GIWeb_Sites::normalize_one( $site );
-				$sid    = (int) $row['id'];
-				$label  = $row['name'] ?: $row['url'] ?: ( '#' . $sid );
-				$cache  = $status_cache[ $sid ] ?? null;
-				$data   = is_array( $cache ) && ! empty( $cache['data'] ) ? $cache['data'] : array();
-				$ok     = is_array( $cache ) && ! empty( $cache['success'] );
-				$error  = ( is_array( $cache ) && ! empty( $cache['errors'][0] ) ) ? (string) $cache['errors'][0] : '';
-				?>
-				<tr data-site-id="<?php echo esc_attr( (string) $sid ); ?>">
-					<td class="mainwp-giweb-col-name"><?php echo esc_html( $row['name'] ); ?></td>
-					<td class="mainwp-giweb-col-url"><a href="<?php echo esc_url( $row['url'] ?: '#' ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $row['url'] ); ?></a></td>
-					<td class="mainwp-giweb-col-status">
-						<?php if ( $ok ) : ?>
-							<span class="mainwp-giweb-badge ok"><?php esc_html_e( 'OK', 'mainwp-giweb' ); ?></span>
-						<?php else : ?>
-							<span class="mainwp-giweb-badge err" title="<?php echo esc_attr( $error ); ?>"><?php esc_html_e( 'Erreur', 'mainwp-giweb' ); ?></span>
-							<?php if ( $error ) : ?>
-								<span class="mainwp-giweb-error-hint"><?php echo esc_html( $error ); ?></span>
+<div class="mainwp-giweb-table-wrap">
+	<table class="widefat striped mainwp-giweb-table" id="mainwp-giweb-sites-table">
+		<thead>
+			<tr>
+				<th class="mainwp-giweb-col-site"><?php esc_html_e( 'Site', 'mainwp-giweb' ); ?></th>
+				<th class="mainwp-giweb-col-status"><?php esc_html_e( 'GI-Toolkit', 'mainwp-giweb' ); ?></th>
+				<th class="mainwp-giweb-col-version"><?php esc_html_e( 'Version', 'mainwp-giweb' ); ?></th>
+				<th class="mainwp-giweb-col-modules"><?php esc_html_e( 'Modules', 'mainwp-giweb' ); ?></th>
+				<th class="mainwp-giweb-col-mail"><?php esc_html_e( 'Mails', 'mainwp-giweb' ); ?></th>
+				<th class="mainwp-giweb-col-backup"><?php esc_html_e( 'Backup', 'mainwp-giweb' ); ?></th>
+				<th class="mainwp-giweb-col-actions"><?php esc_html_e( 'Actions', 'mainwp-giweb' ); ?></th>
+			</tr>
+		</thead>
+		<tbody>
+			<?php if ( empty( $websites ) ) : ?>
+				<tr><td colspan="7"><?php esc_html_e( 'Aucun site enfant trouvé.', 'mainwp-giweb' ); ?></td></tr>
+			<?php else : ?>
+				<?php foreach ( $websites as $site ) :
+					$row    = MainWP_GIWeb_Sites::normalize_one( $site );
+					$sid    = (int) $row['id'];
+					$label  = $row['name'] ?: $row['url'] ?: ( '#' . $sid );
+					$url    = (string) ( $row['url'] ?? '' );
+					$cache  = $status_cache[ $sid ] ?? null;
+					$data   = is_array( $cache ) && ! empty( $cache['data'] ) ? $cache['data'] : array();
+					$ok     = is_array( $cache ) && ! empty( $cache['success'] );
+					$error  = ( is_array( $cache ) && ! empty( $cache['errors'][0] ) ) ? (string) $cache['errors'][0] : '';
+					?>
+					<tr data-site-id="<?php echo esc_attr( (string) $sid ); ?>">
+						<td class="mainwp-giweb-col-name">
+							<div class="mainwp-giweb-site-cell">
+								<strong class="mainwp-giweb-site-cell__name"><?php echo esc_html( $row['name'] ?: $label ); ?></strong>
+								<?php if ( '' !== $url ) : ?>
+									<a class="mainwp-giweb-site-cell__url" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr( $url ); ?>">
+										<?php echo esc_html( MainWP_GIWeb_Widget_UI::site_url_host( $url ) ?: $url ); ?>
+									</a>
+								<?php endif; ?>
+							</div>
+						</td>
+						<td class="mainwp-giweb-col-status">
+							<?php if ( $ok ) : ?>
+								<span class="mainwp-giweb-badge ok"><?php esc_html_e( 'OK', 'mainwp-giweb' ); ?></span>
+							<?php else : ?>
+								<span class="mainwp-giweb-badge err" title="<?php echo esc_attr( $error ?: __( 'Erreur de synchronisation', 'mainwp-giweb' ) ); ?>"><?php esc_html_e( 'Erreur', 'mainwp-giweb' ); ?></span>
 							<?php endif; ?>
-						<?php endif; ?>
-					</td>
-					<td class="mainwp-giweb-col-version"><?php echo esc_html( $data['gi_toolkit_version'] ?? '—' ); ?></td>
-					<td class="mainwp-giweb-col-modules"><?php echo esc_html( isset( $data['active_modules'] ) ? (string) $data['active_modules'] : '—' ); ?></td>
-					<td class="mainwp-giweb-col-mail">
-						<?php
-						echo wp_kses_post(
-							MainWP_GIWeb_Mail_Stats::format_site_mail_cell(
-								MainWP_GIWeb_Mail_Stats::extract_mail( $data )
-							)
-						);
-						?>
-					</td>
-					<td class="mainwp-giweb-col-backup">
-						<?php
-						echo wp_kses_post(
-							MainWP_GIWeb_Backup_Stats::format_site_backup_cell(
-								MainWP_GIWeb_Backup_Stats::extract_backup( $data )
-							)
-						);
-						?>
-					</td>
-					<td class="mainwp-giweb-col-actions">
-						<form
-							method="post"
-							action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>"
-							class="mainwp-giweb-pull-form"
-						>
+						</td>
+						<td class="mainwp-giweb-col-version"><?php echo esc_html( $data['gi_toolkit_version'] ?? '—' ); ?></td>
+						<td class="mainwp-giweb-col-modules"><?php echo esc_html( isset( $data['active_modules'] ) ? (string) $data['active_modules'] : '—' ); ?></td>
+						<td class="mainwp-giweb-col-mail">
 							<?php
-							wp_nonce_field( 'mainwp_giweb_action', 'mainwp_giweb_nonce' );
-							include MAINWP_GIWEB_PLUGIN_PATH . 'views/partials/form-context.php';
+							echo wp_kses_post(
+								MainWP_GIWeb_Mail_Stats::format_site_mail_cell(
+									MainWP_GIWeb_Mail_Stats::extract_mail( $data )
+								)
+							);
 							?>
-							<input type="hidden" name="mainwp_giweb_action" value="pull_config" />
-							<input type="hidden" name="source_site_id" value="<?php echo esc_attr( (string) $sid ); ?>" />
-							<button
-								type="submit"
-								class="button button-small mainwp-giweb-pull-config"
-								data-site-id="<?php echo esc_attr( (string) $sid ); ?>"
-								data-site-name="<?php echo esc_attr( $label ); ?>"
+						</td>
+						<td class="mainwp-giweb-col-backup">
+							<?php
+							echo wp_kses_post(
+								MainWP_GIWeb_Backup_Stats::format_site_backup_cell(
+									MainWP_GIWeb_Backup_Stats::extract_backup( $data )
+								)
+							);
+							?>
+						</td>
+						<td class="mainwp-giweb-col-actions">
+							<form
+								method="post"
+								action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>"
+								class="mainwp-giweb-pull-form"
 							>
-								<?php esc_html_e( 'Importer config', 'mainwp-giweb' ); ?>
-							</button>
-						</form>
-					</td>
-				</tr>
-			<?php endforeach; ?>
-		<?php endif; ?>
-	</tbody>
-</table>
+								<?php
+								wp_nonce_field( 'mainwp_giweb_action', 'mainwp_giweb_nonce' );
+								include MAINWP_GIWEB_PLUGIN_PATH . 'views/partials/form-context.php';
+								?>
+								<input type="hidden" name="mainwp_giweb_action" value="pull_config" />
+								<input type="hidden" name="source_site_id" value="<?php echo esc_attr( (string) $sid ); ?>" />
+								<button
+									type="submit"
+									class="button button-small mainwp-giweb-pull-config"
+									data-site-id="<?php echo esc_attr( (string) $sid ); ?>"
+									data-site-name="<?php echo esc_attr( $label ); ?>"
+								>
+									<?php esc_html_e( 'Importer config', 'mainwp-giweb' ); ?>
+								</button>
+							</form>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+			<?php endif; ?>
+		</tbody>
+	</table>
+</div>
 
 <h2><?php esc_html_e( 'Configuration de travail', 'mainwp-giweb' ); ?></h2>
 <div id="mainwp-giweb-working-bundle">
