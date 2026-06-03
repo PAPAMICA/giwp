@@ -1,0 +1,12 @@
+/**
+ * Conteneurs MainWP — padding cohérent pour les widgets GI-Toolkit.
+ */
+body.mainwp-ui .grid-stack-item-content.ui.segment.mainwp-widget:has(
+	.mainwp-giweb-backup-widget,
+	.mainwp-giweb-mail-widget,
+	.mainwp-giweb-uptime-kuma-widget,
+	.giweb-gw,
+	.giweb-ukw
+) {
+	padding: 10px !important;
+}

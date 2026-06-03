@@ -67,15 +67,21 @@ class MainWP_GIWeb {
 			MAINWP_GIWEB_VERSION
 		);
 		wp_enqueue_style(
+			'mainwp-giweb-widget-shell',
+			MAINWP_GIWEB_PLUGIN_URL . 'assets/css/giweb-widget-shell.css',
+			array(),
+			MAINWP_GIWEB_VERSION
+		);
+		wp_enqueue_style(
 			'mainwp-giweb-dashboard-widget',
 			MAINWP_GIWEB_PLUGIN_URL . 'assets/css/dashboard-widget.css',
-			array( 'mainwp-giweb-admin' ),
+			array( 'mainwp-giweb-widget-shell', 'mainwp-giweb-admin' ),
 			MAINWP_GIWEB_VERSION
 		);
 		wp_enqueue_style(
 			'mainwp-giweb-backup-widget',
 			MAINWP_GIWEB_PLUGIN_URL . 'assets/css/backup-widget.css',
-			array( 'mainwp-giweb-admin' ),
+			array( 'mainwp-giweb-widget-shell', 'mainwp-giweb-admin' ),
 			MAINWP_GIWEB_VERSION
 		);
 		wp_enqueue_script(

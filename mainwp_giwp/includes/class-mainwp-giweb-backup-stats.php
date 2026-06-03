@@ -362,6 +362,29 @@ class MainWP_GIWeb_Backup_Stats {
 	 * @param array<string, mixed>|null $backup Stats backup site.
 	 * @return string
 	 */
+	public static function format_size_gb( $backup ) {
+		if ( ! is_array( $backup ) ) {
+			return '—';
+		}
+
+		$bytes = (int) ( $backup['size_bytes'] ?? 0 );
+		if ( $bytes <= 0 ) {
+			return '—';
+		}
+
+		$gb = $bytes / 1073741824;
+
+		return sprintf(
+			/* translators: %s: size in gigabytes with 2 decimals */
+			__( '%s Go', 'mainwp-giweb' ),
+			number_format_i18n( $gb, 2 )
+		);
+	}
+
+	/**
+	 * @param array<string, mixed>|null $backup Stats backup site.
+	 * @return string
+	 */
 	public static function format_remote_label( $backup ) {
 		if ( ! is_array( $backup ) || empty( $backup['plugin_active'] ) ) {
 			return '—';
@@ -390,7 +413,7 @@ class MainWP_GIWeb_Backup_Stats {
 		$state     = self::get_visual_state( $backup );
 		$timestamp = (int) ( $backup['last_backup_time'] ?? 0 );
 		$relative  = self::format_relative_time( $timestamp );
-		$size      = (string) ( $backup['size_human'] ?? '—' );
+		$size      = self::format_size_gb( $backup );
 		$remote    = self::format_remote_label( $backup );
 
 		$html  = '<div class="mainwp-giweb-backup-site mainwp-giweb-backup-site--' . esc_attr( $state ) . '">';

@@ -136,9 +136,15 @@ class MainWP_GIWeb_Manage_Sites {
 		);
 
 		wp_enqueue_style(
+			'mainwp-giweb-widget-shell',
+			MAINWP_GIWEB_PLUGIN_URL . 'assets/css/giweb-widget-shell.css',
+			array(),
+			MAINWP_GIWEB_VERSION
+		);
+		wp_enqueue_style(
 			'mainwp-giweb-dashboard-widget',
 			MAINWP_GIWEB_PLUGIN_URL . 'assets/css/dashboard-widget.css',
-			array( 'mainwp-giweb-manage-sites' ),
+			array( 'mainwp-giweb-widget-shell' ),
 			MAINWP_GIWEB_VERSION
 		);
 
@@ -152,7 +158,7 @@ class MainWP_GIWeb_Manage_Sites {
 		wp_enqueue_style(
 			'mainwp-giweb-backup-widget',
 			MAINWP_GIWEB_PLUGIN_URL . 'assets/css/backup-widget.css',
-			array( 'mainwp-giweb-manage-sites' ),
+			array( 'mainwp-giweb-widget-shell', 'mainwp-giweb-manage-sites' ),
 			MAINWP_GIWEB_VERSION
 		);
 
@@ -167,8 +173,8 @@ class MainWP_GIWeb_Manage_Sites {
 		}
 
 		wp_enqueue_script(
-			'mainwp-giweb-dashboard-widget',
-			MAINWP_GIWEB_PLUGIN_URL . 'assets/js/dashboard-widget.js',
+			'mainwp-giweb-widget-shell',
+			MAINWP_GIWEB_PLUGIN_URL . 'assets/js/giweb-widget-shell.js',
 			array(),
 			MAINWP_GIWEB_VERSION,
 			true

@@ -14,6 +14,7 @@ class MainWP_GIWeb_Metabox {
 	/** @var string[] */
 	private static $widget_ids = array(
 		'mainwp-giweb-mail-widget',
+		'mainwp-giweb-backup-widget',
 		'mainwp-giweb-uptime-kuma-widget',
 	);
 
@@ -22,6 +23,43 @@ class MainWP_GIWeb_Metabox {
 	 */
 	public static function init() {
 		add_filter( 'mainwp_getmetaboxes', array( __CLASS__, 'normalize_metaboxes' ), 99, 1 );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_shell_assets' ) );
+	}
+
+	/**
+	 * Padding cohérent sur les conteneurs MainWP de nos widgets.
+	 *
+	 * @param string $hook Hook admin.
+	 * @return void
+	 */
+	public static function enqueue_shell_assets( $hook ) {
+		unset( $hook );
+		if ( ! self::should_enqueue_on_mainwp_dashboard() ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'mainwp-giweb-widgets-shell',
+			MAINWP_GIWEB_PLUGIN_URL . 'assets/css/mainwp-widgets-shell.css',
+			array(),
+			MAINWP_GIWEB_VERSION
+		);
+	}
+
+	/**
+	 * @return bool
+	 */
+	public static function should_enqueue_on_mainwp_dashboard() {
+		if ( isset( $_GET['page'] ) && 'managesites' === sanitize_text_field( wp_unslash( $_GET['page'] ) ) ) {
+			return true;
+		}
+
+		if ( ! isset( $_GET['page'] ) ) {
+			return false;
+		}
+
+		$page = sanitize_text_field( wp_unslash( $_GET['page'] ) );
+		return in_array( $page, array( 'mainwp_tab', 'mainwp-setup' ), true );
 	}
 
 	/**
