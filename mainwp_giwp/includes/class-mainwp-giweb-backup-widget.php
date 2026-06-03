@@ -53,6 +53,14 @@ class MainWP_GIWeb_Backup_Widget {
 			array(),
 			MAINWP_GIWEB_VERSION
 		);
+
+		wp_enqueue_script(
+			'mainwp-giweb-dashboard-widget',
+			MAINWP_GIWEB_PLUGIN_URL . 'assets/js/dashboard-widget.js',
+			array(),
+			MAINWP_GIWEB_VERSION,
+			true
+		);
 	}
 
 	/**
@@ -81,10 +89,17 @@ class MainWP_GIWeb_Backup_Widget {
 			return '';
 		}
 
+		$now  = (int) current_time( 'timestamp' );
+		$diff = max( 0, $now - $timestamp );
+
+		if ( $diff < 60 ) {
+			return __( 'Sync à l’instant', 'mainwp-giweb' );
+		}
+
 		return sprintf(
 			/* translators: %s: human-readable time difference */
 			__( 'Sync il y a %s', 'mainwp-giweb' ),
-			human_time_diff( $timestamp, (int) current_time( 'timestamp' ) )
+			human_time_diff( $timestamp, $now )
 		);
 	}
 
@@ -117,85 +132,107 @@ class MainWP_GIWeb_Backup_Widget {
 	 * @return void
 	 */
 	private static function render_network_metabox() {
-		$agg         = MainWP_GIWeb_Backup_Stats::get_aggregate();
-		$network     = $agg['network'] ?? array();
-		$sites       = is_array( $agg['sites'] ?? null ) ? $agg['sites'] : array();
-		$updated_at  = ! empty( $agg['updated_at'] ) ? (int) $agg['updated_at'] : 0;
-		$is_dark     = MainWP_GIWeb_UI::is_dark_theme();
-		$rows        = self::build_rows( $sites );
-		$stale_count = (int) ( $network['sites_stale'] ?? 0 ) + (int) ( $network['sites_no_backup'] ?? 0 );
+		$agg           = MainWP_GIWeb_Backup_Stats::get_aggregate();
+		$network       = $agg['network'] ?? array();
+		$sites         = is_array( $agg['sites'] ?? null ) ? $agg['sites'] : array();
+		$updated_at    = ! empty( $agg['updated_at'] ) ? (int) $agg['updated_at'] : 0;
+		$is_dark       = MainWP_GIWeb_UI::is_dark_theme();
+		$rows          = self::build_rows( $sites );
+		$sites_active  = (int) ( $network['sites_active'] ?? count( $rows ) );
+		$stale_count   = (int) ( $network['sites_stale'] ?? 0 ) + (int) ( $network['sites_no_backup'] ?? 0 );
+		$remote_missing = (int) ( $network['sites_remote_missing'] ?? 0 );
 		?>
 		<div class="mainwp-giweb-backup-widget<?php echo $is_dark ? ' mainwp-giweb-backup-widget--dark' : ' mainwp-giweb-backup-widget--light'; ?><?php echo $stale_count > 0 ? ' mainwp-giweb-backup-widget--has-alerts' : ''; ?>">
 			<div class="mainwp-giweb-backup-widget__header">
-				<?php if ( (int) ( $network['sites_active'] ?? 0 ) > 0 ) : ?>
+				<div class="mainwp-giweb-backup-widget__header-main">
 					<span class="mainwp-giweb-backup-widget__pill">
+						<span class="mainwp-giweb-backup-widget__pill-dot" aria-hidden="true"></span>
 						<?php
 						printf(
 							/* translators: %d: number of sites with UpdraftPlus */
-							esc_html( _n( '%d site avec UpdraftPlus', '%d sites avec UpdraftPlus', (int) $network['sites_active'], 'mainwp-giweb' ) ),
-							(int) $network['sites_active']
+							esc_html( _n( '%d site UpdraftPlus', '%d sites UpdraftPlus', $sites_active, 'mainwp-giweb' ) ),
+							$sites_active
 						);
 						?>
 					</span>
-				<?php endif; ?>
-				<?php if ( $updated_at > 0 ) : ?>
-					<time class="mainwp-giweb-backup-widget__sync" datetime="<?php echo esc_attr( gmdate( 'c', $updated_at ) ); ?>">
-						<?php echo esc_html( self::format_sync_ago( $updated_at ) ); ?>
-					</time>
-				<?php else : ?>
-					<span class="mainwp-giweb-backup-widget__sync mainwp-giweb-backup-widget__sync--empty">
-						<?php esc_html_e( 'Synchronisez vos sites MainWP pour alimenter ce widget', 'mainwp-giweb' ); ?>
-					</span>
-				<?php endif; ?>
+					<?php if ( $updated_at > 0 ) : ?>
+						<time
+							class="mainwp-giweb-backup-widget__sync"
+							datetime="<?php echo esc_attr( gmdate( 'c', $updated_at ) ); ?>"
+							data-sync-ts="<?php echo esc_attr( (string) $updated_at ); ?>"
+						>
+							<?php echo esc_html( self::format_sync_ago( $updated_at ) ); ?>
+						</time>
+					<?php elseif ( ! $sites_active ) : ?>
+						<span class="mainwp-giweb-backup-widget__sync mainwp-giweb-backup-widget__sync--empty">
+							<?php esc_html_e( 'Synchronisez vos sites MainWP pour alimenter ce widget', 'mainwp-giweb' ); ?>
+						</span>
+					<?php endif; ?>
+				</div>
 			</div>
 
 			<div class="mainwp-giweb-backup-widget__kpis">
+				<div class="mainwp-giweb-backup-widget__kpi mainwp-giweb-backup-widget__kpi--sites">
+					<span class="mainwp-giweb-backup-widget__kpi-value"><?php echo esc_html( number_format_i18n( $sites_active ) ); ?></span>
+					<span class="mainwp-giweb-backup-widget__kpi-label"><?php esc_html_e( 'Sites UpdraftPlus', 'mainwp-giweb' ); ?></span>
+				</div>
 				<div class="mainwp-giweb-backup-widget__kpi mainwp-giweb-backup-widget__kpi--ok">
 					<span class="mainwp-giweb-backup-widget__kpi-value"><?php echo esc_html( number_format_i18n( (int) ( $network['sites_fresh'] ?? 0 ) ) ); ?></span>
 					<span class="mainwp-giweb-backup-widget__kpi-label"><?php esc_html_e( 'Récent (<10 j)', 'mainwp-giweb' ); ?></span>
 				</div>
-				<div class="mainwp-giweb-backup-widget__kpi <?php echo $stale_count > 0 ? 'mainwp-giweb-backup-widget__kpi--alert' : ''; ?>">
+				<div class="mainwp-giweb-backup-widget__kpi <?php echo $stale_count > 0 ? 'mainwp-giweb-backup-widget__kpi--alert' : 'mainwp-giweb-backup-widget__kpi--neutral'; ?>">
 					<span class="mainwp-giweb-backup-widget__kpi-value"><?php echo esc_html( number_format_i18n( $stale_count ) ); ?></span>
 					<span class="mainwp-giweb-backup-widget__kpi-label"><?php esc_html_e( 'Ancien / absent', 'mainwp-giweb' ); ?></span>
 				</div>
-				<div class="mainwp-giweb-backup-widget__kpi">
-					<span class="mainwp-giweb-backup-widget__kpi-value"><?php echo esc_html( number_format_i18n( (int) ( $network['sites_remote_missing'] ?? 0 ) ) ); ?></span>
+				<div class="mainwp-giweb-backup-widget__kpi <?php echo $remote_missing > 0 ? 'mainwp-giweb-backup-widget__kpi--alert' : 'mainwp-giweb-backup-widget__kpi--neutral'; ?>">
+					<span class="mainwp-giweb-backup-widget__kpi-value"><?php echo esc_html( number_format_i18n( $remote_missing ) ); ?></span>
 					<span class="mainwp-giweb-backup-widget__kpi-label"><?php esc_html_e( 'Remote manquant', 'mainwp-giweb' ); ?></span>
 				</div>
 			</div>
 
 			<?php if ( empty( $rows ) ) : ?>
-				<p class="description"><?php esc_html_e( 'Aucun site avec UpdraftPlus actif remonté pour le moment.', 'mainwp-giweb' ); ?></p>
+				<p class="mainwp-giweb-backup-widget__empty description"><?php esc_html_e( 'Aucun site avec UpdraftPlus actif remonté pour le moment.', 'mainwp-giweb' ); ?></p>
 			<?php else : ?>
-				<div class="mainwp-giweb-backup-widget__table-wrap">
-					<table class="mainwp-giweb-backup-widget__table widefat striped">
-						<thead>
-							<tr>
-								<th><?php esc_html_e( 'Site', 'mainwp-giweb' ); ?></th>
-								<th><?php esc_html_e( 'Statut', 'mainwp-giweb' ); ?></th>
-								<th><?php esc_html_e( 'Dernier backup', 'mainwp-giweb' ); ?></th>
-								<th><?php esc_html_e( 'Taille', 'mainwp-giweb' ); ?></th>
-								<th><?php esc_html_e( 'Remote', 'mainwp-giweb' ); ?></th>
-							</tr>
-						</thead>
-						<tbody>
-							<?php foreach ( $rows as $row ) : ?>
-								<tr class="mainwp-giweb-backup-widget__row mainwp-giweb-backup-widget__row--<?php echo esc_attr( $row['state'] ); ?>">
-									<td>
-										<?php if ( ! empty( $row['admin_url'] ) ) : ?>
-											<a href="<?php echo esc_url( $row['admin_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $row['label'] ); ?></a>
-										<?php else : ?>
-											<?php echo esc_html( $row['label'] ); ?>
-										<?php endif; ?>
-									</td>
-									<td><span class="mainwp-giweb-backup-site__badge status-<?php echo esc_attr( $row['state'] ); ?>"><?php echo esc_html( $row['status_label'] ); ?></span></td>
-									<td><?php echo esc_html( $row['relative'] ); ?></td>
-									<td><?php echo esc_html( $row['size'] ); ?></td>
-									<td><?php echo esc_html( $row['remote'] ); ?></td>
+				<div class="mainwp-giweb-backup-widget__section">
+					<h4 class="mainwp-giweb-backup-widget__section-title">
+						<?php
+						printf(
+							/* translators: %d: number of sites listed */
+							esc_html( _n( '%d site listé', '%d sites listés', count( $rows ), 'mainwp-giweb' ) ),
+							count( $rows )
+						);
+						?>
+					</h4>
+					<div class="mainwp-giweb-backup-widget__table-wrap" tabindex="0" role="region" aria-label="<?php esc_attr_e( 'Liste des sites UpdraftPlus', 'mainwp-giweb' ); ?>">
+						<table class="mainwp-giweb-backup-widget__table widefat striped">
+							<thead>
+								<tr>
+									<th><?php esc_html_e( 'Site', 'mainwp-giweb' ); ?></th>
+									<th><?php esc_html_e( 'Statut', 'mainwp-giweb' ); ?></th>
+									<th><?php esc_html_e( 'Dernier backup', 'mainwp-giweb' ); ?></th>
+									<th><?php esc_html_e( 'Taille', 'mainwp-giweb' ); ?></th>
+									<th><?php esc_html_e( 'Remote', 'mainwp-giweb' ); ?></th>
 								</tr>
-							<?php endforeach; ?>
-						</tbody>
-					</table>
+							</thead>
+							<tbody>
+								<?php foreach ( $rows as $row ) : ?>
+									<tr class="mainwp-giweb-backup-widget__row mainwp-giweb-backup-widget__row--<?php echo esc_attr( $row['state'] ); ?>">
+										<td data-label="<?php esc_attr_e( 'Site', 'mainwp-giweb' ); ?>">
+											<?php if ( ! empty( $row['admin_url'] ) ) : ?>
+												<a class="mainwp-giweb-backup-widget__site-link" href="<?php echo esc_url( $row['admin_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $row['label'] ); ?></a>
+											<?php else : ?>
+												<?php echo esc_html( $row['label'] ); ?>
+											<?php endif; ?>
+										</td>
+										<td data-label="<?php esc_attr_e( 'Statut', 'mainwp-giweb' ); ?>"><span class="mainwp-giweb-backup-site__badge status-<?php echo esc_attr( $row['state'] ); ?>"><?php echo esc_html( $row['status_label'] ); ?></span></td>
+										<td data-label="<?php esc_attr_e( 'Dernier backup', 'mainwp-giweb' ); ?>"><?php echo esc_html( $row['relative'] ); ?></td>
+										<td data-label="<?php esc_attr_e( 'Taille', 'mainwp-giweb' ); ?>"><?php echo esc_html( $row['size'] ); ?></td>
+										<td data-label="<?php esc_attr_e( 'Remote', 'mainwp-giweb' ); ?>"><?php echo esc_html( $row['remote'] ); ?></td>
+									</tr>
+								<?php endforeach; ?>
+							</tbody>
+						</table>
+					</div>
 				</div>
 			<?php endif; ?>
 		</div>
@@ -219,20 +256,27 @@ class MainWP_GIWeb_Backup_Widget {
 		?>
 		<div class="mainwp-giweb-backup-widget mainwp-giweb-backup-widget--single-site<?php echo $is_dark ? ' mainwp-giweb-backup-widget--dark' : ' mainwp-giweb-backup-widget--light'; ?> mainwp-giweb-backup-widget__row--<?php echo esc_attr( $state ); ?>">
 			<div class="mainwp-giweb-backup-widget__header">
-				<?php if ( $updated_at > 0 ) : ?>
-					<time class="mainwp-giweb-backup-widget__sync" datetime="<?php echo esc_attr( gmdate( 'c', $updated_at ) ); ?>">
-						<?php echo esc_html( self::format_sync_ago( $updated_at ) ); ?>
-					</time>
-				<?php else : ?>
-					<span class="mainwp-giweb-backup-widget__sync mainwp-giweb-backup-widget__sync--empty">
-						<?php esc_html_e( 'Synchronisez ce site MainWP pour alimenter ce widget', 'mainwp-giweb' ); ?>
-					</span>
-				<?php endif; ?>
-				<?php if ( $admin_url ) : ?>
-					<a class="mainwp-giweb-backup-widget__pill" href="<?php echo esc_url( $admin_url ); ?>" target="_blank" rel="noopener noreferrer">
-						<?php esc_html_e( 'UpdraftPlus', 'mainwp-giweb' ); ?>
-					</a>
-				<?php endif; ?>
+				<div class="mainwp-giweb-backup-widget__header-main">
+					<?php if ( $updated_at > 0 ) : ?>
+						<time
+							class="mainwp-giweb-backup-widget__sync"
+							datetime="<?php echo esc_attr( gmdate( 'c', $updated_at ) ); ?>"
+							data-sync-ts="<?php echo esc_attr( (string) $updated_at ); ?>"
+						>
+							<?php echo esc_html( self::format_sync_ago( $updated_at ) ); ?>
+						</time>
+					<?php else : ?>
+						<span class="mainwp-giweb-backup-widget__sync mainwp-giweb-backup-widget__sync--empty">
+							<?php esc_html_e( 'Synchronisez ce site MainWP pour alimenter ce widget', 'mainwp-giweb' ); ?>
+						</span>
+					<?php endif; ?>
+					<?php if ( $admin_url ) : ?>
+						<a class="mainwp-giweb-backup-widget__pill" href="<?php echo esc_url( $admin_url ); ?>" target="_blank" rel="noopener noreferrer">
+							<span class="mainwp-giweb-backup-widget__pill-dot" aria-hidden="true"></span>
+							<?php esc_html_e( 'UpdraftPlus', 'mainwp-giweb' ); ?>
+						</a>
+					<?php endif; ?>
+				</div>
 			</div>
 
 			<?php if ( ! is_array( $backup ) || empty( $backup['plugin_active'] ) ) : ?>

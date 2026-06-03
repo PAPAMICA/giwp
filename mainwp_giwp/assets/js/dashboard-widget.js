@@ -67,7 +67,7 @@
 	}
 
 	function refreshSyncLabels() {
-		document.querySelectorAll( '.mainwp-giweb-mail-widget__sync[data-sync-ts]' ).forEach( function ( el ) {
+		document.querySelectorAll( '.mainwp-giweb-mail-widget__sync[data-sync-ts], .mainwp-giweb-backup-widget__sync[data-sync-ts]' ).forEach( function ( el ) {
 			var ts = el.getAttribute( 'data-sync-ts' );
 			var label = formatRelativeSync( ts );
 			if ( label ) {

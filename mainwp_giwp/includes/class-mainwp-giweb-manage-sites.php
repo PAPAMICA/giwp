@@ -164,13 +164,14 @@ class MainWP_GIWeb_Manage_Sites {
 				MAINWP_GIWEB_VERSION,
 				true
 			);
-			wp_enqueue_script(
-				'mainwp-giweb-dashboard-widget',
-				MAINWP_GIWEB_PLUGIN_URL . 'assets/js/dashboard-widget.js',
-				array(),
-				MAINWP_GIWEB_VERSION,
-				true
-			);
 		}
+
+		wp_enqueue_script(
+			'mainwp-giweb-dashboard-widget',
+			MAINWP_GIWEB_PLUGIN_URL . 'assets/js/dashboard-widget.js',
+			array(),
+			MAINWP_GIWEB_VERSION,
+			true
+		);
 	}
 }
