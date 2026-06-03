@@ -87,31 +87,127 @@
 	function hideStripTip() {
 		if (stripTipEl) {
 			stripTipEl.hidden = true;
+			stripTipEl.innerHTML = '';
 		}
 	}
 
-	function showStripTip(text, x, y) {
-		var tip = ensureStripTip();
-		tip.textContent = text;
+	function escapeHtml(value) {
+		return String(value || '')
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;');
+	}
+
+	function parseTipMeta(seg) {
+		var raw = seg.getAttribute('data-tip-meta');
+		if (!raw) {
+			return null;
+		}
+		try {
+			return JSON.parse(raw);
+		} catch (e) {
+			return null;
+		}
+	}
+
+	function isWidgetDark(widget) {
+		if (!widget) {
+			return document.body.classList.contains('mainwp-custom-theme');
+		}
+		return (
+			widget.classList.contains('mainwp-giweb-mail-widget--dark') ||
+			widget.classList.contains('mainwp-giweb-backup-widget--dark') ||
+			widget.classList.contains('mainwp-giweb-uptime-kuma-widget--dark') ||
+			document.body.classList.contains('mainwp-custom-theme')
+		);
+	}
+
+	function buildStripTipHtml(meta) {
+		var html = '<div class="giweb-gw-strip-tip__head">';
+		html += '<span class="giweb-gw-strip-tip__title">' + escapeHtml(meta.title) + '</span>';
+		if (meta.statusLabel) {
+			html +=
+				'<span class="giweb-gw-strip-tip__badge giweb-gw-strip-tip__badge--' +
+				escapeHtml(meta.status || 'missing') +
+				'">' +
+				escapeHtml(meta.statusLabel) +
+				'</span>';
+		}
+		html += '</div>';
+
+		if (meta.stats && meta.stats.length) {
+			html += '<div class="giweb-gw-strip-tip__stats">';
+			meta.stats.forEach(function (stat) {
+				var tone = stat.tone ? ' giweb-gw-strip-tip__stat--' + stat.tone : '';
+				html += '<div class="giweb-gw-strip-tip__stat' + tone + '">';
+				html += '<span class="giweb-gw-strip-tip__stat-label">' + escapeHtml(stat.label) + '</span>';
+				html += '<span class="giweb-gw-strip-tip__stat-value">' + escapeHtml(stat.value) + '</span>';
+				html += '</div>';
+			});
+			html += '</div>';
+		}
+
+		return html;
+	}
+
+	function positionStripTip(tip, x, y) {
 		tip.hidden = false;
-		tip.style.left = Math.max(8, x + 12) + 'px';
-		tip.style.top = Math.max(8, y + 12) + 'px';
+		tip.style.left = '0px';
+		tip.style.top = '0px';
+
+		var offset = 14;
+		var rect = tip.getBoundingClientRect();
+		var left = x + offset;
+		var top = y + offset;
+
+		if (left + rect.width > window.innerWidth - 8) {
+			left = Math.max(8, x - rect.width - offset);
+		}
+		if (top + rect.height > window.innerHeight - 8) {
+			top = Math.max(8, y - rect.height - offset);
+		}
+
+		tip.style.left = left + 'px';
+		tip.style.top = top + 'px';
+	}
+
+	function showStripTipFromSegment(seg, x, y) {
+		var tip = ensureStripTip();
+		var widget = seg.closest(
+			'.mainwp-giweb-mail-widget, .mainwp-giweb-backup-widget, .mainwp-giweb-uptime-kuma-widget'
+		);
+		var isDark = isWidgetDark(widget);
+
+		tip.classList.toggle('giweb-gw-strip-tip--dark', isDark);
+		tip.classList.toggle('giweb-gw-strip-tip--light', !isDark);
+
+		var meta = parseTipMeta(seg);
+		if (meta && meta.title) {
+			tip.innerHTML = buildStripTipHtml(meta);
+		} else {
+			tip.textContent = seg.getAttribute('data-tip') || seg.getAttribute('title') || '';
+		}
+
+		positionStripTip(tip, x, y);
 	}
 
 	function bindStripTooltips(root) {
-		(root || document).querySelectorAll('.giweb-gw-strip__seg[data-tip]').forEach(function (seg) {
-			if (seg.dataset.giwebStripTipBound) {
-				return;
-			}
-			seg.dataset.giwebStripTipBound = '1';
-			seg.addEventListener('mouseenter', function (event) {
-				showStripTip(seg.getAttribute('data-tip') || '', event.clientX, event.clientY);
+		(root || document)
+			.querySelectorAll('.giweb-gw-strip__seg[data-tip-meta], .giweb-gw-strip__seg[data-tip]')
+			.forEach(function (seg) {
+				if (seg.dataset.giwebStripTipBound) {
+					return;
+				}
+				seg.dataset.giwebStripTipBound = '1';
+				seg.addEventListener('mouseenter', function (event) {
+					showStripTipFromSegment(seg, event.clientX, event.clientY);
+				});
+				seg.addEventListener('mousemove', function (event) {
+					showStripTipFromSegment(seg, event.clientX, event.clientY);
+				});
+				seg.addEventListener('mouseleave', hideStripTip);
 			});
-			seg.addEventListener('mousemove', function (event) {
-				showStripTip(seg.getAttribute('data-tip') || '', event.clientX, event.clientY);
-			});
-			seg.addEventListener('mouseleave', hideStripTip);
-		});
 	}
 
 	function applyListView(listRoot, view) {

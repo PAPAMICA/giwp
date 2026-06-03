@@ -43,7 +43,40 @@ class MainWP_GIWeb_Widget_UI {
 	}
 
 	/**
-	 * @param array<int, array<string, string>> $segments label, status, title (optionnel).
+	 * @param string               $title         Nom du site.
+	 * @param string               $status        ok|warn|down|missing.
+	 * @param string               $status_label  Libellé badge.
+	 * @param array<int, array<string, string>> $stats label, value, tone (optionnel).
+	 * @return array<string, mixed>
+	 */
+	public static function strip_tip_meta( $title, $status, $status_label, array $stats ) {
+		return array(
+			'title'       => $title,
+			'status'      => $status,
+			'statusLabel' => $status_label,
+			'stats'       => $stats,
+		);
+	}
+
+	/**
+	 * @param string $label Libellé stat.
+	 * @param string $value Valeur.
+	 * @param string $tone  ok|warn|down|missing (optionnel).
+	 * @return array<string, string>
+	 */
+	public static function strip_stat( $label, $value, $tone = '' ) {
+		$stat = array(
+			'label' => $label,
+			'value' => $value,
+		);
+		if ( '' !== $tone ) {
+			$stat['tone'] = $tone;
+		}
+		return $stat;
+	}
+
+	/**
+	 * @param array<int, array<string, string>> $segments label, status, title, tip_meta (optionnel).
 	 * @return void
 	 */
 	public static function render_status_strip( array $segments ) {
@@ -54,12 +87,14 @@ class MainWP_GIWeb_Widget_UI {
 		<div class="giweb-gw-strip" role="img" aria-label="<?php esc_attr_e( 'Statut par site', 'mainwp-giweb' ); ?>">
 			<?php foreach ( $segments as $segment ) : ?>
 				<?php
-				$status = (string) ( $segment['status'] ?? 'missing' );
-				$tip    = (string) ( $segment['tip'] ?? $segment['title'] ?? $segment['label'] ?? '' );
-				$title  = (string) ( $segment['title'] ?? $tip );
+				$status   = (string) ( $segment['status'] ?? 'missing' );
+				$tip      = (string) ( $segment['tip'] ?? $segment['title'] ?? $segment['label'] ?? '' );
+				$title    = (string) ( $segment['title'] ?? $tip );
+				$tip_meta = is_array( $segment['tip_meta'] ?? null ) ? $segment['tip_meta'] : null;
 				?>
 				<span
 					class="giweb-gw-strip__seg status-<?php echo esc_attr( $status ); ?>"
+					<?php echo is_array( $tip_meta ) ? ' data-tip-meta="' . esc_attr( wp_json_encode( $tip_meta ) ) . '"' : ''; ?>
 					<?php echo '' !== $tip ? ' data-tip="' . esc_attr( $tip ) . '"' : ''; ?>
 					<?php echo '' !== $title ? ' title="' . esc_attr( $title ) . '"' : ''; ?>
 				></span>
@@ -282,11 +317,20 @@ class MainWP_GIWeb_Widget_UI {
 			$mail     = is_array( $site_row['mail'] ?? null ) ? $site_row['mail'] : null;
 
 			if ( ! is_array( $mail ) || empty( $mail['module_active'] ) || empty( $mail['table_ready'] ) ) {
+				$inactive = __( 'Mail Catcher inactif ou en attente', 'mainwp-giweb' );
 				$segments[] = array(
-					'label'  => $label,
-					'title'  => $label,
-					'tip'    => $label . ' — ' . __( 'Mail Catcher inactif ou en attente', 'mainwp-giweb' ),
-					'status' => 'missing',
+					'label'    => $label,
+					'title'    => $label,
+					'tip'      => $label . ' — ' . $inactive,
+					'status'   => 'missing',
+					'tip_meta' => self::strip_tip_meta(
+						$label,
+						'missing',
+						__( 'Inactif', 'mainwp-giweb' ),
+						array(
+							self::strip_stat( __( 'Module', 'mainwp-giweb' ), $inactive, 'missing' ),
+						)
+					),
 				);
 				continue;
 			}
@@ -295,6 +339,7 @@ class MainWP_GIWeb_Widget_UI {
 			$failed = (int) ( $mail['failed'] ?? 0 );
 			$ok     = (int) ( $mail['success'] ?? max( 0, $total - $failed ) );
 			$today  = (int) ( $mail['today'] ?? 0 );
+			$status = $failed > 0 ? 'down' : 'ok';
 
 			if ( $failed > 0 ) {
 				$tip = sprintf(
@@ -303,6 +348,11 @@ class MainWP_GIWeb_Widget_UI {
 					$label,
 					number_format_i18n( $failed ),
 					number_format_i18n( $total )
+				);
+				$status_label = sprintf(
+					/* translators: %s: failed mail count */
+					__( '%s échecs', 'mainwp-giweb' ),
+					number_format_i18n( $failed )
 				);
 			} else {
 				$tip = sprintf(
@@ -314,13 +364,25 @@ class MainWP_GIWeb_Widget_UI {
 					number_format_i18n( $failed ),
 					number_format_i18n( $today )
 				);
+				$status_label = __( 'OK', 'mainwp-giweb' );
 			}
 
 			$segments[] = array(
-				'label'  => $label,
-				'title'  => $label,
-				'tip'    => $tip,
-				'status' => $failed > 0 ? 'down' : 'ok',
+				'label'    => $label,
+				'title'    => $label,
+				'tip'      => $tip,
+				'status'   => $status,
+				'tip_meta' => self::strip_tip_meta(
+					$label,
+					$status,
+					$status_label,
+					array(
+						self::strip_stat( __( 'Total', 'mainwp-giweb' ), number_format_i18n( $total ) ),
+						self::strip_stat( __( 'OK', 'mainwp-giweb' ), number_format_i18n( $ok ), 'ok' ),
+						self::strip_stat( __( 'Échecs', 'mainwp-giweb' ), number_format_i18n( $failed ), $failed > 0 ? 'down' : 'ok' ),
+						self::strip_stat( __( 'Aujourd’hui', 'mainwp-giweb' ), number_format_i18n( $today ) ),
+					)
+				),
 			);
 		}
 
@@ -345,11 +407,20 @@ class MainWP_GIWeb_Widget_UI {
 			$backup   = is_array( $site_row['backup'] ?? null ) ? $site_row['backup'] : null;
 
 			if ( ! is_array( $backup ) || empty( $backup['plugin_active'] ) ) {
+				$no_backup = __( 'No backup (UpdraftPlus absent)', 'mainwp-giweb' );
 				$segments[] = array(
-					'label'  => $label,
-					'title'  => $label,
-					'tip'    => $label . ' — ' . __( 'No backup (UpdraftPlus absent)', 'mainwp-giweb' ),
-					'status' => 'down',
+					'label'    => $label,
+					'title'    => $label,
+					'tip'      => $label . ' — ' . $no_backup,
+					'status'   => 'down',
+					'tip_meta' => self::strip_tip_meta(
+						$label,
+						'down',
+						__( 'No backup', 'mainwp-giweb' ),
+						array(
+							self::strip_stat( __( 'UpdraftPlus', 'mainwp-giweb' ), $no_backup, 'down' ),
+						)
+					),
 				);
 				continue;
 			}
@@ -373,19 +444,39 @@ class MainWP_GIWeb_Widget_UI {
 					$status = 'missing';
 			}
 
+			$tip = sprintf(
+				/* translators: 1: site, 2: status, 3: last backup, 4: size, 5: remote */
+				__( '%1$s — %2$s · %3$s · %4$s · Remote: %5$s', 'mainwp-giweb' ),
+				$label,
+				$status_label,
+				$relative,
+				$size,
+				$remote
+			);
+			$stat_tone = 'ok';
+			if ( 'warn' === $status ) {
+				$stat_tone = 'warn';
+			} elseif ( 'down' === $status ) {
+				$stat_tone = 'down';
+			} elseif ( 'missing' === $status ) {
+				$stat_tone = 'missing';
+			}
+
 			$segments[] = array(
-				'label'  => $label,
-				'title'  => $label,
-				'tip'    => sprintf(
-					/* translators: 1: site, 2: status, 3: last backup, 4: size, 5: remote */
-					__( '%1$s — %2$s · %3$s · %4$s · Remote: %5$s', 'mainwp-giweb' ),
+				'label'    => $label,
+				'title'    => $label,
+				'tip'      => $tip,
+				'status'   => $status,
+				'tip_meta' => self::strip_tip_meta(
 					$label,
+					$status,
 					$status_label,
-					$relative,
-					$size,
-					$remote
+					array(
+						self::strip_stat( __( 'Dernier backup', 'mainwp-giweb' ), $relative, $stat_tone ),
+						self::strip_stat( __( 'Taille', 'mainwp-giweb' ), $size ),
+						self::strip_stat( __( 'Remote', 'mainwp-giweb' ), $remote ),
+					)
 				),
-				'status' => $status,
 			);
 		}
 
@@ -423,6 +514,7 @@ class MainWP_GIWeb_Widget_UI {
 			$status_text = $status_labels[ $status ] ?? $status_labels['unknown'];
 			$ping        = (int) ( $site['avg_ping'] ?? 0 );
 			$uptime24    = isset( $site['uptime_24h'] ) ? (float) $site['uptime_24h'] : null;
+			$uptime30    = isset( $site['uptime_30d'] ) ? (float) $site['uptime_30d'] : null;
 			$tip         = $label . ' — ' . $status_text;
 			if ( $ping > 0 ) {
 				$tip .= ' · ' . $ping . ' ms';
@@ -430,11 +522,34 @@ class MainWP_GIWeb_Widget_UI {
 			if ( null !== $uptime24 ) {
 				$tip .= ' · ' . number_format_i18n( $uptime24, 1 ) . ' % (24 h)';
 			}
+
+			$stats = array(
+				self::strip_stat( __( 'Statut', 'mainwp-giweb' ), $status_text, $status ),
+			);
+			if ( $ping > 0 ) {
+				$stats[] = self::strip_stat( __( 'Ping', 'mainwp-giweb' ), $ping . ' ms' );
+			}
+			if ( null !== $uptime24 ) {
+				$stats[] = self::strip_stat(
+					__( 'Uptime 24 h', 'mainwp-giweb' ),
+					number_format_i18n( $uptime24, 1 ) . ' %',
+					$uptime24 >= 99 ? 'ok' : ( $uptime24 >= 95 ? 'warn' : 'down' )
+				);
+			}
+			if ( null !== $uptime30 ) {
+				$stats[] = self::strip_stat(
+					__( 'Uptime 30 j', 'mainwp-giweb' ),
+					number_format_i18n( $uptime30, 1 ) . ' %',
+					$uptime30 >= 99 ? 'ok' : ( $uptime30 >= 95 ? 'warn' : 'down' )
+				);
+			}
+
 			$segments[] = array(
-				'label'  => $label,
-				'title'  => $label,
-				'tip'    => $tip,
-				'status' => $status,
+				'label'    => $label,
+				'title'    => $label,
+				'tip'      => $tip,
+				'status'   => $status,
+				'tip_meta' => self::strip_tip_meta( $label, $status, $status_text, $stats ),
 			);
 		}
 

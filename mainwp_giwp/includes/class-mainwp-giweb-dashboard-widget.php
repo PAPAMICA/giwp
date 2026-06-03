@@ -419,7 +419,7 @@ class MainWP_GIWeb_Dashboard_Widget {
 	private static function render_mail_table( array $rows, $list_mode = 'cards' ) {
 		?>
 		<div class="giweb-gw-table-wrap<?php echo esc_attr( MainWP_GIWeb_Widget_UI::list_view_class( $list_mode, 'table' ) ); ?>">
-			<table class="giweb-gw-table widefat">
+			<table class="giweb-gw-table">
 				<thead>
 					<tr>
 						<th><?php esc_html_e( 'Site', 'mainwp-giweb' ); ?></th>

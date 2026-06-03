@@ -1036,7 +1036,7 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 		);
 		?>
 		<div class="giweb-gw-table-wrap giweb-ukw-table-wrap<?php echo esc_attr( MainWP_GIWeb_Widget_UI::list_view_class( $list_mode, 'table' ) ); ?>">
-			<table class="giweb-gw-table widefat">
+			<table class="giweb-gw-table">
 				<thead>
 					<tr>
 						<th><?php esc_html_e( 'Site', 'mainwp-giweb' ); ?></th>
