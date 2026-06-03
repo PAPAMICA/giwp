@@ -177,8 +177,23 @@ class MainWP_GIWeb_Metabox {
 	}
 
 	/**
+	 * ID utilisé par MainWP dans les options d’affichage (préfixe advanced-).
+	 *
+	 * @param string $metabox_id ID enregistré via mainwp_getmetaboxes.
+	 * @return string
+	 */
+	public static function widget_screen_id( $metabox_id ) {
+		$metabox_id = (string) $metabox_id;
+		if ( 0 === strpos( $metabox_id, 'advanced-' ) ) {
+			return $metabox_id;
+		}
+
+		return 'advanced-' . $metabox_id;
+	}
+
+	/**
 	 * @param array<string, string>|mixed $options Options widgets.
-	 * @param string                      $id      ID widget.
+	 * @param string                      $id      ID widget (sans préfixe MainWP).
 	 * @param string                      $title   Libellé.
 	 * @return array<string, string>
 	 */
@@ -191,7 +206,7 @@ class MainWP_GIWeb_Metabox {
 			$options = array();
 		}
 
-		$options[ $id ] = $title;
+		$options[ self::widget_screen_id( $id ) ] = $title;
 		return $options;
 	}
 
