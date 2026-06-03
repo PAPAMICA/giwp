@@ -832,7 +832,7 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 		$monitored = $total - $counts['missing'];
 		$healthy   = $counts['ok'];
 		$issues    = $counts['warn'] + $counts['down'] + $counts['unknown'] + $counts['paused'];
-		$health    = $monitored > 0 ? round( ( $healthy / $monitored ) * 100, 1 ) : ( $total > 0 ? 0 : 100 );
+		$health    = $monitored > 0 ? round( ( $healthy / $monitored ) * 100, 0 ) : ( $total > 0 ? 0 : 100 );
 
 		return array(
 			'counts'    => $counts,
@@ -991,6 +991,7 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 					</p>
 				</div>
 			<?php else : ?>
+				<?php $list_mode = (string) ( MainWP_GIWeb_Settings::get()['kuma_widget_list_mode'] ?? 'cards' ); ?>
 				<div class="giweb-ukw-toolbar">
 					<label class="giweb-ukw-search">
 						<span class="screen-reader-text"><?php esc_html_e( 'Rechercher un site', 'mainwp-giweb' ); ?></span>
@@ -1002,15 +1003,77 @@ class MainWP_GIWeb_Uptime_Kuma_Widget {
 						<button type="button" class="giweb-ukw-filter" data-filter="issues" role="tab"><?php esc_html_e( 'Alertes', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $summary['issues'] ); ?></em></button>
 						<button type="button" class="giweb-ukw-filter" data-filter="missing" role="tab"><?php esc_html_e( 'Sans monitor', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $counts['missing'] ); ?></em></button>
 					</div>
+					<?php MainWP_GIWeb_Widget_UI::render_view_toggle( $list_mode, 'giweb_gw_view_kuma' ); ?>
 				</div>
 
-				<div class="giweb-ukw-grid">
-					<?php foreach ( $sites as $site ) : ?>
-						<?php self::render_site_card( $site ); ?>
-					<?php endforeach; ?>
+				<div class="giweb-ukw-list" data-default-view="<?php echo esc_attr( MainWP_GIWeb_Widget_UI::is_table_mode( $list_mode ) ? 'table' : 'cards' ); ?>" data-storage-key="giweb_gw_view_kuma">
+					<div class="giweb-ukw-grid<?php echo esc_attr( MainWP_GIWeb_Widget_UI::list_view_class( $list_mode, 'cards' ) ); ?>">
+						<?php foreach ( $sites as $site ) : ?>
+							<?php self::render_site_card( $site ); ?>
+						<?php endforeach; ?>
+					</div>
+					<?php self::render_kuma_table( $sites, $list_mode ); ?>
 				</div>
 				<p class="giweb-ukw-no-match" hidden><?php esc_html_e( 'Aucun site ne correspond à votre recherche.', 'mainwp-giweb' ); ?></p>
 			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * @param array<int, array<string, mixed>> $sites     Lignes sites.
+	 * @param string                            $list_mode cards|table.
+	 * @return void
+	 */
+	private static function render_kuma_table( array $sites, $list_mode = 'cards' ) {
+		$status_labels = array(
+			'ok'      => __( 'En ligne', 'mainwp-giweb' ),
+			'warn'    => __( 'Dégradé', 'mainwp-giweb' ),
+			'down'    => __( 'Hors ligne', 'mainwp-giweb' ),
+			'paused'  => __( 'Pause', 'mainwp-giweb' ),
+			'missing' => __( 'Sans monitor', 'mainwp-giweb' ),
+			'unknown' => __( 'Inconnu', 'mainwp-giweb' ),
+		);
+		?>
+		<div class="giweb-gw-table-wrap giweb-ukw-table-wrap<?php echo esc_attr( MainWP_GIWeb_Widget_UI::list_view_class( $list_mode, 'table' ) ); ?>">
+			<table class="giweb-gw-table widefat">
+				<thead>
+					<tr>
+						<th><?php esc_html_e( 'Site', 'mainwp-giweb' ); ?></th>
+						<th><?php esc_html_e( 'Statut', 'mainwp-giweb' ); ?></th>
+						<th><?php esc_html_e( 'Ping', 'mainwp-giweb' ); ?></th>
+						<th><?php esc_html_e( '24 h', 'mainwp-giweb' ); ?></th>
+						<th><?php esc_html_e( '30 j', 'mainwp-giweb' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $sites as $site ) : ?>
+						<?php
+						if ( ! is_array( $site ) ) {
+							continue;
+						}
+						$status       = (string) ( $site['status'] ?? 'unknown' );
+						$label        = (string) ( $site['label'] ?? '' );
+						$url          = (string) ( $site['url'] ?? '' );
+						if ( '' === $label ) {
+							$label = MainWP_GIWeb_Widget_UI::site_url_host( $url );
+						}
+						$status_text  = $status_labels[ $status ] ?? $status_labels['unknown'];
+						$filter_group = in_array( $status, array( 'warn', 'down', 'unknown', 'paused' ), true ) ? 'issues' : $status;
+						$ping         = (int) ( $site['avg_ping'] ?? 0 );
+						$uptime24     = null !== ( $site['uptime_24h'] ?? null ) ? (float) $site['uptime_24h'] : null;
+						$uptime30     = null !== ( $site['uptime_30d'] ?? null ) ? (float) $site['uptime_30d'] : null;
+						?>
+						<tr data-status="<?php echo esc_attr( $filter_group ); ?>" data-search="<?php echo esc_attr( strtolower( $label . ' ' . $url ) ); ?>">
+							<td><?php echo esc_html( $label ); ?></td>
+							<td><?php echo esc_html( $status_text ); ?></td>
+							<td><?php echo esc_html( $ping > 0 ? (string) $ping . ' ms' : '—' ); ?></td>
+							<td><?php echo esc_html( self::format_uptime( $uptime24 ) ); ?></td>
+							<td><?php echo esc_html( self::format_uptime( $uptime30 ) ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
 		</div>
 		<?php
 	}

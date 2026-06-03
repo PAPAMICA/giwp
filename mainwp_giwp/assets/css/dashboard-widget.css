@@ -104,7 +104,7 @@
 }
 
 .mainwp-giweb-mail-widget__donut-layout {
-	align-items: center;
+	align-items: flex-start;
 	display: flex;
 	flex-wrap: wrap;
 	gap: 20px;
@@ -147,8 +147,13 @@
 	gap: 6px;
 	list-style: none;
 	margin: 0;
+	max-height: 120px;
 	min-width: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
 	padding: 0;
+	scrollbar-color: rgba(49, 107, 255, 0.35) var(--giweb-gw-surface-2, rgba(0, 0, 0, 0.05));
+	scrollbar-width: thin;
 }
 
 .mainwp-giweb-mail-widget__donut-legend li {

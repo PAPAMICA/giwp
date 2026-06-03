@@ -153,15 +153,18 @@ class MainWP_GIWeb_Dashboard_Widget {
 							<p><?php esc_html_e( 'Aucun site avec Mail Catcher actif remonté pour le moment.', 'mainwp-giweb' ); ?></p>
 						</div>
 					<?php else : ?>
-						<?php self::render_list_toolbar( $ctx ); ?>
 						<?php
 						$list_mode = (string) ( MainWP_GIWeb_Settings::get()['mail_widget_list_mode'] ?? 'cards' );
-						if ( MainWP_GIWeb_Widget_UI::is_table_mode( $list_mode ) ) {
-							self::render_mail_table( $ctx['rows'] );
-						} else {
-							self::render_mail_cards( $ctx['rows'] );
-						}
+						self::render_list_toolbar( $ctx, $list_mode );
 						?>
+						<div class="giweb-gw-list" data-default-view="<?php echo esc_attr( MainWP_GIWeb_Widget_UI::is_table_mode( $list_mode ) ? 'table' : 'cards' ); ?>" data-storage-key="giweb_gw_view_mail">
+							<div class="giweb-gw-grid<?php echo esc_attr( MainWP_GIWeb_Widget_UI::list_view_class( $list_mode, 'cards' ) ); ?>">
+								<?php foreach ( $ctx['rows'] as $row ) : ?>
+									<?php self::render_mail_card( $row ); ?>
+								<?php endforeach; ?>
+							</div>
+							<?php self::render_mail_table( $ctx['rows'], $list_mode ); ?>
+						</div>
 						<p class="giweb-gw-no-match" hidden><?php esc_html_e( 'Aucun site ne correspond à votre recherche.', 'mainwp-giweb' ); ?></p>
 					<?php endif; ?>
 				<?php endif; ?>
@@ -185,7 +188,7 @@ class MainWP_GIWeb_Dashboard_Widget {
 		$mail_success  = (int) ( $network['success'] ?? 0 );
 		$mail_failed   = (int) ( $network['failed'] ?? 0 );
 		$mail_today    = (int) ( $network['today'] ?? 0 );
-		$health        = $mail_total > 0 ? round( ( $mail_success / $mail_total ) * 100, 1 ) : 100;
+		$health        = $mail_total > 0 ? round( ( $mail_success / $mail_total ) * 100, 0 ) : 100;
 
 		return array(
 			'network'        => $network,
@@ -292,7 +295,7 @@ class MainWP_GIWeb_Dashboard_Widget {
 	 * @param array<string, mixed> $ctx Contexte réseau.
 	 * @return void
 	 */
-	private static function render_list_toolbar( array $ctx ) {
+	private static function render_list_toolbar( array $ctx, $list_mode = 'cards' ) {
 		?>
 		<div class="giweb-gw-toolbar">
 			<label class="giweb-gw-search">
@@ -305,6 +308,7 @@ class MainWP_GIWeb_Dashboard_Widget {
 				<button type="button" class="giweb-gw-filter" data-filter="issues" role="tab"><?php esc_html_e( 'Échecs', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $ctx['issues_count'] ); ?></em></button>
 				<button type="button" class="giweb-gw-filter" data-filter="inactive" role="tab"><?php esc_html_e( 'En attente', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $ctx['inactive_rows'] ); ?></em></button>
 			</div>
+			<?php MainWP_GIWeb_Widget_UI::render_view_toggle( $list_mode, 'giweb_gw_view_mail' ); ?>
 		</div>
 		<?php
 	}
@@ -408,12 +412,13 @@ class MainWP_GIWeb_Dashboard_Widget {
 	}
 
 	/**
-	 * @param array<int, array<string, mixed>> $rows Lignes sites.
+	 * @param array<int, array<string, mixed>> $rows      Lignes sites.
+	 * @param string                            $list_mode cards|table.
 	 * @return void
 	 */
-	private static function render_mail_table( array $rows ) {
+	private static function render_mail_table( array $rows, $list_mode = 'cards' ) {
 		?>
-		<div class="giweb-gw-table-wrap">
+		<div class="giweb-gw-table-wrap<?php echo esc_attr( MainWP_GIWeb_Widget_UI::list_view_class( $list_mode, 'table' ) ); ?>">
 			<table class="giweb-gw-table widefat">
 				<thead>
 					<tr>
@@ -692,7 +697,10 @@ class MainWP_GIWeb_Dashboard_Widget {
 	 * @return array<string, mixed>
 	 */
 	private static function build_mail_row_from_site( $site_id, $site_row, $mail ) {
-		$label  = (string) ( $site_row['label'] ?? ( '#' . $site_id ) );
+		global $mainwp_giweb_activator;
+
+		$normalized = MainWP_GIWeb_Sites::find_by_id( $site_id, $mainwp_giweb_activator );
+		$label      = MainWP_GIWeb_Widget_UI::site_label( $normalized, $site_row );
 		$failed = (int) ( $mail['failed'] ?? 0 );
 		$ready  = ! empty( $mail['table_ready'] );
 
@@ -723,7 +731,7 @@ class MainWP_GIWeb_Dashboard_Widget {
 			'success'       => (int) ( $mail['success'] ?? 0 ),
 			'failed'        => $failed,
 			'today'         => (int) ( $mail['today'] ?? 0 ),
-			'search'        => strtolower( $label ),
+			'search'        => strtolower( $label . ' ' . MainWP_GIWeb_Widget_UI::site_url_host( $site_row['url'] ?? '' ) ),
 		);
 	}
 

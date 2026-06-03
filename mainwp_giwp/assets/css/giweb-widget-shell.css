@@ -299,6 +299,7 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget {
 
 .giweb-gw-strip__seg {
 	border-radius: 2px;
+	cursor: help;
 	flex: 1 1 2px;
 	min-width: 2px;
 }
@@ -458,6 +459,58 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget {
 
 .giweb-gw-filter.is-active {
 	box-shadow: inset 0 0 0 1px rgba(49, 107, 255, 0.25);
+}
+
+.giweb-gw-view-toggle {
+	display: inline-flex;
+	flex-shrink: 0;
+	gap: 4px;
+}
+
+.giweb-gw-view {
+	background: var(--giweb-gw-surface);
+	border: 1px solid var(--giweb-gw-border);
+	border-radius: 999px;
+	color: var(--giweb-gw-muted);
+	cursor: pointer;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1;
+	padding: 7px 12px;
+}
+
+.giweb-gw-view.is-active,
+.giweb-gw-view:hover {
+	background: var(--giweb-gw-surface-2);
+	border-color: var(--giweb-gw-accent);
+	color: var(--giweb-gw-text);
+}
+
+.giweb-gw-view.is-active {
+	box-shadow: inset 0 0 0 1px var(--giweb-gw-accent);
+	color: var(--giweb-gw-accent);
+}
+
+.giweb-gw-strip-tip {
+	background: var(--giweb-gw-bg);
+	border: 1px solid var(--giweb-gw-border);
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+	color: var(--giweb-gw-text);
+	font-size: 11px;
+	line-height: 1.45;
+	max-width: 280px;
+	padding: 8px 10px;
+	pointer-events: none;
+	position: fixed;
+	z-index: 100000;
+}
+
+.giweb-gw-grid.is-hidden,
+.giweb-gw-table-wrap.is-hidden,
+.giweb-ukw-grid.is-hidden,
+.giweb-ukw-table-wrap.is-hidden {
+	display: none;
 }
 
 .giweb-gw-grid {

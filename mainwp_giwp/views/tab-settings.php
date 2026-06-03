@@ -116,6 +116,13 @@ $logs            = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 						<option value="table" <?php selected( 'table', $settings['backup_widget_list_mode'] ?? 'cards' ); ?>><?php esc_html_e( 'Tableau', 'mainwp-giweb' ); ?></option>
 					</select>
 				</div>
+				<div class="mainwp-giweb-settings-card">
+					<h4 class="mainwp-giweb-settings-card__title"><?php esc_html_e( 'Affichage liste Uptime Kuma (détaillé)', 'mainwp-giweb' ); ?></h4>
+					<select name="kuma_widget_list_mode" id="mainwp_giweb_kuma_widget_list_mode">
+						<option value="cards" <?php selected( 'cards', $settings['kuma_widget_list_mode'] ?? 'cards' ); ?>><?php esc_html_e( 'Cartes', 'mainwp-giweb' ); ?></option>
+						<option value="table" <?php selected( 'table', $settings['kuma_widget_list_mode'] ?? 'cards' ); ?>><?php esc_html_e( 'Tableau', 'mainwp-giweb' ); ?></option>
+					</select>
+				</div>
 				<div class="mainwp-giweb-settings-card mainwp-giweb-settings-card--wide">
 					<p class="description"><?php esc_html_e( 'Activez les widgets simple et/ou détaillé indépendamment dans MainWP > Réglages > Outils MainWP.', 'mainwp-giweb' ); ?></p>
 				</div>

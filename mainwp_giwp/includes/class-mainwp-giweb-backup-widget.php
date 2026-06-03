@@ -150,15 +150,18 @@ class MainWP_GIWeb_Backup_Widget {
 							<p><?php esc_html_e( 'Aucun site MainWP disponible pour le moment.', 'mainwp-giweb' ); ?></p>
 						</div>
 					<?php else : ?>
-						<?php self::render_list_toolbar( $ctx ); ?>
 						<?php
 						$list_mode = (string) ( MainWP_GIWeb_Settings::get()['backup_widget_list_mode'] ?? 'cards' );
-						if ( MainWP_GIWeb_Widget_UI::is_table_mode( $list_mode ) ) {
-							self::render_backup_table( $ctx['rows'] );
-						} else {
-							self::render_backup_cards( $ctx['rows'] );
-						}
+						self::render_list_toolbar( $ctx, $list_mode );
 						?>
+						<div class="giweb-gw-list" data-default-view="<?php echo esc_attr( MainWP_GIWeb_Widget_UI::is_table_mode( $list_mode ) ? 'table' : 'cards' ); ?>" data-storage-key="giweb_gw_view_backup">
+							<div class="giweb-gw-grid<?php echo esc_attr( MainWP_GIWeb_Widget_UI::list_view_class( $list_mode, 'cards' ) ); ?>">
+								<?php foreach ( $ctx['rows'] as $row ) : ?>
+									<?php self::render_backup_card( $row ); ?>
+								<?php endforeach; ?>
+							</div>
+							<?php self::render_backup_table( $ctx['rows'], $list_mode ); ?>
+						</div>
 						<p class="giweb-gw-no-match" hidden><?php esc_html_e( 'Aucun site ne correspond à votre recherche.', 'mainwp-giweb' ); ?></p>
 					<?php endif; ?>
 				<?php endif; ?>
@@ -183,8 +186,8 @@ class MainWP_GIWeb_Backup_Widget {
 		$in_progress    = (int) ( $network['sites_in_progress'] ?? 0 );
 		$no_backup      = max( 0, $total_mainwp - $sites_active );
 		$fresh          = (int) ( $network['sites_fresh'] ?? 0 );
-		$health         = $sites_active > 0 ? round( ( $fresh / $sites_active ) * 100, 1 ) : ( $total_mainwp > 0 ? 0 : 100 );
-		$issues_count   = max( 0, $stale_count + $remote_missing );
+		$health         = $total_mainwp > 0 ? round( ( $fresh / $total_mainwp ) * 100, 0 ) : 100;
+		$issues_count   = max( 0, $stale_count + $remote_missing + $no_backup );
 
 		return array(
 			'network'        => $network,
@@ -269,7 +272,7 @@ class MainWP_GIWeb_Backup_Widget {
 	 * @param array<string, mixed> $ctx Contexte réseau.
 	 * @return void
 	 */
-	private static function render_list_toolbar( array $ctx ) {
+	private static function render_list_toolbar( array $ctx, $list_mode = 'cards' ) {
 		?>
 		<div class="giweb-gw-toolbar">
 			<label class="giweb-gw-search">
@@ -282,6 +285,7 @@ class MainWP_GIWeb_Backup_Widget {
 				<button type="button" class="giweb-gw-filter" data-filter="issues" role="tab"><?php esc_html_e( 'Alertes', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $ctx['issues_count'] ); ?></em></button>
 				<button type="button" class="giweb-gw-filter" data-filter="progress" role="tab"><?php esc_html_e( 'En cours', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $ctx['in_progress'] ); ?></em></button>
 			</div>
+			<?php MainWP_GIWeb_Widget_UI::render_view_toggle( $list_mode, 'giweb_gw_view_backup' ); ?>
 		</div>
 		<?php
 	}
@@ -301,12 +305,13 @@ class MainWP_GIWeb_Backup_Widget {
 	}
 
 	/**
-	 * @param array<int, array<string, mixed>> $rows Lignes sites.
+	 * @param array<int, array<string, mixed>> $rows      Lignes sites.
+	 * @param string                            $list_mode cards|table.
 	 * @return void
 	 */
-	private static function render_backup_table( array $rows ) {
+	private static function render_backup_table( array $rows, $list_mode = 'cards' ) {
 		?>
-		<div class="giweb-gw-table-wrap">
+		<div class="giweb-gw-table-wrap<?php echo esc_attr( MainWP_GIWeb_Widget_UI::list_view_class( $list_mode, 'table' ) ); ?>">
 			<table class="giweb-gw-table widefat">
 				<thead>
 					<tr>
@@ -488,27 +493,26 @@ class MainWP_GIWeb_Backup_Widget {
 
 		foreach ( MainWP_GIWeb_Sites::fetch_all( $mainwp_giweb_activator ) as $site ) {
 			$normalized = MainWP_GIWeb_Sites::normalize_one( $site );
-			$site_id    = (int) ( $normalized['id'] ?? 0 );
-			$label      = (string) ( $normalized['label'] ?? ( '#' . $site_id ) );
-			$site_row   = is_array( $by_id[ $site_id ] ?? null ) ? $by_id[ $site_id ] : array(
-				'label' => $label,
-				'url'   => $normalized['url'] ?? '',
+			$site_id  = (int) ( $normalized['id'] ?? 0 );
+			$site_row = is_array( $by_id[ $site_id ] ?? null ) ? $by_id[ $site_id ] : array(
+				'url' => $normalized['url'] ?? '',
 			);
-			$backup = $site_row['backup'] ?? null;
+			$label    = MainWP_GIWeb_Widget_UI::site_label( $normalized, $site_row );
+			$backup   = $site_row['backup'] ?? null;
 
 			if ( ! is_array( $backup ) || empty( $backup['plugin_active'] ) ) {
 				$rows[] = array(
 					'label'         => $label,
 					'admin_url'     => self::site_updraft_url( $site_row['url'] ?? $normalized['url'] ?? '' ),
 					'state'         => 'no_backup',
-					'card_status'   => 'inactive',
-					'filter_status' => 'no_backup',
+					'card_status'   => 'stale',
+					'filter_status' => 'issues',
 					'status_label'  => __( 'No backup', 'mainwp-giweb' ),
 					'relative'      => '—',
 					'size'          => '—',
 					'remote'        => '—',
 					'timestamp'     => 0,
-					'search'        => strtolower( $label ),
+					'search'        => strtolower( $label . ' ' . MainWP_GIWeb_Widget_UI::site_url_host( $site_row['url'] ?? $normalized['url'] ?? '' ) ),
 				);
 				continue;
 			}
@@ -526,7 +530,7 @@ class MainWP_GIWeb_Backup_Widget {
 				'size'          => MainWP_GIWeb_Backup_Stats::format_size_gb( $backup ),
 				'remote'        => MainWP_GIWeb_Backup_Stats::format_remote_label( $backup ),
 				'timestamp'     => (int) ( $backup['last_backup_time'] ?? 0 ),
-				'search'        => strtolower( $label ),
+				'search'        => strtolower( $label . ' ' . MainWP_GIWeb_Widget_UI::site_url_host( $site_row['url'] ?? $normalized['url'] ?? '' ) ),
 			);
 		}
 

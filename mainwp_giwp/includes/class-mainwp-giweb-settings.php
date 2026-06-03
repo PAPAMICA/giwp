@@ -54,6 +54,7 @@ class MainWP_GIWeb_Settings {
 			'ftp_auto_on_deploy'            => '1',
 			'mail_widget_list_mode'         => 'cards',
 			'backup_widget_list_mode'       => 'cards',
+			'kuma_widget_list_mode'         => 'cards',
 		);
 	}
 
@@ -164,6 +165,9 @@ class MainWP_GIWeb_Settings {
 
 		$backup_mode = isset( $data['backup_widget_list_mode'] ) ? (string) $data['backup_widget_list_mode'] : (string) ( $current['backup_widget_list_mode'] ?? 'cards' );
 		$clean['backup_widget_list_mode'] = in_array( $backup_mode, array( 'cards', 'table' ), true ) ? $backup_mode : 'cards';
+
+		$kuma_mode = isset( $data['kuma_widget_list_mode'] ) ? (string) $data['kuma_widget_list_mode'] : (string) ( $current['kuma_widget_list_mode'] ?? 'cards' );
+		$clean['kuma_widget_list_mode'] = in_array( $kuma_mode, array( 'cards', 'table' ), true ) ? $kuma_mode : 'cards';
 
 		return update_option( self::OPTION_KEY, $clean, false );
 	}

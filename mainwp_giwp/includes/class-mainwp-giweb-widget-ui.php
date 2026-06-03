@@ -28,7 +28,7 @@ class MainWP_GIWeb_Widget_UI {
 	 * @param int   $decimals Décimales affichées.
 	 * @return void
 	 */
-	public static function render_score( $health, $decimals = 1 ) {
+	public static function render_score( $health, $decimals = 0 ) {
 		$health     = (float) $health;
 		$health     = min( 100, max( 0, $health ) );
 		$is_full    = $health >= 100;
@@ -55,10 +55,12 @@ class MainWP_GIWeb_Widget_UI {
 			<?php foreach ( $segments as $segment ) : ?>
 				<?php
 				$status = (string) ( $segment['status'] ?? 'missing' );
-				$title  = (string) ( $segment['title'] ?? $segment['label'] ?? '' );
+				$tip    = (string) ( $segment['tip'] ?? $segment['title'] ?? $segment['label'] ?? '' );
+				$title  = (string) ( $segment['title'] ?? $tip );
 				?>
 				<span
 					class="giweb-gw-strip__seg status-<?php echo esc_attr( $status ); ?>"
+					<?php echo '' !== $tip ? ' data-tip="' . esc_attr( $tip ) . '"' : ''; ?>
 					<?php echo '' !== $title ? ' title="' . esc_attr( $title ) . '"' : ''; ?>
 				></span>
 			<?php endforeach; ?>
@@ -96,7 +98,7 @@ class MainWP_GIWeb_Widget_UI {
 	 * @param int                                $decimals Décimales score.
 	 * @return void
 	 */
-	public static function render_overview( $health, array $segments, array $stats, $decimals = 1 ) {
+	public static function render_overview( $health, array $segments, array $stats, $decimals = 0 ) {
 		if ( empty( $segments ) && empty( $stats ) ) {
 			return;
 		}
@@ -202,6 +204,67 @@ class MainWP_GIWeb_Widget_UI {
 	}
 
 	/**
+	 * @param string $url URL site.
+	 * @return string
+	 */
+	public static function site_url_host( $url ) {
+		$url = untrailingslashit( trim( (string) $url ) );
+		if ( '' === $url ) {
+			return '';
+		}
+		$host = wp_parse_url( $url, PHP_URL_HOST );
+		if ( is_string( $host ) && '' !== $host ) {
+			return $host;
+		}
+		return $url;
+	}
+
+	/**
+	 * @param array<string, mixed> $normalized id, name, url.
+	 * @param array<string, mixed> $site_row    Ligne agrégat (optionnel).
+	 * @return string
+	 */
+	public static function site_label( array $normalized, array $site_row = array() ) {
+		if ( ! empty( $site_row['label'] ) ) {
+			return (string) $site_row['label'];
+		}
+		if ( ! empty( $normalized['name'] ) ) {
+			return (string) $normalized['name'];
+		}
+		$url = (string) ( $site_row['url'] ?? $normalized['url'] ?? '' );
+		$host = self::site_url_host( $url );
+		if ( '' !== $host ) {
+			return $host;
+		}
+		$site_id = (int) ( $normalized['id'] ?? 0 );
+		return $site_id > 0 ? ( '#' . $site_id ) : '';
+	}
+
+	/**
+	 * @param string $list_mode   cards|table.
+	 * @param string $storage_key Clé localStorage.
+	 * @return void
+	 */
+	public static function render_view_toggle( $list_mode, $storage_key ) {
+		$is_table = self::is_table_mode( $list_mode );
+		?>
+		<div class="giweb-gw-view-toggle" role="group" data-storage-key="<?php echo esc_attr( $storage_key ); ?>">
+			<button type="button" class="giweb-gw-view<?php echo $is_table ? '' : ' is-active'; ?>" data-view="cards"><?php esc_html_e( 'Cartes', 'mainwp-giweb' ); ?></button>
+			<button type="button" class="giweb-gw-view<?php echo $is_table ? ' is-active' : ''; ?>" data-view="table"><?php esc_html_e( 'Tableau', 'mainwp-giweb' ); ?></button>
+		</div>
+		<?php
+	}
+
+	/**
+	 * @param string $list_mode cards|table.
+	 * @return string
+	 */
+	public static function list_view_class( $list_mode, $view ) {
+		$active = ( 'table' === $view ) === self::is_table_mode( $list_mode );
+		return $active ? '' : ' is-hidden';
+	}
+
+	/**
 	 * @param array<string, mixed> $sites Agrégat sites sync.
 	 * @return array<int, array<string, string>>
 	 */
@@ -212,24 +275,51 @@ class MainWP_GIWeb_Widget_UI {
 		$by_id    = is_array( $sites ) ? $sites : array();
 
 		foreach ( MainWP_GIWeb_Sites::fetch_all( $mainwp_giweb_activator ) as $site ) {
-			$row     = MainWP_GIWeb_Sites::normalize_one( $site );
-			$site_id = (int) ( $row['id'] ?? 0 );
-			$label   = (string) ( $row['label'] ?? ( '#' . $site_id ) );
-			$mail    = is_array( $by_id[ $site_id ] ?? null ) ? ( $by_id[ $site_id ]['mail'] ?? null ) : null;
+			$row      = MainWP_GIWeb_Sites::normalize_one( $site );
+			$site_id  = (int) ( $row['id'] ?? 0 );
+			$site_row = is_array( $by_id[ $site_id ] ?? null ) ? $by_id[ $site_id ] : array();
+			$label    = self::site_label( $row, $site_row );
+			$mail     = is_array( $site_row['mail'] ?? null ) ? $site_row['mail'] : null;
 
 			if ( ! is_array( $mail ) || empty( $mail['module_active'] ) || empty( $mail['table_ready'] ) ) {
 				$segments[] = array(
 					'label'  => $label,
 					'title'  => $label,
+					'tip'    => $label . ' — ' . __( 'Mail Catcher inactif ou en attente', 'mainwp-giweb' ),
 					'status' => 'missing',
 				);
 				continue;
 			}
 
+			$total  = (int) ( $mail['total'] ?? 0 );
 			$failed = (int) ( $mail['failed'] ?? 0 );
+			$ok     = (int) ( $mail['success'] ?? max( 0, $total - $failed ) );
+			$today  = (int) ( $mail['today'] ?? 0 );
+
+			if ( $failed > 0 ) {
+				$tip = sprintf(
+					/* translators: 1: site, 2: failed count, 3: total count */
+					__( '%1$s — %2$s échecs · %3$s total', 'mainwp-giweb' ),
+					$label,
+					number_format_i18n( $failed ),
+					number_format_i18n( $total )
+				);
+			} else {
+				$tip = sprintf(
+					/* translators: 1: site, 2: total, 3: ok, 4: failed, 5: today */
+					__( '%1$s — %2$s total · %3$s OK · %4$s échec · %5$s aujourd’hui', 'mainwp-giweb' ),
+					$label,
+					number_format_i18n( $total ),
+					number_format_i18n( $ok ),
+					number_format_i18n( $failed ),
+					number_format_i18n( $today )
+				);
+			}
+
 			$segments[] = array(
 				'label'  => $label,
 				'title'  => $label,
+				'tip'    => $tip,
 				'status' => $failed > 0 ? 'down' : 'ok',
 			);
 		}
@@ -248,21 +338,27 @@ class MainWP_GIWeb_Widget_UI {
 		$by_id    = is_array( $agg_sites ) ? $agg_sites : array();
 
 		foreach ( MainWP_GIWeb_Sites::fetch_all( $mainwp_giweb_activator ) as $site ) {
-			$row     = MainWP_GIWeb_Sites::normalize_one( $site );
-			$site_id = (int) ( $row['id'] ?? 0 );
-			$label   = (string) ( $row['label'] ?? ( '#' . $site_id ) );
-			$backup  = is_array( $by_id[ $site_id ] ?? null ) ? ( $by_id[ $site_id ]['backup'] ?? null ) : null;
+			$row      = MainWP_GIWeb_Sites::normalize_one( $site );
+			$site_id  = (int) ( $row['id'] ?? 0 );
+			$site_row = is_array( $by_id[ $site_id ] ?? null ) ? $by_id[ $site_id ] : array();
+			$label    = self::site_label( $row, $site_row );
+			$backup   = is_array( $site_row['backup'] ?? null ) ? $site_row['backup'] : null;
 
 			if ( ! is_array( $backup ) || empty( $backup['plugin_active'] ) ) {
 				$segments[] = array(
 					'label'  => $label,
 					'title'  => $label,
-					'status' => 'missing',
+					'tip'    => $label . ' — ' . __( 'No backup (UpdraftPlus absent)', 'mainwp-giweb' ),
+					'status' => 'down',
 				);
 				continue;
 			}
 
-			$state = MainWP_GIWeb_Backup_Stats::get_visual_state( $backup );
+			$state        = MainWP_GIWeb_Backup_Stats::get_visual_state( $backup );
+			$status_label = MainWP_GIWeb_Backup_Stats::format_status_label( $backup );
+			$relative     = MainWP_GIWeb_Backup_Stats::format_relative_time( (int) ( $backup['last_backup_time'] ?? 0 ) );
+			$size         = MainWP_GIWeb_Backup_Stats::format_size_gb( $backup );
+			$remote       = MainWP_GIWeb_Backup_Stats::format_remote_label( $backup );
 			switch ( $state ) {
 				case 'ok':
 					$status = 'ok';
@@ -280,6 +376,15 @@ class MainWP_GIWeb_Widget_UI {
 			$segments[] = array(
 				'label'  => $label,
 				'title'  => $label,
+				'tip'    => sprintf(
+					/* translators: 1: site, 2: status, 3: last backup, 4: size, 5: remote */
+					__( '%1$s — %2$s · %3$s · %4$s · Remote: %5$s', 'mainwp-giweb' ),
+					$label,
+					$status_label,
+					$relative,
+					$size,
+					$remote
+				),
 				'status' => $status,
 			);
 		}
@@ -292,20 +397,43 @@ class MainWP_GIWeb_Widget_UI {
 	 * @return array<int, array<string, string>>
 	 */
 	public static function build_kuma_strip_segments( array $sites ) {
-		$segments = array();
+		$segments      = array();
+		$status_labels = array(
+			'ok'      => __( 'En ligne', 'mainwp-giweb' ),
+			'warn'    => __( 'Dégradé', 'mainwp-giweb' ),
+			'down'    => __( 'Hors ligne', 'mainwp-giweb' ),
+			'paused'  => __( 'Pause', 'mainwp-giweb' ),
+			'missing' => __( 'Sans monitor', 'mainwp-giweb' ),
+			'unknown' => __( 'Inconnu', 'mainwp-giweb' ),
+		);
 
 		foreach ( $sites as $site ) {
 			if ( ! is_array( $site ) ) {
 				continue;
 			}
 			$label  = (string) ( $site['label'] ?? '' );
+			if ( '' === $label ) {
+				$url   = (string) ( $site['url'] ?? '' );
+				$label = self::site_url_host( $url );
+			}
 			$status = (string) ( $site['status'] ?? 'missing' );
 			if ( in_array( $status, array( 'unknown', 'paused' ), true ) ) {
 				$status = 'missing';
 			}
+			$status_text = $status_labels[ $status ] ?? $status_labels['unknown'];
+			$ping        = (int) ( $site['avg_ping'] ?? 0 );
+			$uptime24    = isset( $site['uptime_24h'] ) ? (float) $site['uptime_24h'] : null;
+			$tip         = $label . ' — ' . $status_text;
+			if ( $ping > 0 ) {
+				$tip .= ' · ' . $ping . ' ms';
+			}
+			if ( null !== $uptime24 ) {
+				$tip .= ' · ' . number_format_i18n( $uptime24, 1 ) . ' % (24 h)';
+			}
 			$segments[] = array(
 				'label'  => $label,
 				'title'  => $label,
+				'tip'    => $tip,
 				'status' => $status,
 			);
 		}
