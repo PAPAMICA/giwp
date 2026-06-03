@@ -2,7 +2,8 @@
  * Coquille commune des widgets MainWP GI-Toolkit (inspirée Uptime Kuma).
  */
 .mainwp-giweb-mail-widget,
-.mainwp-giweb-backup-widget {
+.mainwp-giweb-backup-widget,
+.mainwp-giweb-uptime-kuma-widget {
 	--giweb-gw-bg: var(--background-color-3, #fff);
 	--giweb-gw-surface: var(--background-color-2, #f6f7f7);
 	--giweb-gw-surface-2: rgba(0, 0, 0, 0.03);
@@ -24,8 +25,10 @@
 
 .mainwp-giweb-mail-widget--dark,
 .mainwp-giweb-backup-widget--dark,
+.mainwp-giweb-uptime-kuma-widget--dark,
 body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget,
-body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget {
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget {
 	--giweb-gw-bg: var(--background-color-3, #1a1b1f);
 	--giweb-gw-surface: var(--background-color-2, #121318);
 	--giweb-gw-surface-2: rgba(255, 255, 255, 0.04);
@@ -47,6 +50,11 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget {
 
 .mainwp-giweb-backup-widget {
 	--giweb-gw-brand-gradient: linear-gradient(135deg, #316bff, #1e4fd6);
+}
+
+.mainwp-giweb-uptime-kuma-widget {
+	--giweb-gw-brand-gradient: linear-gradient(135deg, #12b76a, #059669);
+	--giweb-gw-brand-glow: rgba(18, 183, 106, 0.15);
 }
 
 .giweb-gw {
@@ -125,6 +133,18 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget {
 	top: 16px;
 }
 
+.giweb-gw-brand__icon--kuma::after {
+	background: #fff;
+	border-radius: 2px;
+	bottom: 9px;
+	box-shadow: 8px 0 0 #fff, 16px -4px 0 #fff;
+	content: "";
+	height: 10px;
+	left: 8px;
+	position: absolute;
+	width: 3px;
+}
+
 .giweb-gw-brand__title {
 	font-size: 14px;
 	font-weight: 700;
@@ -189,24 +209,20 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget {
 	width: 56px;
 }
 
-.giweb-gw-score__value,
-.giweb-gw-score__label {
-	position: relative;
-	z-index: 1;
+.giweb-gw-score--full {
+	background: var(--giweb-gw-ok);
 }
 
 .giweb-gw-score__value {
+	position: relative;
+	z-index: 1;
 	font-size: 15px;
 	font-weight: 800;
 	line-height: 1;
 }
 
 .giweb-gw-score__label {
-	color: var(--giweb-gw-muted);
-	font-size: 9px;
-	font-weight: 600;
-	margin-top: 2px;
-	text-transform: uppercase;
+	display: none;
 }
 
 .giweb-gw-overview__main {
@@ -214,6 +230,63 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget {
 	flex-direction: column;
 	gap: 10px;
 	min-width: 0;
+}
+
+.giweb-gw-table-wrap {
+	max-height: 480px;
+	overflow: auto;
+	overscroll-behavior: contain;
+	scrollbar-color: rgba(49, 107, 255, 0.35) var(--giweb-gw-surface-2);
+	scrollbar-width: thin;
+}
+
+.giweb-gw-table {
+	background: transparent;
+	border: 0;
+	border-collapse: collapse;
+	margin: 0;
+	width: 100%;
+}
+
+.giweb-gw-table thead th {
+	background: var(--giweb-gw-surface);
+	border-bottom: 1px solid var(--giweb-gw-border);
+	color: var(--giweb-gw-muted);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	padding: 9px 12px;
+	position: sticky;
+	text-align: left;
+	text-transform: uppercase;
+	top: 0;
+	z-index: 1;
+}
+
+.giweb-gw-table tbody td {
+	border-bottom: 1px solid var(--giweb-gw-border);
+	color: var(--giweb-gw-text);
+	font-size: 11px;
+	padding: 10px 12px;
+	vertical-align: middle;
+}
+
+.giweb-gw-table tbody tr:hover td {
+	background: var(--giweb-gw-surface-2);
+}
+
+.giweb-gw-table tbody tr.is-hidden {
+	display: none;
+}
+
+.giweb-gw-table a {
+	color: var(--giweb-gw-accent);
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.giweb-gw-table a:hover {
+	text-decoration: underline;
 }
 
 .giweb-gw-strip {

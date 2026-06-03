@@ -13,9 +13,12 @@ class MainWP_GIWeb_Metabox {
 
 	/** @var string[] */
 	private static $widget_ids = array(
-		'mainwp-giweb-mail-widget',
-		'mainwp-giweb-backup-widget',
-		'mainwp-giweb-uptime-kuma-widget',
+		'mainwp-giweb-mail-widget-simple',
+		'mainwp-giweb-mail-widget-detailed',
+		'mainwp-giweb-backup-widget-simple',
+		'mainwp-giweb-backup-widget-detailed',
+		'mainwp-giweb-uptime-kuma-widget-simple',
+		'mainwp-giweb-uptime-kuma-widget-detailed',
 	);
 
 	/**

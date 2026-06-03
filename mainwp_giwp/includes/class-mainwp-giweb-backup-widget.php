@@ -4,11 +4,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Widget MainWP Dashboard — statuts UpdraftPlus réseau / site.
+ * Widget MainWP Dashboard — statuts UpdraftPlus réseau / site (simple / détaillé).
  */
 class MainWP_GIWeb_Backup_Widget {
 
-	const WIDGET_ID = 'mainwp-giweb-backup-widget';
+	const WIDGET_ID_SIMPLE   = 'mainwp-giweb-backup-widget-simple';
+	const WIDGET_ID_DETAILED = 'mainwp-giweb-backup-widget-detailed';
 
 	/**
 	 * @param array<int, array<string, mixed>>|mixed $metaboxes Metaboxes existants.
@@ -16,11 +17,19 @@ class MainWP_GIWeb_Backup_Widget {
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function register_metabox( $metaboxes, $dashboard_siteid = null ) {
+		$metaboxes = MainWP_GIWeb_Metabox::append(
+			$metaboxes,
+			self::WIDGET_ID_SIMPLE,
+			__( 'GI-Toolkit — Backups UpdraftPlus (simple)', 'mainwp-giweb' ),
+			array( __CLASS__, 'render_simple_metabox' ),
+			$dashboard_siteid
+		);
+
 		return MainWP_GIWeb_Metabox::append(
 			$metaboxes,
-			self::WIDGET_ID,
-			__( 'GI-Toolkit — Backups UpdraftPlus', 'mainwp-giweb' ),
-			array( __CLASS__, 'render_metabox' ),
+			self::WIDGET_ID_DETAILED,
+			__( 'GI-Toolkit — Backups UpdraftPlus (détaillé)', 'mainwp-giweb' ),
+			array( __CLASS__, 'render_detailed_metabox' ),
 			$dashboard_siteid
 		);
 	}
@@ -30,10 +39,16 @@ class MainWP_GIWeb_Backup_Widget {
 	 * @return array<string, string>
 	 */
 	public static function widgets_screen_options( $options ) {
+		$options = MainWP_GIWeb_Metabox::append_screen_option(
+			$options,
+			self::WIDGET_ID_SIMPLE,
+			__( 'GI-Toolkit — Backups UpdraftPlus (simple)', 'mainwp-giweb' )
+		);
+
 		return MainWP_GIWeb_Metabox::append_screen_option(
 			$options,
-			self::WIDGET_ID,
-			__( 'GI-Toolkit — Backups UpdraftPlus', 'mainwp-giweb' )
+			self::WIDGET_ID_DETAILED,
+			__( 'GI-Toolkit — Backups UpdraftPlus (détaillé)', 'mainwp-giweb' )
 		);
 	}
 
@@ -87,189 +102,239 @@ class MainWP_GIWeb_Backup_Widget {
 	}
 
 	/**
-	 * @param int $timestamp Unix timestamp.
-	 * @return string
-	 */
-	private static function format_sync_ago( $timestamp ) {
-		$timestamp = absint( $timestamp );
-		if ( ! $timestamp ) {
-			return '';
-		}
-
-		$now  = (int) current_time( 'timestamp' );
-		$diff = max( 0, $now - $timestamp );
-
-		if ( $diff < 60 ) {
-			return __( 'Sync à l’instant', 'mainwp-giweb' );
-		}
-
-		return sprintf(
-			/* translators: %s: human-readable time difference */
-			__( 'Sync il y a %s', 'mainwp-giweb' ),
-			human_time_diff( $timestamp, $now )
-		);
-	}
-
-	/**
-	 * @param string $site_url URL site.
-	 * @return string
-	 */
-	private static function site_updraft_url( $site_url ) {
-		$site_url = untrailingslashit( (string) $site_url );
-		if ( '' === $site_url ) {
-			return '';
-		}
-		return $site_url . '/wp-admin/options-general.php?page=updraftplus';
-	}
-
-	/**
 	 * @return void
 	 */
-	public static function render_metabox() {
+	public static function render_simple_metabox() {
 		$site_id = MainWP_GIWeb_Metabox::get_render_site_id();
 		if ( $site_id > 0 ) {
 			self::render_site_metabox( $site_id );
 			return;
 		}
 
-		self::render_network_metabox();
-	}
-
-	/**
-	 * @return int
-	 */
-	private static function count_mainwp_sites() {
-		global $mainwp_giweb_activator;
-
-		$count = 0;
-		foreach ( MainWP_GIWeb_Sites::fetch_all( $mainwp_giweb_activator ) as $site ) {
-			unset( $site );
-			++$count;
-		}
-
-		return $count;
+		self::render_network_metabox( false );
 	}
 
 	/**
 	 * @return void
 	 */
-	private static function render_network_metabox() {
+	public static function render_detailed_metabox() {
+		$site_id = MainWP_GIWeb_Metabox::get_render_site_id();
+		if ( $site_id > 0 ) {
+			self::render_site_metabox( $site_id );
+			return;
+		}
+
+		self::render_network_metabox( true );
+	}
+
+	/**
+	 * @param bool $detailed Afficher toolbar et liste.
+	 * @return void
+	 */
+	private static function render_network_metabox( $detailed ) {
+		$ctx     = self::get_network_context();
+		$is_dark = MainWP_GIWeb_UI::is_dark_theme();
+		$mod     = $detailed ? ' mainwp-giweb-backup-widget--detailed' : ' mainwp-giweb-backup-widget--simple';
+		$theme   = $is_dark ? ' mainwp-giweb-backup-widget--dark' : ' mainwp-giweb-backup-widget--light';
+		?>
+		<div class="mainwp-giweb-backup-widget<?php echo esc_attr( $mod . $theme ); ?>">
+			<div class="giweb-gw">
+				<header class="giweb-gw-header">
+					<?php self::render_network_header( $ctx ); ?>
+					<?php self::render_network_overview( $ctx ); ?>
+				</header>
+
+				<?php if ( $detailed ) : ?>
+					<?php if ( empty( $ctx['rows'] ) ) : ?>
+						<div class="giweb-gw-empty-state">
+							<p><?php esc_html_e( 'Aucun site MainWP disponible pour le moment.', 'mainwp-giweb' ); ?></p>
+						</div>
+					<?php else : ?>
+						<?php self::render_list_toolbar( $ctx ); ?>
+						<?php
+						$list_mode = (string) ( MainWP_GIWeb_Settings::get()['backup_widget_list_mode'] ?? 'cards' );
+						if ( MainWP_GIWeb_Widget_UI::is_table_mode( $list_mode ) ) {
+							self::render_backup_table( $ctx['rows'] );
+						} else {
+							self::render_backup_cards( $ctx['rows'] );
+						}
+						?>
+						<p class="giweb-gw-no-match" hidden><?php esc_html_e( 'Aucun site ne correspond à votre recherche.', 'mainwp-giweb' ); ?></p>
+					<?php endif; ?>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private static function get_network_context() {
 		$agg            = MainWP_GIWeb_Backup_Stats::get_aggregate();
-		$network        = $agg['network'] ?? array();
+		$network        = is_array( $agg['network'] ?? null ) ? $agg['network'] : array();
 		$sites          = is_array( $agg['sites'] ?? null ) ? $agg['sites'] : array();
 		$updated_at     = ! empty( $agg['updated_at'] ) ? (int) $agg['updated_at'] : 0;
-		$is_dark        = MainWP_GIWeb_UI::is_dark_theme();
-		$rows           = self::build_rows( $sites );
-		$sites_active   = (int) ( $network['sites_active'] ?? count( $rows ) );
-		$total_mainwp   = self::count_mainwp_sites();
+		$rows           = self::build_all_site_rows( $sites );
+		$sites_active   = (int) ( $network['sites_active'] ?? 0 );
+		$total_mainwp   = MainWP_GIWeb_Widget_UI::count_mainwp_sites();
 		$stale_count    = (int) ( $network['sites_stale'] ?? 0 ) + (int) ( $network['sites_no_backup'] ?? 0 );
 		$remote_missing = (int) ( $network['sites_remote_missing'] ?? 0 );
 		$in_progress    = (int) ( $network['sites_in_progress'] ?? 0 );
 		$no_backup      = max( 0, $total_mainwp - $sites_active );
 		$fresh          = (int) ( $network['sites_fresh'] ?? 0 );
 		$health         = $sites_active > 0 ? round( ( $fresh / $sites_active ) * 100, 1 ) : ( $total_mainwp > 0 ? 0 : 100 );
-		$health_deg     = min( 100, max( 0, $health ) ) * 3.6;
 		$issues_count   = max( 0, $stale_count + $remote_missing );
-		$strip          = array_map( array( __CLASS__, 'strip_status_from_state' ), wp_list_pluck( $rows, 'state' ) );
+
+		return array(
+			'network'        => $network,
+			'sites'          => $sites,
+			'updated_at'     => $updated_at,
+			'rows'           => $rows,
+			'sites_active'   => $sites_active,
+			'total_mainwp'   => $total_mainwp,
+			'fresh'          => $fresh,
+			'issues_count'   => $issues_count,
+			'in_progress'    => $in_progress,
+			'no_backup'      => $no_backup,
+			'health'         => $health,
+			'strip_segments' => MainWP_GIWeb_Widget_UI::build_backup_strip_segments( $sites ),
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $ctx Contexte réseau.
+	 * @return void
+	 */
+	private static function render_network_header( array $ctx ) {
+		$subtitle = sprintf(
+			/* translators: 1: active count, 2: total MainWP sites */
+			__( '%1$d / %2$d sites avec UpdraftPlus', 'mainwp-giweb' ),
+			(int) $ctx['sites_active'],
+			(int) $ctx['total_mainwp']
+		);
+		$empty_sync = ! (int) $ctx['sites_active']
+			? __( 'Synchronisez vos sites MainWP pour alimenter ce widget', 'mainwp-giweb' )
+			: '';
+
+		MainWP_GIWeb_Widget_UI::render_header_row(
+			'backup',
+			__( 'Backups UpdraftPlus', 'mainwp-giweb' ),
+			$subtitle,
+			(int) $ctx['updated_at'],
+			$empty_sync
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $ctx Contexte réseau.
+	 * @return void
+	 */
+	private static function render_network_overview( array $ctx ) {
+		if ( (int) $ctx['total_mainwp'] < 1 && empty( $ctx['strip_segments'] ) ) {
+			return;
+		}
+
+		$stats = array(
+			array(
+				'strong'   => number_format_i18n( (int) $ctx['fresh'] ),
+				'label'    => __( 'Récent (<10 j)', 'mainwp-giweb' ),
+				'modifier' => 'ok',
+			),
+			array(
+				'strong'   => number_format_i18n( (int) $ctx['issues_count'] ),
+				'label'    => __( 'Alertes', 'mainwp-giweb' ),
+				'modifier' => 'down',
+			),
+			array(
+				'strong'   => number_format_i18n( (int) $ctx['in_progress'] ),
+				'label'    => __( 'En cours', 'mainwp-giweb' ),
+				'modifier' => 'warn',
+			),
+			array(
+				'strong'   => number_format_i18n( (int) $ctx['no_backup'] ),
+				'label'    => __( 'No backup', 'mainwp-giweb' ),
+				'modifier' => 'missing',
+			),
+		);
+
+		MainWP_GIWeb_Widget_UI::render_overview(
+			(float) $ctx['health'],
+			(array) $ctx['strip_segments'],
+			$stats
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $ctx Contexte réseau.
+	 * @return void
+	 */
+	private static function render_list_toolbar( array $ctx ) {
 		?>
-		<div class="mainwp-giweb-backup-widget<?php echo $is_dark ? ' mainwp-giweb-backup-widget--dark' : ' mainwp-giweb-backup-widget--light'; ?>">
-			<div class="giweb-gw">
-				<header class="giweb-gw-header">
-					<div class="giweb-gw-header__row">
-						<div class="giweb-gw-brand">
-							<span class="giweb-gw-brand__icon giweb-gw-brand__icon--backup" aria-hidden="true"></span>
-							<div>
-								<p class="giweb-gw-brand__title"><?php esc_html_e( 'Backups UpdraftPlus', 'mainwp-giweb' ); ?></p>
-								<p class="giweb-gw-brand__sub">
-									<?php
-									printf(
-										/* translators: 1: active count, 2: total MainWP sites */
-										esc_html__( '%1$d / %2$d sites avec UpdraftPlus', 'mainwp-giweb' ),
-										$sites_active,
-										$total_mainwp
-									);
-									?>
-								</p>
-							</div>
-						</div>
-						<div class="giweb-gw-header__actions">
-							<?php if ( $updated_at > 0 ) : ?>
-								<time
-									class="giweb-gw-sync"
-									datetime="<?php echo esc_attr( gmdate( 'c', $updated_at ) ); ?>"
-									data-sync-ts="<?php echo esc_attr( (string) $updated_at ); ?>"
-								>
-									<?php echo esc_html( self::format_sync_ago( $updated_at ) ); ?>
-								</time>
-							<?php elseif ( ! $sites_active ) : ?>
-								<span class="giweb-gw-sync giweb-gw-sync--empty">
-									<?php esc_html_e( 'Synchronisez vos sites MainWP pour alimenter ce widget', 'mainwp-giweb' ); ?>
-								</span>
-							<?php endif; ?>
-						</div>
-					</div>
-
-					<?php if ( ! empty( $rows ) ) : ?>
-						<div class="giweb-gw-overview">
-							<div class="giweb-gw-score" style="--giweb-gw-score-deg: <?php echo esc_attr( (string) $health_deg ); ?>deg;">
-								<span class="giweb-gw-score__value"><?php echo esc_html( number_format_i18n( $health, 1 ) ); ?>%</span>
-								<span class="giweb-gw-score__label"><?php esc_html_e( 'Santé', 'mainwp-giweb' ); ?></span>
-							</div>
-							<div class="giweb-gw-overview__main">
-								<div class="giweb-gw-strip" aria-hidden="true">
-									<?php foreach ( $strip as $seg ) : ?>
-										<span class="giweb-gw-strip__seg status-<?php echo esc_attr( $seg ); ?>"></span>
-									<?php endforeach; ?>
-								</div>
-								<div class="giweb-gw-stats">
-									<div class="giweb-gw-stat giweb-gw-stat--ok">
-										<strong><?php echo esc_html( number_format_i18n( $fresh ) ); ?></strong>
-										<span><?php esc_html_e( 'Récent (<10 j)', 'mainwp-giweb' ); ?></span>
-									</div>
-									<div class="giweb-gw-stat giweb-gw-stat--down">
-										<strong><?php echo esc_html( number_format_i18n( $issues_count ) ); ?></strong>
-										<span><?php esc_html_e( 'Alertes', 'mainwp-giweb' ); ?></span>
-									</div>
-									<div class="giweb-gw-stat giweb-gw-stat--warn">
-										<strong><?php echo esc_html( number_format_i18n( $in_progress ) ); ?></strong>
-										<span><?php esc_html_e( 'En cours', 'mainwp-giweb' ); ?></span>
-									</div>
-									<div class="giweb-gw-stat giweb-gw-stat--missing">
-										<strong><?php echo esc_html( number_format_i18n( $no_backup ) ); ?></strong>
-										<span><?php esc_html_e( 'No backup', 'mainwp-giweb' ); ?></span>
-									</div>
-								</div>
-							</div>
-						</div>
-					<?php endif; ?>
-				</header>
-
-				<?php if ( empty( $rows ) ) : ?>
-					<div class="giweb-gw-empty-state">
-						<p><?php esc_html_e( 'Aucun site avec UpdraftPlus actif remonté pour le moment.', 'mainwp-giweb' ); ?></p>
-					</div>
-				<?php else : ?>
-					<div class="giweb-gw-toolbar">
-						<label class="giweb-gw-search">
-							<span class="screen-reader-text"><?php esc_html_e( 'Rechercher un site', 'mainwp-giweb' ); ?></span>
-							<input type="search" class="giweb-gw-search__input" placeholder="<?php esc_attr_e( 'Rechercher…', 'mainwp-giweb' ); ?>" autocomplete="off" />
-						</label>
-						<div class="giweb-gw-filters" role="tablist">
-							<button type="button" class="giweb-gw-filter is-active" data-filter="all" role="tab"><?php esc_html_e( 'Tous', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) count( $rows ) ); ?></em></button>
-							<button type="button" class="giweb-gw-filter" data-filter="ok" role="tab"><?php esc_html_e( 'Récent', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $fresh ); ?></em></button>
-							<button type="button" class="giweb-gw-filter" data-filter="issues" role="tab"><?php esc_html_e( 'Alertes', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $issues_count ); ?></em></button>
-							<button type="button" class="giweb-gw-filter" data-filter="progress" role="tab"><?php esc_html_e( 'En cours', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $in_progress ); ?></em></button>
-						</div>
-					</div>
-
-					<div class="giweb-gw-grid">
-						<?php foreach ( $rows as $row ) : ?>
-							<?php self::render_backup_card( $row ); ?>
-						<?php endforeach; ?>
-					</div>
-					<p class="giweb-gw-no-match" hidden><?php esc_html_e( 'Aucun site ne correspond à votre recherche.', 'mainwp-giweb' ); ?></p>
-				<?php endif; ?>
+		<div class="giweb-gw-toolbar">
+			<label class="giweb-gw-search">
+				<span class="screen-reader-text"><?php esc_html_e( 'Rechercher un site', 'mainwp-giweb' ); ?></span>
+				<input type="search" class="giweb-gw-search__input" placeholder="<?php esc_attr_e( 'Rechercher…', 'mainwp-giweb' ); ?>" autocomplete="off" />
+			</label>
+			<div class="giweb-gw-filters" role="tablist">
+				<button type="button" class="giweb-gw-filter is-active" data-filter="all" role="tab"><?php esc_html_e( 'Tous', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) count( $ctx['rows'] ) ); ?></em></button>
+				<button type="button" class="giweb-gw-filter" data-filter="ok" role="tab"><?php esc_html_e( 'Récent', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $ctx['fresh'] ); ?></em></button>
+				<button type="button" class="giweb-gw-filter" data-filter="issues" role="tab"><?php esc_html_e( 'Alertes', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $ctx['issues_count'] ); ?></em></button>
+				<button type="button" class="giweb-gw-filter" data-filter="progress" role="tab"><?php esc_html_e( 'En cours', 'mainwp-giweb' ); ?> <em><?php echo esc_html( (string) $ctx['in_progress'] ); ?></em></button>
 			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * @param array<int, array<string, mixed>> $rows Lignes sites.
+	 * @return void
+	 */
+	private static function render_backup_cards( array $rows ) {
+		?>
+		<div class="giweb-gw-grid">
+			<?php foreach ( $rows as $row ) : ?>
+				<?php self::render_backup_card( $row ); ?>
+			<?php endforeach; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * @param array<int, array<string, mixed>> $rows Lignes sites.
+	 * @return void
+	 */
+	private static function render_backup_table( array $rows ) {
+		?>
+		<div class="giweb-gw-table-wrap">
+			<table class="giweb-gw-table widefat">
+				<thead>
+					<tr>
+						<th><?php esc_html_e( 'Site', 'mainwp-giweb' ); ?></th>
+						<th><?php esc_html_e( 'Statut', 'mainwp-giweb' ); ?></th>
+						<th><?php esc_html_e( 'Dernier backup', 'mainwp-giweb' ); ?></th>
+						<th><?php esc_html_e( 'Taille Go', 'mainwp-giweb' ); ?></th>
+						<th><?php esc_html_e( 'Remote', 'mainwp-giweb' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $rows as $row ) : ?>
+						<tr data-status="<?php echo esc_attr( (string) ( $row['filter_status'] ?? 'issues' ) ); ?>" data-search="<?php echo esc_attr( (string) ( $row['search'] ?? '' ) ); ?>">
+							<td>
+								<?php if ( ! empty( $row['admin_url'] ) ) : ?>
+									<a href="<?php echo esc_url( (string) $row['admin_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( (string) ( $row['label'] ?? '' ) ); ?></a>
+								<?php else : ?>
+									<?php echo esc_html( (string) ( $row['label'] ?? '' ) ); ?>
+								<?php endif; ?>
+							</td>
+							<td><?php echo esc_html( (string) ( $row['status_label'] ?? '' ) ); ?></td>
+							<td><?php echo esc_html( (string) ( $row['relative'] ?? '—' ) ); ?></td>
+							<td><?php echo esc_html( (string) ( $row['size'] ?? '—' ) ); ?></td>
+							<td><?php echo esc_html( (string) ( $row['remote'] ?? '—' ) ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
 		</div>
 		<?php
 	}
@@ -292,30 +357,15 @@ class MainWP_GIWeb_Backup_Widget {
 		<div class="mainwp-giweb-backup-widget mainwp-giweb-backup-widget--single-site<?php echo $is_dark ? ' mainwp-giweb-backup-widget--dark' : ' mainwp-giweb-backup-widget--light'; ?>">
 			<div class="giweb-gw giweb-gw--single">
 				<header class="giweb-gw-header">
-					<div class="giweb-gw-header__row">
-						<div class="giweb-gw-brand">
-							<span class="giweb-gw-brand__icon giweb-gw-brand__icon--backup" aria-hidden="true"></span>
-							<div>
-								<p class="giweb-gw-brand__title"><?php esc_html_e( 'Backups UpdraftPlus', 'mainwp-giweb' ); ?></p>
-								<p class="giweb-gw-brand__sub"><?php esc_html_e( 'Monitor de ce site', 'mainwp-giweb' ); ?></p>
-							</div>
-						</div>
-						<div class="giweb-gw-header__actions">
-							<?php if ( $updated_at > 0 ) : ?>
-								<time
-									class="giweb-gw-sync"
-									datetime="<?php echo esc_attr( gmdate( 'c', $updated_at ) ); ?>"
-									data-sync-ts="<?php echo esc_attr( (string) $updated_at ); ?>"
-								>
-									<?php echo esc_html( self::format_sync_ago( $updated_at ) ); ?>
-								</time>
-							<?php else : ?>
-								<span class="giweb-gw-sync giweb-gw-sync--empty">
-									<?php esc_html_e( 'Synchronisez ce site MainWP pour alimenter ce widget', 'mainwp-giweb' ); ?>
-								</span>
-							<?php endif; ?>
-						</div>
-					</div>
+					<?php
+					MainWP_GIWeb_Widget_UI::render_header_row(
+						'backup',
+						__( 'Backups UpdraftPlus', 'mainwp-giweb' ),
+						__( 'Monitor de ce site', 'mainwp-giweb' ),
+						$updated_at,
+						__( 'Synchronisez ce site MainWP pour alimenter ce widget', 'mainwp-giweb' )
+					);
+					?>
 				</header>
 
 				<?php if ( ! is_array( $backup ) || empty( $backup['plugin_active'] ) ) : ?>
@@ -326,16 +376,16 @@ class MainWP_GIWeb_Backup_Widget {
 					<?php
 					self::render_backup_card(
 						array(
-							'label'        => is_array( $row ) ? (string) ( $row['label'] ?? ( '#' . $site_id ) ) : ( '#' . $site_id ),
-							'admin_url'    => $admin_url,
-							'state'        => $state,
-							'card_status'  => self::card_status_from_state( $state ),
-							'filter_status'=> self::filter_status_from_row( $state, $backup ),
-							'status_label' => MainWP_GIWeb_Backup_Stats::format_status_label( $backup ),
-							'relative'     => MainWP_GIWeb_Backup_Stats::format_relative_time( (int) ( $backup['last_backup_time'] ?? 0 ) ),
-							'size'         => MainWP_GIWeb_Backup_Stats::format_size_gb( $backup ),
-							'remote'       => MainWP_GIWeb_Backup_Stats::format_remote_label( $backup ),
-							'search'       => is_array( $row ) ? strtolower( (string) ( $row['label'] ?? '' ) ) : '',
+							'label'         => is_array( $row ) ? (string) ( $row['label'] ?? ( '#' . $site_id ) ) : ( '#' . $site_id ),
+							'admin_url'     => $admin_url,
+							'state'         => $state,
+							'card_status'   => self::card_status_from_state( $state ),
+							'filter_status' => self::filter_status_from_row( $state, $backup ),
+							'status_label'  => MainWP_GIWeb_Backup_Stats::format_status_label( $backup ),
+							'relative'      => MainWP_GIWeb_Backup_Stats::format_relative_time( (int) ( $backup['last_backup_time'] ?? 0 ) ),
+							'size'          => MainWP_GIWeb_Backup_Stats::format_size_gb( $backup ),
+							'remote'        => MainWP_GIWeb_Backup_Stats::format_remote_label( $backup ),
+							'search'        => is_array( $row ) ? strtolower( (string) ( $row['label'] ?? '' ) ) : '',
 						)
 					);
 					?>
@@ -346,20 +396,15 @@ class MainWP_GIWeb_Backup_Widget {
 	}
 
 	/**
-	 * @param string $state État visuel backup.
+	 * @param string $site_url URL site.
 	 * @return string
 	 */
-	private static function strip_status_from_state( $state ) {
-		switch ( (string) $state ) {
-			case 'ok':
-				return 'ok';
-			case 'warn':
-				return 'warn';
-			case 'stale':
-				return 'down';
-			default:
-				return 'missing';
+	private static function site_updraft_url( $site_url ) {
+		$site_url = untrailingslashit( (string) $site_url );
+		if ( '' === $site_url ) {
+			return '';
 		}
+		return $site_url . '/wp-admin/options-general.php?page=updraftplus';
 	}
 
 	/**
@@ -430,24 +475,49 @@ class MainWP_GIWeb_Backup_Widget {
 	}
 
 	/**
+	 * Fusionne tous les sites MainWP avec l’agrégat backup (inclut no backup).
+	 *
 	 * @param array<int, array<string, mixed>> $sites Sites agrégés.
 	 * @return array<int, array<string, mixed>>
 	 */
-	private static function build_rows( $sites ) {
-		$rows = array();
+	private static function build_all_site_rows( $sites ) {
+		global $mainwp_giweb_activator;
 
-		foreach ( $sites as $site_id => $site_row ) {
+		$rows  = array();
+		$by_id = is_array( $sites ) ? $sites : array();
+
+		foreach ( MainWP_GIWeb_Sites::fetch_all( $mainwp_giweb_activator ) as $site ) {
+			$normalized = MainWP_GIWeb_Sites::normalize_one( $site );
+			$site_id    = (int) ( $normalized['id'] ?? 0 );
+			$label      = (string) ( $normalized['label'] ?? ( '#' . $site_id ) );
+			$site_row   = is_array( $by_id[ $site_id ] ?? null ) ? $by_id[ $site_id ] : array(
+				'label' => $label,
+				'url'   => $normalized['url'] ?? '',
+			);
 			$backup = $site_row['backup'] ?? null;
+
 			if ( ! is_array( $backup ) || empty( $backup['plugin_active'] ) ) {
+				$rows[] = array(
+					'label'         => $label,
+					'admin_url'     => self::site_updraft_url( $site_row['url'] ?? $normalized['url'] ?? '' ),
+					'state'         => 'no_backup',
+					'card_status'   => 'inactive',
+					'filter_status' => 'no_backup',
+					'status_label'  => __( 'No backup', 'mainwp-giweb' ),
+					'relative'      => '—',
+					'size'          => '—',
+					'remote'        => '—',
+					'timestamp'     => 0,
+					'search'        => strtolower( $label ),
+				);
 				continue;
 			}
 
 			$state = MainWP_GIWeb_Backup_Stats::get_visual_state( $backup );
-			$label = (string) ( $site_row['label'] ?? ( '#' . $site_id ) );
 
 			$rows[] = array(
 				'label'         => $label,
-				'admin_url'     => self::site_updraft_url( $site_row['url'] ?? '' ),
+				'admin_url'     => self::site_updraft_url( $site_row['url'] ?? $normalized['url'] ?? '' ),
 				'state'         => $state,
 				'card_status'   => self::card_status_from_state( $state ),
 				'filter_status' => self::filter_status_from_row( $state, $backup ),
@@ -464,14 +534,15 @@ class MainWP_GIWeb_Backup_Widget {
 			$rows,
 			static function ( $a, $b ) {
 				$order = array(
-					'stale'    => 0,
-					'warn'     => 1,
-					'inactive' => 2,
-					'pending'  => 3,
-					'ok'       => 4,
+					'stale'     => 0,
+					'no_backup' => 1,
+					'warn'      => 2,
+					'inactive'  => 3,
+					'pending'   => 4,
+					'ok'        => 5,
 				);
-				$oa = $order[ $a['state'] ?? '' ] ?? 5;
-				$ob = $order[ $b['state'] ?? '' ] ?? 5;
+				$oa = $order[ $a['state'] ?? '' ] ?? 6;
+				$ob = $order[ $b['state'] ?? '' ] ?? 6;
 				if ( $oa !== $ob ) {
 					return $oa <=> $ob;
 				}

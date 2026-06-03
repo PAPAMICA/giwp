@@ -497,3 +497,102 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-wrap .button:not(.button-primar
 .mainwp-giweb-sync-log__line--err {
 	color: var(--red-color, #dc3232);
 }
+
+/* —— Page Réglages (cartes) —— */
+.mainwp-giweb-settings-form {
+	margin-top: 8px;
+}
+
+.mainwp-giweb-settings-sections {
+	display: flex;
+	flex-direction: column;
+	gap: 28px;
+	margin-bottom: 20px;
+}
+
+.mainwp-giweb-settings-section__title {
+	border-bottom: 1px solid var(--giweb-border);
+	font-size: 1.05em;
+	font-weight: 600;
+	margin: 0 0 14px;
+	padding-bottom: 8px;
+}
+
+.mainwp-giweb-settings-grid {
+	display: grid;
+	gap: 14px;
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.mainwp-giweb-settings-card {
+	background: var(--giweb-surface);
+	border: 1px solid var(--giweb-border);
+	border-radius: 10px;
+	padding: 16px 18px;
+}
+
+.mainwp-giweb-settings-card--wide {
+	grid-column: 1 / -1;
+}
+
+.mainwp-giweb-settings-card__title {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	font-size: 13px;
+	font-weight: 600;
+	gap: 8px;
+	margin: 0 0 10px;
+}
+
+.mainwp-giweb-settings-card__desc {
+	color: var(--giweb-text-muted);
+	font-size: 12px;
+	margin: 0 0 10px;
+}
+
+.mainwp-giweb-settings-check {
+	display: block;
+	margin: 0 0 8px;
+}
+
+.mainwp-giweb-settings-badge {
+	border-radius: 999px;
+	font-size: 10px;
+	font-weight: 600;
+	line-height: 1;
+	padding: 3px 8px;
+	text-transform: uppercase;
+}
+
+.mainwp-giweb-settings-badge--ok {
+	background: rgba(18, 183, 106, 0.15);
+	color: #027a48;
+}
+
+.mainwp-giweb-wrap.mainwp-giweb--dark .mainwp-giweb-settings-badge--ok,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-settings-badge--ok {
+	color: #6ee7a8;
+}
+
+.mainwp-giweb-settings-warn {
+	color: #b45309;
+}
+
+.mainwp-giweb-wrap.mainwp-giweb--dark .mainwp-giweb-settings-warn,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-settings-warn {
+	color: #fdba74;
+}
+
+.mainwp-giweb-settings-card .description {
+	color: var(--giweb-text-muted);
+	font-size: 12px;
+}
+
+.mainwp-giweb-settings-card input[type="url"],
+.mainwp-giweb-settings-card input[type="email"],
+.mainwp-giweb-settings-card input[type="password"],
+.mainwp-giweb-settings-card input[type="text"],
+.mainwp-giweb-settings-card select {
+	max-width: 100%;
+}

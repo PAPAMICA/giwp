@@ -5,6 +5,12 @@ body.mainwp-ui .grid-stack-item-content.ui.segment.mainwp-widget:has(
 	.mainwp-giweb-backup-widget,
 	.mainwp-giweb-mail-widget,
 	.mainwp-giweb-uptime-kuma-widget,
+	.mainwp-giweb-backup-widget-simple,
+	.mainwp-giweb-backup-widget-detailed,
+	.mainwp-giweb-mail-widget-simple,
+	.mainwp-giweb-mail-widget-detailed,
+	.mainwp-giweb-uptime-kuma-widget-simple,
+	.mainwp-giweb-uptime-kuma-widget-detailed,
 	.giweb-gw,
 	.giweb-ukw
 ) {
