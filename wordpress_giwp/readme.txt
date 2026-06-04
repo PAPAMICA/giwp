@@ -4,7 +4,7 @@ Tags: all in one plugin, admin, security, disable features, easy to use
 Requires at least: 6.0.0
 Tested up to: 6.9.3
 Requires PHP: 7.4
-Stable tag: 2.25.0
+Stable tag: 2.25.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -86,6 +86,7 @@ GI-Toolkit est une boîte à outils tout-en-un pour optimiser WordPress : tablea
 * Media Cleaner: Sanitize file names and auto-generate metadata (title, caption, alt text, description).
 * Media Encoder: Automatically convert images to WebP and AVIF (AVIF si PHP 8.1+ et support imageavif).
 * Meta Debugger: Display all metadata for a post, user, term, or comment.
+* Migration helper: Admin bar widget with hosting logo, PTR node label (e.g. h2web504) and IP/ASN details for site migrations.
 * Move Login URL: Change the default login URL to a custom URL of your choice.
 * Multiple User Roles: Assign multiple roles per user, useful for e-commerce or LMS plugins.
 * Nav Menu Visibility: Apply visibility controls to menu items.
@@ -194,8 +195,11 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 
 == Changelog ==
 
+= 2.25.1 =
+* Update: Migration helper — barre admin : logo hébergeur + nœud PTR (ex. h2web504) ; IP et ASN déplacés dans le menu détails.
+
 = 2.25.0 =
-* Add: module Migration helper — IP publique, reverse DNS et ASN dans la barre d’administration (migrations).
+* Add: module Migration helper — widget barre admin (IP publique, reverse DNS, ASN/hébergeur) pour le debug lors des migrations de site.
 
 = 2.24.3 =
 * Fix: Mail Catcher — détection d’échec alignée sur WP Mail Logging (wp_mail_failed + statut réel du send SMTP).

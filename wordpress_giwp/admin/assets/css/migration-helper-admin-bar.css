@@ -15,21 +15,48 @@
 	line-height: 1;
 }
 
-#wpadminbar .gi-migration-ab-icon {
-	color: #72aee6;
-	font-size: 14px;
-	line-height: 1;
+#wpadminbar .gi-migration-ab-logo {
+	border-radius: 3px;
+	flex-shrink: 0;
+	height: 18px;
+	object-fit: contain;
+	width: 18px;
 }
 
-#wpadminbar .gi-migration-ab-ip {
+#wpadminbar .gi-migration-ab-logo--fallback {
+	background: rgba(114, 174, 230, 0.35);
+	border-radius: 3px;
+	display: inline-block;
+	flex-shrink: 0;
+	height: 18px;
+	position: relative;
+	width: 18px;
+}
+
+#wpadminbar .gi-migration-ab-logo--fallback::after {
+	color: #f0f0f1;
+	content: "⎈";
+	font-size: 11px;
+	left: 50%;
+	line-height: 1;
+	position: absolute;
+	top: 50%;
+	transform: translate(-50%, -50%);
+}
+
+#wpadminbar .gi-migration-ab-host {
 	color: #f0f0f1;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 	font-size: 12px;
 	font-weight: 600;
 	letter-spacing: 0.02em;
+	max-width: 140px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-#wpadminbar .gi-migration-ab-ip--muted {
+#wpadminbar .gi-migration-ab-host--muted {
 	color: #a7aaad;
 	font-family: inherit;
 	font-weight: 400;

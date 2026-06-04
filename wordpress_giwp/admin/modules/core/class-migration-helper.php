@@ -40,17 +40,8 @@ class Gi_Toolkit_Migration_Helper {
 			return;
 		}
 
-		$data = Gi_Toolkit_Migration_Helper_IP_Resolver::get_toolbar_payload();
-		$ip   = (string) ( $data['ip_label'] ?? '' );
-
-		if ( '' === $ip ) {
-			$title = '<span class="gi-migration-ab-wrap"><span class="gi-migration-ab-icon" aria-hidden="true">⎈</span><span class="gi-migration-ab-ip gi-migration-ab-ip--muted">' . esc_html__( 'IP indisponible', 'gi-toolkit' ) . '</span></span>';
-		} else {
-			$title = sprintf(
-				'<span class="gi-migration-ab-wrap"><span class="gi-migration-ab-icon" aria-hidden="true">⎈</span><span class="gi-migration-ab-ip">%s</span></span>',
-				esc_html( $ip )
-			);
-		}
+		$data  = Gi_Toolkit_Migration_Helper_IP_Resolver::get_toolbar_payload();
+		$title = self::render_admin_bar_title( $data );
 
 		$wp_admin_bar->add_node(
 			array(
@@ -79,16 +70,67 @@ class Gi_Toolkit_Migration_Helper {
 	}
 
 	/**
+	 * Titre barre admin : logo ISP + sous-domaine PTR.
+	 *
+	 * @param array<string, mixed> $data Données barre admin.
+	 * @return string
+	 */
+	public static function render_admin_bar_title( array $data ) {
+		$label    = (string) ( $data['header_label'] ?? '' );
+		$logo_url = (string) ( $data['header_logo'] ?? '' );
+		$info     = is_array( $data['ip_info'] ?? null ) ? $data['ip_info'] : array();
+		$isp_name = (string) ( $info['isp'] ?? $info['org'] ?? '' );
+
+		if ( '' === $label ) {
+			return '<span class="gi-migration-ab-wrap gi-migration-ab-wrap--empty"><span class="gi-migration-ab-host gi-migration-ab-host--muted">' . esc_html__( 'Hébergement inconnu', 'gi-toolkit' ) . '</span></span>';
+		}
+
+		$logo_html = '';
+		if ( '' !== $logo_url ) {
+			$logo_html = sprintf(
+				'<img class="gi-migration-ab-logo" src="%1$s" alt="" width="18" height="18" loading="lazy" decoding="async"%2$s />',
+				esc_url( $logo_url ),
+				'' !== $isp_name ? ' title="' . esc_attr( $isp_name ) . '"' : ''
+			);
+		} else {
+			$logo_html = '<span class="gi-migration-ab-logo gi-migration-ab-logo--fallback" aria-hidden="true"></span>';
+		}
+
+		return sprintf(
+			'<span class="gi-migration-ab-wrap">%1$s<span class="gi-migration-ab-host">%2$s</span></span>',
+			$logo_html,
+			esc_html( $label )
+		);
+	}
+
+	/**
 	 * @param array<string, mixed> $data Données barre admin.
 	 * @return string
 	 */
 	public static function build_admin_bar_tooltip( array $data ) {
-		$parts = array(
-			sprintf(
-				/* translators: %s: site URL */
-				__( 'Site : %s', 'gi-toolkit' ),
-				(string) ( $data['site_url'] ?? '' )
-			),
+		$info  = is_array( $data['ip_info'] ?? null ) ? $data['ip_info'] : array();
+		$parts = array();
+
+		if ( ! empty( $data['header_label'] ) ) {
+			$parts[] = sprintf(
+				/* translators: %s: PTR subdomain / host label */
+				__( 'Nœud : %s', 'gi-toolkit' ),
+				(string) $data['header_label']
+			);
+		}
+
+		if ( ! empty( $info['reverse_dns'] ) ) {
+			$parts[] = sprintf(
+				/* translators: %s: full PTR hostname */
+				__( 'PTR : %s', 'gi-toolkit' ),
+				(string) $info['reverse_dns']
+			);
+		}
+
+		$parts[] = sprintf(
+			/* translators: %s: site URL */
+			__( 'Site : %s', 'gi-toolkit' ),
+			(string) ( $data['site_url'] ?? '' )
 		);
 
 		if ( ! empty( $data['public_ip'] ) ) {
@@ -107,14 +149,6 @@ class Gi_Toolkit_Migration_Helper {
 			);
 		}
 
-		$info = is_array( $data['ip_info'] ?? null ) ? $data['ip_info'] : array();
-		if ( ! empty( $info['reverse_dns'] ) ) {
-			$parts[] = sprintf(
-				/* translators: %s: hostname */
-				__( 'Reverse DNS : %s', 'gi-toolkit' ),
-				(string) $info['reverse_dns']
-			);
-		}
 		if ( ! empty( $info['asn'] ) ) {
 			$parts[] = sprintf(
 				/* translators: %s: ASN label */
@@ -140,7 +174,7 @@ class Gi_Toolkit_Migration_Helper {
 
 		$rows = array(
 			array(
-				'label' => __( 'Site', 'gi-toolkit' ),
+				'label' => __( 'Site WordPress', 'gi-toolkit' ),
 				'value' => $host ? $host : $site_url,
 			),
 		);
@@ -161,10 +195,26 @@ class Gi_Toolkit_Migration_Helper {
 			);
 		}
 
+		if ( ! empty( $info['ptr_subdomain'] ) ) {
+			$rows[] = array(
+				'label' => __( 'Nœud (PTR)', 'gi-toolkit' ),
+				'value' => (string) $info['ptr_subdomain'],
+				'mono'  => true,
+			);
+		}
+
 		if ( ! empty( $info['reverse_dns'] ) ) {
 			$rows[] = array(
-				'label' => __( 'Reverse DNS', 'gi-toolkit' ),
+				'label' => __( 'Reverse DNS complet', 'gi-toolkit' ),
 				'value' => (string) $info['reverse_dns'],
+				'mono'  => true,
+			);
+		}
+
+		if ( ! empty( $info['isp_domain'] ) ) {
+			$rows[] = array(
+				'label' => __( 'Domaine hébergeur', 'gi-toolkit' ),
+				'value' => (string) $info['isp_domain'],
 				'mono'  => true,
 			);
 		}

@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.25.1 =
+* Update: Migration helper — en-tête barre admin : favicon hébergeur + 1er segment du reverse DNS (nœud PTR) ; IP publique/serveur et métadonnées réseau dans le flyout.
+
 = 2.25.0 =
 * Add: module Migration helper — widget barre admin (IP publique, reverse DNS, ASN/hébergeur) pour le debug lors des migrations de site.
 
