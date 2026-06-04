@@ -45,6 +45,8 @@ class Gi_Toolkit_Mail_Catcher {
 		add_action( 'admin_init', array( $this, 'show_email_message' ) );
 		add_filter( 'wp_mail', array( $this, 'save_email_log' ), PHP_INT_MAX );
 		add_action( 'wp_mail_failed', array( $this, 'save_email_failed_log' ) );
+		add_action( 'wp_mail_succeeded', array( $this, 'clear_current_mail_log_id' ) );
+		add_action( 'shutdown', array( $this, 'maybe_capture_phpmailer_failure' ), 20 );
 		add_action( 'wp_ajax_gi_toolkit_mail_catcher_preview', array( $this, 'mail_catcher_preview' ) );
 	}
 
@@ -65,6 +67,160 @@ class Gi_Toolkit_Mail_Catcher {
 	 */
 	public static function instance() {
 		return self::$instance;
+	}
+
+	/**
+	 * Indique si une ligne journal a une erreur d’envoi.
+	 *
+	 * @param array<string, mixed>|string|null $row Ligne SQL ou message brut.
+	 * @return bool
+	 */
+	public static function log_row_has_error( $row ) {
+		if ( is_string( $row ) ) {
+			return '' !== trim( $row );
+		}
+		if ( ! is_array( $row ) ) {
+			return false;
+		}
+
+		return '' !== trim( (string) ( $row['error'] ?? '' ) );
+	}
+
+	/**
+	 * Marque l’envoi courant (ou le dernier journal ouvert) en échec.
+	 *
+	 * @param string $message Message d’erreur.
+	 * @return void
+	 */
+	public static function notify_send_failure( $message ) {
+		$instance = self::instance();
+		if ( ! $instance ) {
+			return;
+		}
+		$instance->mark_current_log_failed( $message );
+	}
+
+	/**
+	 * @param string $message Message d’erreur.
+	 * @return void
+	 */
+	public function mark_current_log_failed( $message ) {
+		global $gi_toolkit_current_mail_id;
+
+		$message = self::normalize_log_error_message( $message );
+		if ( '' === $message ) {
+			$message = __( 'Échec d’envoi (wp_mail).', 'gi-toolkit' );
+		}
+
+		if ( isset( $gi_toolkit_current_mail_id ) ) {
+			$this->mark_log_error( (int) $gi_toolkit_current_mail_id, $message );
+			unset( $gi_toolkit_current_mail_id );
+			return;
+		}
+
+		$fallback_id = $this->find_last_open_log_id();
+		if ( $fallback_id > 0 ) {
+			$this->mark_log_error( $fallback_id, $message );
+		}
+	}
+
+	/**
+	 * @param string $message Message brut.
+	 * @return string
+	 */
+	private static function normalize_log_error_message( $message ) {
+		$message = sanitize_text_field( wp_strip_all_tags( (string) $message ) );
+		if ( strlen( $message ) > 400 ) {
+			$message = substr( $message, 0, 397 ) . '…';
+		}
+		return trim( $message );
+	}
+
+	/**
+	 * ID du dernier journal sans erreur (repli si wp_mail_failed n’a pas l’ID courant).
+	 *
+	 * @return int
+	 */
+	private function find_last_open_log_id() {
+		global $wpdb;
+
+		if ( ! $this->is_table_exist() ) {
+			return 0;
+		}
+
+		$table = $this->get_table_name();
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return (int) $wpdb->get_var(
+			"SELECT id FROM {$table} WHERE (error IS NULL OR TRIM(error) = '') ORDER BY id DESC LIMIT 1"
+		);
+	}
+
+	/**
+	 * @param int    $id      ID journal.
+	 * @param string $message Erreur.
+	 * @return void
+	 */
+	private function mark_log_error( $id, $message ) {
+		global $wpdb;
+
+		$id = absint( $id );
+		if ( $id <= 0 || ! $this->is_table_exist() ) {
+			return;
+		}
+
+		$message = self::normalize_log_error_message( $message );
+		if ( '' === $message ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->update(
+			$this->get_table_name(),
+			array( 'error' => $message ),
+			array( 'id' => $id ),
+			array( '%s' ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * @return void
+	 */
+	public function clear_current_mail_log_id() {
+		global $gi_toolkit_current_mail_id;
+		unset( $gi_toolkit_current_mail_id );
+	}
+
+	/**
+	 * Repli si wp_mail_failed n’a pas mis à jour le journal (PHPMailer ErrorInfo).
+	 *
+	 * @return void
+	 */
+	public function maybe_capture_phpmailer_failure() {
+		global $gi_toolkit_current_mail_id, $phpmailer;
+
+		if ( ! isset( $gi_toolkit_current_mail_id ) ) {
+			return;
+		}
+
+		$id = (int) $gi_toolkit_current_mail_id;
+		unset( $gi_toolkit_current_mail_id );
+
+		$row = $this->get_log_by_id( $id );
+		if ( ! is_array( $row ) || self::log_row_has_error( $row ) ) {
+			return;
+		}
+
+		$message = '';
+		if ( isset( $phpmailer ) && is_object( $phpmailer ) && ! empty( $phpmailer->ErrorInfo ) ) {
+			$message = (string) $phpmailer->ErrorInfo;
+		}
+
+		if ( '' === $message ) {
+			return;
+		}
+
+		$this->mark_log_error( $id, $message );
 	}
 
 	/**
@@ -153,20 +309,27 @@ class Gi_Toolkit_Mail_Catcher {
 	 * @since   2.14.0
 	 */
 	public function save_email_failed_log( $error ) {
-		global $wpdb, $gi_toolkit_current_mail_id;
+		$message = '';
 
-		if ( ! isset( $gi_toolkit_current_mail_id ) ) {
-			return;
+		if ( is_wp_error( $error ) ) {
+			$message = $error->get_error_message();
+			if ( '' === $message ) {
+				$message = $error->get_error_code();
+			}
+			$data = $error->get_error_data();
+			if ( '' === trim( (string) $message ) && is_string( $data ) ) {
+				$message = $data;
+			}
+		} elseif ( is_string( $error ) ) {
+			$message = $error;
 		}
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->update(
-			$this->get_table_name(),
-			array( 'error' => $error->get_error_message() ),
-			array( 'id' => $gi_toolkit_current_mail_id ),
-			array( '%s' ),
-			array( '%d' )
-		);
+		global $phpmailer;
+		if ( '' === trim( (string) $message ) && isset( $phpmailer ) && is_object( $phpmailer ) && ! empty( $phpmailer->ErrorInfo ) ) {
+			$message = (string) $phpmailer->ErrorInfo;
+		}
+
+		$this->mark_current_log_failed( $message );
 	}
 
 	/**
@@ -216,13 +379,13 @@ class Gi_Toolkit_Mail_Catcher {
 			$select .= 'FROM ' . esc_sql( $this->get_table_name() );
 
 			$status_where = '';
-			switch( $status ) {
+			switch ( $status ) {
 				case 1:
-					$status_where .= " WHERE `error` IS NULL OR `error` = ''";
-				break;
+					$status_where .= ' WHERE (error IS NULL OR TRIM(error) = \'\')';
+					break;
 				case 2:
-					$status_where .= " WHERE `error` IS NOT NULL AND `error` != ''";
-				break;
+					$status_where .= ' WHERE (error IS NOT NULL AND TRIM(error) <> \'\')';
+					break;
 			}
 
 			$search_where = '';
@@ -296,13 +459,13 @@ class Gi_Toolkit_Mail_Catcher {
 		if ( $this->is_table_exist() ) {
 
 			$status_where = '';
-			switch( $status ) {
+			switch ( $status ) {
 				case 1:
-					$status_where .= " WHERE `error` IS NULL OR `error` = ''";
-				break;
+					$status_where .= ' WHERE (error IS NULL OR TRIM(error) = \'\')';
+					break;
 				case 2:
-					$status_where .= " WHERE `error` IS NOT NULL AND `error` != ''";
-				break;
+					$status_where .= ' WHERE (error IS NOT NULL AND TRIM(error) <> \'\')';
+					break;
 			}
 
 			//phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
@@ -621,10 +784,10 @@ class Gi_Toolkit_Mail_Catcher {
 		$html .= $this->render_preview_field( __( 'Sujet', 'gi-toolkit' ), esc_html( $item['subject'] ?? '' ) );
 		$html .= $this->render_preview_field( __( 'En-têtes', 'gi-toolkit' ), $headers_html );
 
-		if ( ! empty( $item['error'] ) ) {
+		if ( self::log_row_has_error( $item ) ) {
 			$html .= $this->render_preview_field(
 				__( 'Erreur', 'gi-toolkit' ),
-				esc_html( $item['error'] ),
+				esc_html( (string) ( $item['error'] ?? '' ) ),
 				'gi-toolkit-email-preview__content__item__content__error'
 			);
 		}
@@ -919,7 +1082,7 @@ class Gi_Toolkit_Mail_Catcher {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$sent = (int) $wpdb->get_var(
 				$wpdb->prepare(
-					"SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d AND unixtime < %d AND (error IS NULL OR error = '')",
+					"SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d AND unixtime < %d AND (error IS NULL OR TRIM(error) = '')",
 					$day_start,
 					$day_end
 				)
@@ -927,7 +1090,7 @@ class Gi_Toolkit_Mail_Catcher {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$failed = (int) $wpdb->get_var(
 				$wpdb->prepare(
-					"SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d AND unixtime < %d AND error IS NOT NULL AND error != ''",
+					"SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d AND unixtime < %d AND error IS NOT NULL AND TRIM(error) <> ''",
 					$day_start,
 					$day_end
 				)
@@ -959,7 +1122,7 @@ class Gi_Toolkit_Mail_Catcher {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT id, receiver, subject, error, unixtime FROM {$table} WHERE error IS NOT NULL AND error != '' ORDER BY unixtime DESC LIMIT %d",
+				"SELECT id, receiver, subject, error, unixtime FROM {$table} WHERE error IS NOT NULL AND TRIM(error) <> '' ORDER BY unixtime DESC LIMIT %d",
 				$limit
 			),
 			ARRAY_A
@@ -1177,6 +1340,9 @@ class Gi_Toolkit_Mail_Catcher {
 		if ( ! $this->is_table_exist() ) {
 			return;
 		}
+
+		$id    = absint( $id );
+		$error = self::normalize_log_error_message( $error );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(

@@ -22,6 +22,32 @@ class MainWP_GIWeb_Mail_Stats {
 	 * @param array<string, mixed> $data Données statut site.
 	 * @return array<string, mixed>|null
 	 */
+	/**
+	 * Nombre d’e-mails en échec pour un site (cohérent avec Mail Catcher).
+	 *
+	 * @param array<string, mixed>|null $mail Payload mail.
+	 * @return int
+	 */
+	public static function get_failed_count( $mail ) {
+		if ( ! is_array( $mail ) ) {
+			return 0;
+		}
+
+		return max( 0, (int) ( $mail['failed'] ?? 0 ) );
+	}
+
+	/**
+	 * @param array<string, mixed>|null $mail Payload mail.
+	 * @return bool
+	 */
+	public static function has_mail_failures( $mail ) {
+		return self::get_failed_count( $mail ) > 0;
+	}
+
+	/**
+	 * @param array<string, mixed> $data Données statut site.
+	 * @return array<string, mixed>|null
+	 */
 	public static function extract_mail( $data ) {
 		if ( ! is_array( $data ) || empty( $data['mail_catcher'] ) || ! is_array( $data['mail_catcher'] ) ) {
 			return null;
@@ -55,12 +81,10 @@ class MainWP_GIWeb_Mail_Stats {
 	 * @return array<string, mixed>|null
 	 */
 	public static function resolve_mail_payload( $api_data, $information = null ) {
-		$from_api = is_array( $api_data ) ? self::extract_mail( $api_data ) : null;
-		if ( is_array( $from_api ) ) {
-			return $from_api;
-		}
+		$from_api  = is_array( $api_data ) ? self::extract_mail( $api_data ) : null;
+		$from_sync = self::extract_mail_from_sync( $information );
 
-		return self::extract_mail_from_sync( $information );
+		return MainWP_GIWeb_MainWP_Sync::pick_richer_payload( $from_api, $from_sync );
 	}
 
 	/**
@@ -159,7 +183,7 @@ class MainWP_GIWeb_Mail_Stats {
 			$network['today']        += (int) ( $m['today'] ?? 0 );
 			$network['resent_total'] += (int) ( $m['resent_total'] ?? 0 );
 
-			if ( (int) ( $m['failed'] ?? 0 ) > 0 ) {
+			if ( self::has_mail_failures( $m ) ) {
 				++$network['sites_with_failures'];
 			}
 
@@ -363,12 +387,12 @@ class MainWP_GIWeb_Mail_Stats {
 			return '<span class="mainwp-giweb-mail-site mainwp-giweb-mail-site--pending"><span class="mainwp-giweb-mail-site__hint">' . esc_html__( 'Module actif — en attente de données', 'mainwp-giweb' ) . '</span></span>';
 		}
 
-		$failed  = (int) ( $mail['failed'] ?? 0 );
+		$failed  = self::get_failed_count( $mail );
 		$success = (int) ( $mail['success'] ?? 0 );
 		$total   = (int) ( $mail['total'] ?? 0 );
 		$today   = (int) ( $mail['today'] ?? 0 );
 		$resent  = (int) ( $mail['resent_total'] ?? 0 );
-		$has_err = $failed > 0;
+		$has_err = self::has_mail_failures( $mail );
 
 		$html  = '<div class="mainwp-giweb-mail-site' . ( $has_err ? ' mainwp-giweb-mail-site--alert' : ' mainwp-giweb-mail-site--ok' ) . '">';
 		$html .= '<div class="mainwp-giweb-mail-site__head">';

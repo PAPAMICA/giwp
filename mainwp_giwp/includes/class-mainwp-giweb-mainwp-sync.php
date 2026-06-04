@@ -46,28 +46,7 @@ class MainWP_GIWeb_MainWP_Sync {
 		}
 
 		set_transient( self::SYNC_BATCH_TRANSIENT, '1', 5 * MINUTE_IN_SECONDS );
-
 		MainWP_GIWeb_Status_Cache::mark_sync_started();
-
-		update_option(
-			MainWP_GIWeb_Mail_Stats::AGGREGATE_OPTION,
-			array(
-				'sites'      => array(),
-				'network'    => MainWP_GIWeb_Mail_Stats::compute_network( array() ),
-				'updated_at' => 0,
-			),
-			false
-		);
-		update_option(
-			MainWP_GIWeb_Backup_Stats::AGGREGATE_OPTION,
-			array(
-				'sites'      => array(),
-				'network'    => MainWP_GIWeb_Backup_Stats::compute_network( array() ),
-				'updated_at' => 0,
-			),
-			false
-		);
-		MainWP_GIWeb_Mail_Stats::clear_alert();
 	}
 
 	/**
@@ -76,7 +55,120 @@ class MainWP_GIWeb_MainWP_Sync {
 	 * @param array<string, mixed>|null $information Données sync MainWP.
 	 * @return array<string, mixed>|null
 	 */
+	/**
+	 * @param mixed $information Données sync MainWP (tableau ou objet).
+	 * @return array<string, mixed>|null
+	 */
+	private static function normalize_information( $information ) {
+		if ( is_array( $information ) ) {
+			return $information;
+		}
+
+		if ( is_object( $information ) ) {
+			return json_decode( wp_json_encode( $information ), true );
+		}
+
+		return null;
+	}
+
+	/**
+	 * Score de richesse d’un sous-payload (mail, backup, etc.).
+	 *
+	 * @param array<string, mixed> $payload
+	 * @return int
+	 */
+	private static function payload_richness_score( $payload ) {
+		$score = 0;
+		if ( ! empty( $payload['module_active'] ) || ! empty( $payload['plugin_active'] ) ) {
+			$score += 50;
+		}
+		if ( ! empty( $payload['table_ready'] ) ) {
+			$score += 30;
+		}
+		$score += min( 20, (int) ( $payload['total'] ?? 0 ) );
+		if ( ! empty( $payload['last_backup_time'] ) ) {
+			$score += 15;
+		}
+		if ( ! empty( $payload['last_backup_label'] ) ) {
+			$score += 5;
+		}
+
+		return $score;
+	}
+
+	/**
+	 * Garde le payload le plus complet entre deux sources.
+	 *
+	 * @param array<string, mixed>|null $a
+	 * @param array<string, mixed>|null $b
+	 * @return array<string, mixed>|null
+	 */
+	public static function pick_richer_payload( $a, $b ) {
+		if ( ! is_array( $a ) && ! is_array( $b ) ) {
+			return null;
+		}
+		if ( ! is_array( $a ) ) {
+			return $b;
+		}
+		if ( ! is_array( $b ) ) {
+			return $a;
+		}
+
+		$score_a = self::payload_richness_score( $a );
+		$score_b = self::payload_richness_score( $b );
+		if ( $score_b > $score_a ) {
+			return $b;
+		}
+		if ( $score_a > $score_b ) {
+			return $a;
+		}
+
+		return array_merge( $a, $b );
+	}
+
+	/**
+	 * Fusionne la réponse API distante et les données déjà remontées par la sync MainWP.
+	 *
+	 * @param array<string, mixed> $remote
+	 * @param array<string, mixed> $from_sync
+	 * @return array<string, mixed>
+	 */
+	private static function merge_api_responses( $remote, $from_sync ) {
+		$remote_data = is_array( $remote['data'] ?? null ) ? $remote['data'] : array();
+		$sync_data   = is_array( $from_sync['data'] ?? null ) ? $from_sync['data'] : array();
+		$merged      = $remote_data;
+
+		foreach ( $sync_data as $key => $value ) {
+			if ( in_array( $key, array( 'mail_catcher', 'updraftplus' ), true ) && is_array( $value ) ) {
+				$existing       = isset( $merged[ $key ] ) && is_array( $merged[ $key ] ) ? $merged[ $key ] : null;
+				$merged[ $key ] = self::pick_richer_payload( $existing, $value );
+				continue;
+			}
+
+			if ( ! isset( $merged[ $key ] ) || '' === $merged[ $key ] || null === $merged[ $key ] ) {
+				$merged[ $key ] = $value;
+				continue;
+			}
+
+			if ( is_array( $value ) && is_array( $merged[ $key ] ) ) {
+				$merged[ $key ] = array_merge( $merged[ $key ], $value );
+			}
+		}
+
+		$errors = array_merge(
+			(array) ( $remote['errors'] ?? array() ),
+			(array) ( $from_sync['errors'] ?? array() )
+		);
+
+		return array(
+			'success' => ! empty( $remote['success'] ) || ! empty( $from_sync['success'] ),
+			'data'    => $merged,
+			'errors'  => array_values( array_unique( array_filter( array_map( 'strval', $errors ) ) ) ),
+		);
+	}
+
 	private static function build_api_from_sync( $information ) {
+		$information = self::normalize_information( $information );
 		if ( ! is_array( $information ) ) {
 			return null;
 		}
@@ -136,8 +228,25 @@ class MainWP_GIWeb_MainWP_Sync {
 
 		$url = ! empty( $website->url ) ? (string) $website->url : '';
 
-		$api = self::build_api_from_sync( $information );
-		if ( ! is_array( $api ) || empty( $api['success'] ) ) {
+		$information = self::normalize_information( $information );
+		$api_sync    = self::build_api_from_sync( $information );
+		$api_remote  = MainWP_GIWeb_API::get_status( $site_id );
+		if ( ! is_array( $api_remote ) ) {
+			$api_remote = array(
+				'success' => false,
+				'data'    => array(),
+				'errors'  => array(),
+			);
+		}
+
+		$api_sync_wrapped = is_array( $api_sync ) ? $api_sync : array(
+			'success' => false,
+			'data'    => array(),
+			'errors'  => array(),
+		);
+		$api              = self::merge_api_responses( $api_remote, $api_sync_wrapped );
+
+		if ( empty( $api['success'] ) && empty( $api['data'] ) ) {
 			$result = MainWP_GIWeb_Deploy::sync_site_status( $site_id, $label );
 			$api    = is_array( $result['api'] ?? null ) ? $result['api'] : array(
 				'success' => false,
@@ -174,13 +283,9 @@ class MainWP_GIWeb_MainWP_Sync {
 			return false;
 		}
 
-		if ( ! (bool) apply_filters( 'mainwp_activated_check', false ) ) {
-			return false;
-		}
-
 		/**
 		 * Autorise la collecte lors de la sync globale MainWP (y compris cron),
-		 * sans exiger un accès UI à l’extension.
+		 * sans exiger l’activation UI de l’extension.
 		 *
 		 * @param bool $allowed Traiter la sync.
 		 */

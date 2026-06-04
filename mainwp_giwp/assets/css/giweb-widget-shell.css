@@ -255,6 +255,14 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget {
 	background: var(--giweb-gw-ok);
 }
 
+.giweb-gw-score--low {
+	background: conic-gradient(var(--giweb-gw-down) var(--giweb-gw-score-deg, 0deg), var(--giweb-gw-surface-2) 0);
+}
+
+.giweb-gw-score--low .giweb-gw-score__value {
+	color: var(--giweb-gw-down);
+}
+
 .giweb-gw-score__value {
 	position: relative;
 	z-index: 1;

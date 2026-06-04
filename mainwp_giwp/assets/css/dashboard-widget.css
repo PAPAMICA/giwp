@@ -183,3 +183,9 @@
 	flex-shrink: 0;
 	font-weight: 600;
 }
+
+.mainwp-giweb-mail-widget__donut-fail {
+	color: #f04438;
+	font-style: normal;
+	font-weight: 600;
+}

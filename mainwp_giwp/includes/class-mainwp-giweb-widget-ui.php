@@ -33,7 +33,7 @@ class MainWP_GIWeb_Widget_UI {
 		$health     = min( 100, max( 0, $health ) );
 		$is_full    = $health >= 100;
 		$health_deg = min( 359.9, $health * 3.6 );
-		$class      = 'giweb-gw-score' . ( $is_full ? ' giweb-gw-score--full' : '' );
+		$class      = 'giweb-gw-score' . ( $is_full ? ' giweb-gw-score--full' : ' giweb-gw-score--low' );
 		$style      = $is_full ? '' : ' style="--giweb-gw-score-deg: ' . esc_attr( (string) $health_deg ) . 'deg;"';
 		?>
 		<div class="<?php echo esc_attr( $class ); ?>"<?php echo $style; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
@@ -373,12 +373,12 @@ class MainWP_GIWeb_Widget_UI {
 			}
 
 			$total  = (int) ( $mail['total'] ?? 0 );
-			$failed = (int) ( $mail['failed'] ?? 0 );
+			$failed = MainWP_GIWeb_Mail_Stats::get_failed_count( $mail );
 			$ok     = (int) ( $mail['success'] ?? max( 0, $total - $failed ) );
 			$today  = (int) ( $mail['today'] ?? 0 );
-			$status = $failed > 0 ? 'down' : 'ok';
+			$status = MainWP_GIWeb_Mail_Stats::has_mail_failures( $mail ) ? 'down' : 'ok';
 
-			if ( $failed > 0 ) {
+			if ( MainWP_GIWeb_Mail_Stats::has_mail_failures( $mail ) ) {
 				$tip = sprintf(
 					/* translators: 1: site, 2: failed count, 3: total count */
 					__( '%1$s — %2$s échecs · %3$s total', 'mainwp-giweb' ),

@@ -285,7 +285,7 @@ class Gi_Toolkit_Mail_Catcher_Logs_List_Table extends WP_List_Table {
 	 * @param array<string, mixed> $item Ligne.
 	 */
 	private function get_status_badge( $item ) {
-		$failed = ! empty( $item['error'] );
+		$failed = Gi_Toolkit_Mail_Catcher::log_row_has_error( $item );
 		if ( $failed ) {
 			return '<span class="gi-toolkit-mail-catcher-badge gi-toolkit-mail-catcher-badge--failed">' . esc_html__( 'Échec', 'gi-toolkit' ) . '</span>';
 		}

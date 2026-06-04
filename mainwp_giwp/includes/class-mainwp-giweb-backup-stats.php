@@ -93,15 +93,7 @@ class MainWP_GIWeb_Backup_Stats {
 		$from_api  = is_array( $api_data ) ? self::extract_backup( $api_data ) : null;
 		$from_sync = self::extract_backup_from_sync( $information );
 
-		if ( is_array( $from_api ) && ! empty( $from_api['plugin_active'] ) ) {
-			return $from_api;
-		}
-
-		if ( is_array( $from_sync ) ) {
-			return $from_sync;
-		}
-
-		return $from_api;
+		return MainWP_GIWeb_MainWP_Sync::pick_richer_payload( $from_api, $from_sync );
 	}
 
 	/**

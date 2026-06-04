@@ -70,6 +70,7 @@ class Gi_Toolkit_SMTP_Mailer_Mailer_Catcher extends PHPMailer\PHPMailer\PHPMaile
 
 			// We need this to append SMTP error to the `PHPMailer::ErrorInfo` property.
 			$this->setError( $e->getMessage() );
+			$this->notify_mail_catcher_failure( $e->getMessage() );
 
 			if ( $this->exceptions ) {
 				throw $e;
@@ -122,7 +123,9 @@ class Gi_Toolkit_SMTP_Mailer_Mailer_Catcher extends PHPMailer\PHPMailer\PHPMaile
 			$is_sent = $provider->is_email_sent();
 
 			if ( $is_sent !== true ) {
-				$this->throw_exception( $provider->get_response_error() );
+				$provider_error = $provider->get_response_error();
+				$this->notify_mail_catcher_failure( $provider_error );
+				$this->throw_exception( $provider_error );
 			}
 			
 			return true;
@@ -132,6 +135,7 @@ class Gi_Toolkit_SMTP_Mailer_Mailer_Catcher extends PHPMailer\PHPMailer\PHPMaile
 
 			$error_message        = $message . $e->getMessage();
 			$this->latest_error   = $error_message;
+			$this->notify_mail_catcher_failure( $error_message );
 
 			if ( $this->exceptions ) {
 				throw $e;
@@ -142,11 +146,24 @@ class Gi_Toolkit_SMTP_Mailer_Mailer_Catcher extends PHPMailer\PHPMailer\PHPMaile
 	}
 
 	/**
+	 * Alimente Mail Catcher quand l’envoi SMTP/API échoue (repli si wp_mail_failed est incomplet).
+	 *
+	 * @param string $message Message d’erreur.
+	 * @return void
+	 */
+	private function notify_mail_catcher_failure( $message ) {
+		if ( class_exists( 'Gi_Toolkit_Mail_Catcher', false ) ) {
+			Gi_Toolkit_Mail_Catcher::notify_send_failure( $message );
+		}
+	}
+
+	/**
 	 * Throw PHPMailer exception.
 	 *
 	 * @since 2.14.0
 	 */
 	protected function throw_exception( $error ) {
+		$this->notify_mail_catcher_failure( (string) $error );
 		// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		throw new Exception( $error );
 	}

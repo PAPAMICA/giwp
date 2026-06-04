@@ -194,7 +194,9 @@ class MainWP_GIWeb_Dashboard_Widget {
 		$mail_success  = (int) ( $network['success'] ?? 0 );
 		$mail_failed   = (int) ( $network['failed'] ?? 0 );
 		$mail_today    = (int) ( $network['today'] ?? 0 );
-		$health        = $mail_total > 0 ? round( ( $mail_success / $mail_total ) * 100, 0 ) : 100;
+		$health        = $mail_total > 0
+			? round( ( max( 0, $mail_total - $mail_failed ) / $mail_total ) * 100, 0 )
+			: ( $mail_failed > 0 ? 0 : 100 );
 
 		return array(
 			'network'        => $network,
@@ -348,10 +350,27 @@ class MainWP_GIWeb_Dashboard_Widget {
 				</div>
 				<ul class="mainwp-giweb-mail-widget__donut-legend">
 					<?php foreach ( $segments as $i => $segment ) : ?>
+						<?php
+						$seg_failed = (int) ( $segment['failed'] ?? 0 );
+						$swatch     = $seg_failed > 0 ? '#f04438' : (string) ( $donut['colors'][ $i ] ?? '#667085' );
+						?>
 						<li>
-							<span class="mainwp-giweb-mail-widget__donut-swatch" style="background:<?php echo esc_attr( (string) ( $donut['colors'][ $i ] ?? '#667085' ) ); ?>"></span>
+							<span class="mainwp-giweb-mail-widget__donut-swatch" style="background:<?php echo esc_attr( $swatch ); ?>"></span>
 							<span class="mainwp-giweb-mail-widget__donut-label"><?php echo esc_html( (string) ( $segment['label'] ?? '' ) ); ?></span>
-							<span class="mainwp-giweb-mail-widget__donut-value"><?php echo esc_html( number_format_i18n( (int) ( $segment['total'] ?? 0 ) ) ); ?></span>
+							<span class="mainwp-giweb-mail-widget__donut-value">
+								<?php
+								echo esc_html( number_format_i18n( (int) ( $segment['total'] ?? 0 ) ) );
+								if ( $seg_failed > 0 ) {
+									echo ' <em class="mainwp-giweb-mail-widget__donut-fail">(' . esc_html(
+										sprintf(
+											/* translators: %s: failed count */
+											_n( '%s échec', '%s échecs', $seg_failed, 'mainwp-giweb' ),
+											number_format_i18n( $seg_failed )
+										)
+									) . ')</em>';
+								}
+								?>
+							</span>
 						</li>
 					<?php endforeach; ?>
 				</ul>
@@ -731,14 +750,14 @@ class MainWP_GIWeb_Dashboard_Widget {
 
 		$normalized = MainWP_GIWeb_Sites::find_by_id( $site_id, $mainwp_giweb_activator );
 		$label      = MainWP_GIWeb_Widget_UI::site_label( $normalized, $site_row );
-		$failed = (int) ( $mail['failed'] ?? 0 );
+		$failed = MainWP_GIWeb_Mail_Stats::get_failed_count( $mail );
 		$ready  = ! empty( $mail['table_ready'] );
 
 		if ( ! $ready ) {
 			$card_status   = 'missing';
 			$filter_status = 'inactive';
 			$badge         = __( 'En attente', 'mainwp-giweb' );
-		} elseif ( $failed > 0 ) {
+		} elseif ( MainWP_GIWeb_Mail_Stats::has_mail_failures( $mail ) ) {
 			$card_status   = 'fail';
 			$filter_status = 'issues';
 			$badge         = sprintf(
