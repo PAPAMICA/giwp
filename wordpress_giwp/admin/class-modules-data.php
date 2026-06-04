@@ -576,6 +576,12 @@ class Gi_Toolkit_Modules_Data {
 				'pro'           => false,
 				'path'          => 'core/class-site-debug.php',
 			),
+			'Gi_Toolkit_Migration_Helper' => array(
+				'original_name' => 'Migration helper',
+				'group'         => 'debug',
+				'pro'           => false,
+				'path'          => 'core/class-migration-helper.php',
+			),
 			'Gi_Toolkit_Multiple_User_Roles' => array(
 				'original_name' => "Multiple User Roles",
 				'group'         => 'users',
@@ -1195,6 +1201,10 @@ class Gi_Toolkit_Modules_Data {
 			'Gi_Toolkit_Site_Debug' => array(
 				'name' => esc_html_x( 'Site Debug', 'Module name', 'gi-toolkit' ),
 				'desc' => esc_html_x( 'Tableau de bord diagnostic complet : WordPress, PHP, serveur, BDD, extensions, cron, cache, intégrations GI-Toolkit et export JSON.', 'Module description', 'gi-toolkit' ),
+			),
+			'Gi_Toolkit_Migration_Helper' => array(
+				'name' => esc_html_x( 'Migration helper', 'Module name', 'gi-toolkit' ),
+				'desc' => esc_html_x( 'Affiche l’IP publique du site dans la barre d’administration, avec reverse DNS et ASN/hébergeur (menu déroulant) pour faciliter les migrations.', 'Module description', 'gi-toolkit' ),
 			),
 			'Gi_Toolkit_Temporary_Login' => array(
 				'name' => esc_html_x( "Temporary Login", "Module name", 'gi-toolkit' ),

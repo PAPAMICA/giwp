@@ -1,0 +1,140 @@
+/* Migration helper — barre d’administration */
+#wpadminbar #wp-admin-bar-gi-migration-helper > .ab-item {
+	align-items: center;
+	display: flex;
+	height: 32px;
+	overflow: visible;
+	padding: 0 10px !important;
+}
+
+#wpadminbar .gi-migration-ab-wrap {
+	align-items: center;
+	display: inline-flex;
+	flex-shrink: 0;
+	gap: 6px;
+	line-height: 1;
+}
+
+#wpadminbar .gi-migration-ab-icon {
+	color: #72aee6;
+	font-size: 14px;
+	line-height: 1;
+}
+
+#wpadminbar .gi-migration-ab-ip {
+	color: #f0f0f1;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+}
+
+#wpadminbar .gi-migration-ab-ip--muted {
+	color: #a7aaad;
+	font-family: inherit;
+	font-weight: 400;
+}
+
+#wpadminbar #wp-admin-bar-gi-migration-helper:hover > .ab-item,
+#wpadminbar #wp-admin-bar-gi-migration-helper .ab-item:focus {
+	background: #2c3338;
+}
+
+#wpadminbar #wp-admin-bar-gi-migration-helper-flyout {
+	font-size: 0;
+	line-height: 0;
+}
+
+#wpadminbar #wp-admin-bar-gi-migration-helper-flyout > .ab-item {
+	box-sizing: border-box;
+	color: #f0f0f1;
+	cursor: default;
+	display: block;
+	font-size: 12px;
+	height: auto;
+	line-height: 1.4;
+	padding: 12px 14px;
+	pointer-events: auto;
+	white-space: normal;
+	width: 300px;
+}
+
+#wpadminbar .gi-migration-ab-flyout__head {
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	margin-bottom: 10px;
+	padding-bottom: 8px;
+}
+
+#wpadminbar .gi-migration-ab-flyout__title {
+	color: #f0f0f1;
+	display: block;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+#wpadminbar .gi-migration-ab-flyout__subtitle {
+	color: #a7aaad;
+	display: block;
+	font-size: 11px;
+	margin-top: 2px;
+}
+
+#wpadminbar .gi-migration-ab-flyout__list {
+	margin: 0;
+}
+
+#wpadminbar .gi-migration-ab-flyout__row {
+	display: grid;
+	gap: 2px 10px;
+	grid-template-columns: 110px 1fr;
+	margin: 0 0 8px;
+}
+
+#wpadminbar .gi-migration-ab-flyout__row dt {
+	color: #a7aaad;
+	font-size: 11px;
+	font-weight: 500;
+	margin: 0;
+}
+
+#wpadminbar .gi-migration-ab-flyout__row dd {
+	color: #f0f0f1;
+	font-size: 12px;
+	margin: 0;
+	word-break: break-word;
+}
+
+#wpadminbar .gi-migration-ab-mono {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 11px;
+}
+
+#wpadminbar .gi-migration-ab-muted {
+	color: #a7aaad;
+}
+
+#wpadminbar .gi-migration-ab-flyout__actions {
+	margin: 10px 0 0;
+}
+
+#wpadminbar .gi-migration-ab-refresh {
+	background: #2271b1;
+	border: none;
+	border-radius: 3px;
+	color: #fff;
+	cursor: pointer;
+	font-size: 11px;
+	line-height: 1.4;
+	padding: 5px 10px;
+}
+
+#wpadminbar .gi-migration-ab-refresh:hover,
+#wpadminbar .gi-migration-ab-refresh:focus {
+	background: #135e96;
+	color: #fff;
+}
+
+#wpadminbar .gi-migration-ab-refresh:disabled {
+	opacity: 0.65;
+	cursor: wait;
+}

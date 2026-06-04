@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.25.0 =
+* Add: module Migration helper — widget barre admin (IP publique, reverse DNS, ASN/hébergeur) pour le debug lors des migrations de site.
+
 = 2.24.3 =
 * Fix: Mail Catcher — alignement sur WP Mail Logging : exceptions PHPMailer pour déclencher `wp_mail_failed`, ne plus classer un envoi en « réussi » quand `send()` a échoué (`wp_mail_succeeded` + SMTP GI-Toolkit).
 
