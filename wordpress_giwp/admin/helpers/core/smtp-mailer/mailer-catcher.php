@@ -62,9 +62,11 @@ class Gi_Toolkit_SMTP_Mailer_Mailer_Catcher extends PHPMailer\PHPMailer\PHPMaile
 			if ( ! $this->postSend() ) {
 				$this->throw_exception( $this->ErrorInfo );
 			}
-			
+
+			$this->notify_mail_catcher_success();
+
 			return true;
-		} catch ( Exception $e ) {
+		} catch ( PHPMailer\PHPMailer\Exception $e ) {
 
 			$this->mailHeader = '';
 
@@ -127,9 +129,11 @@ class Gi_Toolkit_SMTP_Mailer_Mailer_Catcher extends PHPMailer\PHPMailer\PHPMaile
 				$this->notify_mail_catcher_failure( $provider_error );
 				$this->throw_exception( $provider_error );
 			}
-			
+
+			$this->notify_mail_catcher_success();
+
 			return true;
-		} catch ( Exception $e ) {
+		} catch ( PHPMailer\PHPMailer\Exception $e ) {
 			// Add provider to the beginning and save to display later.
 			$message = 'Provider: ' . $active_provider . "\r\n";
 
@@ -158,6 +162,17 @@ class Gi_Toolkit_SMTP_Mailer_Mailer_Catcher extends PHPMailer\PHPMailer\PHPMaile
 	}
 
 	/**
+	 * Signale un envoi réussi au Mail Catcher (WordPress peut déclencher wp_mail_succeeded même si send() a échoué).
+	 *
+	 * @return void
+	 */
+	private function notify_mail_catcher_success() {
+		if ( class_exists( 'Gi_Toolkit_Mail_Catcher', false ) ) {
+			Gi_Toolkit_Mail_Catcher::notify_send_success();
+		}
+	}
+
+	/**
 	 * Throw PHPMailer exception.
 	 *
 	 * @since 2.14.0
@@ -165,6 +180,6 @@ class Gi_Toolkit_SMTP_Mailer_Mailer_Catcher extends PHPMailer\PHPMailer\PHPMaile
 	protected function throw_exception( $error ) {
 		$this->notify_mail_catcher_failure( (string) $error );
 		// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
-		throw new Exception( $error );
+		throw new PHPMailer\PHPMailer\Exception( (string) $error );
 	}
 }

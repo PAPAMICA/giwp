@@ -1,5 +1,11 @@
 == Changelog ==
 
+= 2.24.3 =
+* Fix: Mail Catcher — alignement sur WP Mail Logging : exceptions PHPMailer pour déclencher `wp_mail_failed`, ne plus classer un envoi en « réussi » quand `send()` a échoué (`wp_mail_succeeded` + SMTP GI-Toolkit).
+
+= 2.24.2 =
+* Fix: Mail Catcher — plusieurs `wp_mail` par requête (ex. formulaire de contact) : l’échec d’un envoi n’est plus masqué par un autre mail réussi dans le journal.
+
 = 2.24.1 =
 * Fix: Barre admin Matomo / Uptime Kuma — retrait du « 1 » parasite (`meta['html']` interprété comme contenu HTML par WordPress).
 

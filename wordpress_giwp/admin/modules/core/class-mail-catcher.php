@@ -16,6 +16,20 @@ class Gi_Toolkit_Mail_Catcher {
 	 */
 	private static $instance = null;
 
+	/**
+	 * Journaux créés pendant la requête mais pas encore finalisés (succès ou échec explicite).
+	 *
+	 * @var int[]
+	 */
+	private static $pending_mail_log_ids = array();
+
+	/**
+	 * Résultat du dernier send() GI-Toolkit (null = envoi hors notre PHPMailer).
+	 *
+	 * @var bool|null
+	 */
+	private static $last_phpmailer_send_ok = null;
+
 	private $option_id;
     private $nonce;
     private $nonce_name;
@@ -45,8 +59,8 @@ class Gi_Toolkit_Mail_Catcher {
 		add_action( 'admin_init', array( $this, 'show_email_message' ) );
 		add_filter( 'wp_mail', array( $this, 'save_email_log' ), PHP_INT_MAX );
 		add_action( 'wp_mail_failed', array( $this, 'save_email_failed_log' ) );
-		add_action( 'wp_mail_succeeded', array( $this, 'clear_current_mail_log_id' ) );
-		add_action( 'shutdown', array( $this, 'maybe_capture_phpmailer_failure' ), 20 );
+		add_action( 'wp_mail_succeeded', array( $this, 'on_mail_send_finished' ), 10, 1 );
+		add_action( 'shutdown', array( $this, 'finalize_pending_mail_logs' ), 20 );
 		add_action( 'wp_ajax_gi_toolkit_mail_catcher_preview', array( $this, 'mail_catcher_preview' ) );
 	}
 
@@ -93,34 +107,112 @@ class Gi_Toolkit_Mail_Catcher {
 	 * @return void
 	 */
 	public static function notify_send_failure( $message ) {
+		self::$last_phpmailer_send_ok = false;
+
 		$instance = self::instance();
 		if ( ! $instance ) {
 			return;
 		}
-		$instance->mark_current_log_failed( $message );
+		$instance->mark_current_log_failed( $message, false );
+	}
+
+	/**
+	 * Signale un envoi SMTP/API réussi (voir mailer-catcher.php).
+	 *
+	 * @return void
+	 */
+	public static function notify_send_success() {
+		self::$last_phpmailer_send_ok = true;
 	}
 
 	/**
 	 * @param string $message Message d’erreur.
 	 * @return void
 	 */
-	public function mark_current_log_failed( $message ) {
-		global $gi_toolkit_current_mail_id;
-
+	/**
+	 * @param string $message Message d’erreur.
+	 * @param bool   $release Retirer l’ID de la file d’attente après marquage.
+	 * @return void
+	 */
+	public function mark_current_log_failed( $message, $release = true ) {
 		$message = self::normalize_log_error_message( $message );
 		if ( '' === $message ) {
 			$message = __( 'Échec d’envoi (wp_mail).', 'gi-toolkit' );
 		}
 
+		$id = $this->resolve_active_mail_log_id();
+		if ( $id > 0 ) {
+			$this->mark_log_error( $id, $message );
+			if ( $release ) {
+				$this->release_mail_log_id( $id );
+			}
+		}
+	}
+
+	/**
+	 * @param mixed $phpmailer Instance PHPMailer globale.
+	 * @return string
+	 */
+	private function resolve_failure_message( $phpmailer ) {
+		if ( isset( $phpmailer ) && is_object( $phpmailer ) && ! empty( $phpmailer->ErrorInfo ) ) {
+			return (string) $phpmailer->ErrorInfo;
+		}
+
+		return '';
+	}
+
+	/**
+	 * ID du journal lié à l’envoi wp_mail en cours (LIFO si plusieurs envois dans la même requête).
+	 *
+	 * @return int
+	 */
+	private function resolve_active_mail_log_id() {
+		global $gi_toolkit_current_mail_id;
+
 		if ( isset( $gi_toolkit_current_mail_id ) ) {
-			$this->mark_log_error( (int) $gi_toolkit_current_mail_id, $message );
-			unset( $gi_toolkit_current_mail_id );
+			return (int) $gi_toolkit_current_mail_id;
+		}
+
+		if ( ! empty( self::$pending_mail_log_ids ) ) {
+			return (int) end( self::$pending_mail_log_ids );
+		}
+
+		return $this->find_last_open_log_id();
+	}
+
+	/**
+	 * @param int $id ID journal.
+	 * @return void
+	 */
+	private function track_mail_log_id( $id ) {
+		$id = absint( $id );
+		if ( $id <= 0 ) {
 			return;
 		}
 
-		$fallback_id = $this->find_last_open_log_id();
-		if ( $fallback_id > 0 ) {
-			$this->mark_log_error( $fallback_id, $message );
+		self::$pending_mail_log_ids[] = $id;
+	}
+
+	/**
+	 * @param int $id ID journal.
+	 * @return void
+	 */
+	private function release_mail_log_id( $id ) {
+		global $gi_toolkit_current_mail_id;
+
+		$id = absint( $id );
+		if ( $id <= 0 ) {
+			return;
+		}
+
+		$key = array_search( $id, self::$pending_mail_log_ids, true );
+		if ( false !== $key ) {
+			unset( self::$pending_mail_log_ids[ $key ] );
+			self::$pending_mail_log_ids = array_values( self::$pending_mail_log_ids );
+		}
+
+		if ( isset( $gi_toolkit_current_mail_id ) && (int) $gi_toolkit_current_mail_id === $id ) {
+			unset( $gi_toolkit_current_mail_id );
 		}
 	}
 
@@ -184,43 +276,91 @@ class Gi_Toolkit_Mail_Catcher {
 	}
 
 	/**
+	 * Finalise le journal après wp_mail_succeeded (WordPress l’appelle même si send() a renvoyé false).
+	 *
+	 * @param array<string, mixed> $mail_data Données mail WordPress.
 	 * @return void
 	 */
-	public function clear_current_mail_log_id() {
-		global $gi_toolkit_current_mail_id;
-		unset( $gi_toolkit_current_mail_id );
+	public function on_mail_send_finished( $mail_data ) {
+		unset( $mail_data );
+
+		global $phpmailer;
+
+		if ( true === self::$last_phpmailer_send_ok ) {
+			$this->release_active_mail_log();
+			self::$last_phpmailer_send_ok = null;
+			return;
+		}
+
+		if ( false === self::$last_phpmailer_send_ok ) {
+			$this->mark_current_log_failed( $this->resolve_failure_message( $phpmailer ), true );
+			self::$last_phpmailer_send_ok = null;
+			return;
+		}
+
+		if ( empty( self::$pending_mail_log_ids ) ) {
+			self::$last_phpmailer_send_ok = null;
+			return;
+		}
+
+		$message = $this->resolve_failure_message( $phpmailer );
+		if ( '' !== $message ) {
+			$this->mark_current_log_failed( $message, true );
+		} else {
+			$this->release_active_mail_log();
+		}
+
+		self::$last_phpmailer_send_ok = null;
 	}
 
 	/**
-	 * Repli si wp_mail_failed n’a pas mis à jour le journal (PHPMailer ErrorInfo).
+	 * @return void
+	 */
+	private function release_active_mail_log() {
+		$id = $this->resolve_active_mail_log_id();
+		if ( $id > 0 ) {
+			$this->release_mail_log_id( $id );
+		}
+	}
+
+	/**
+	 * Marque en échec les envois encore « ouverts » (wp_mail_failed absent, plusieurs wp_mail, etc.).
 	 *
 	 * @return void
 	 */
-	public function maybe_capture_phpmailer_failure() {
-		global $gi_toolkit_current_mail_id, $phpmailer;
+	public function finalize_pending_mail_logs() {
+		global $phpmailer;
 
-		if ( ! isset( $gi_toolkit_current_mail_id ) ) {
+		if ( empty( self::$pending_mail_log_ids ) ) {
 			return;
 		}
 
-		$id = (int) $gi_toolkit_current_mail_id;
-		unset( $gi_toolkit_current_mail_id );
-
-		$row = $this->get_log_by_id( $id );
-		if ( ! is_array( $row ) || self::log_row_has_error( $row ) ) {
-			return;
-		}
-
-		$message = '';
+		$phpmailer_message = '';
 		if ( isset( $phpmailer ) && is_object( $phpmailer ) && ! empty( $phpmailer->ErrorInfo ) ) {
-			$message = (string) $phpmailer->ErrorInfo;
+			$phpmailer_message = (string) $phpmailer->ErrorInfo;
 		}
 
-		if ( '' === $message ) {
-			return;
+		$default_message = __( 'Échec d’envoi (wp_mail).', 'gi-toolkit' );
+		$pending_ids     = self::$pending_mail_log_ids;
+		self::$pending_mail_log_ids = array();
+
+		foreach ( $pending_ids as $id ) {
+			$id = absint( $id );
+			if ( $id <= 0 ) {
+				continue;
+			}
+
+			$row = $this->get_log_by_id( $id );
+			if ( ! is_array( $row ) || self::log_row_has_error( $row ) ) {
+				continue;
+			}
+
+			$message = '' !== $phpmailer_message ? $phpmailer_message : $default_message;
+			$this->mark_log_error( $id, $message );
 		}
 
-		$this->mark_log_error( $id, $message );
+		global $gi_toolkit_current_mail_id;
+		unset( $gi_toolkit_current_mail_id );
 	}
 
 	/**
@@ -294,7 +434,11 @@ class Gi_Toolkit_Mail_Catcher {
 				$data_format
 			);
 
-			$gi_toolkit_current_mail_id = $wpdb->insert_id;	
+			$log_id = (int) $wpdb->insert_id;
+			if ( $log_id > 0 ) {
+				$gi_toolkit_current_mail_id = $log_id;
+				$this->track_mail_log_id( $log_id );
+			}
 		} catch (\Throwable $th) {
 		}
 
@@ -309,6 +453,29 @@ class Gi_Toolkit_Mail_Catcher {
 	 * @since   2.14.0
 	 */
 	public function save_email_failed_log( $error ) {
+		$message = $this->extract_failure_message_from_error( $error );
+
+		global $gi_toolkit_current_mail_id;
+		if ( isset( $gi_toolkit_current_mail_id ) ) {
+			$id = (int) $gi_toolkit_current_mail_id;
+			if ( '' === trim( (string) $message ) ) {
+				$message = __( 'Échec d’envoi (wp_mail).', 'gi-toolkit' );
+			}
+			$this->mark_log_error( $id, $message );
+			$this->release_mail_log_id( $id );
+			self::$last_phpmailer_send_ok = null;
+			return;
+		}
+
+		$this->mark_current_log_failed( $message, true );
+		self::$last_phpmailer_send_ok = null;
+	}
+
+	/**
+	 * @param mixed $error WP_Error ou chaîne.
+	 * @return string
+	 */
+	private function extract_failure_message_from_error( $error ) {
 		$message = '';
 
 		if ( is_wp_error( $error ) ) {
@@ -325,11 +492,11 @@ class Gi_Toolkit_Mail_Catcher {
 		}
 
 		global $phpmailer;
-		if ( '' === trim( (string) $message ) && isset( $phpmailer ) && is_object( $phpmailer ) && ! empty( $phpmailer->ErrorInfo ) ) {
-			$message = (string) $phpmailer->ErrorInfo;
+		if ( '' === trim( (string) $message ) ) {
+			$message = $this->resolve_failure_message( $phpmailer );
 		}
 
-		$this->mark_current_log_failed( $message );
+		return $message;
 	}
 
 	/**
