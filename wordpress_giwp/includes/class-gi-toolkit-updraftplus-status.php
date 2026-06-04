@@ -96,27 +96,127 @@ class Gi_Toolkit_UpdraftPlus_Status {
 	}
 
 	/**
+	 * Détecte un backup UpdraftPlus réellement actif (pas les jobdata orphelins en base).
+	 *
 	 * @return bool
 	 */
 	private static function is_backup_in_progress() {
-		global $wpdb;
+		if ( self::has_scheduled_backup_resume() ) {
+			return true;
+		}
 
-		if ( isset( $wpdb ) && $wpdb instanceof wpdb ) {
-			$like = $wpdb->esc_like( 'updraft_jobdata_' ) . '%';
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$rows = $wpdb->get_var(
-				$wpdb->prepare(
-					"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s LIMIT 1",
-					$like
-				)
-			);
-			if ( ! empty( $rows ) ) {
+		foreach ( self::get_jobdata_option_names() as $option_name ) {
+			$job_id  = self::extract_job_id_from_option_name( $option_name );
+			$jobdata = self::read_jobdata( $job_id );
+			if ( self::jobdata_indicates_active_backup( $jobdata ) ) {
 				return true;
 			}
 		}
 
-		$job = get_option( 'updraft_jobdata_backup', false );
-		return ! empty( $job );
+		return false;
+	}
+
+	/**
+	 * @return bool
+	 */
+	private static function has_scheduled_backup_resume() {
+		if ( ! function_exists( '_get_cron_array' ) ) {
+			return false;
+		}
+
+		$cron = _get_cron_array();
+		if ( ! is_array( $cron ) ) {
+			return false;
+		}
+
+		foreach ( $cron as $hooks ) {
+			if ( is_array( $hooks ) && ! empty( $hooks['updraft_backup_resume'] ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * @return array<int, string>
+	 */
+	private static function get_jobdata_option_names() {
+		global $wpdb;
+
+		if ( ! isset( $wpdb ) || ! $wpdb instanceof wpdb ) {
+			return array();
+		}
+
+		$like = $wpdb->esc_like( 'updraft_jobdata_' ) . '%';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$rows = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
+				$like
+			)
+		);
+
+		return is_array( $rows ) ? array_values( array_filter( array_map( 'strval', $rows ) ) ) : array();
+	}
+
+	/**
+	 * @param string $option_name Nom d’option (updraft_jobdata_xxx).
+	 * @return string
+	 */
+	private static function extract_job_id_from_option_name( $option_name ) {
+		$prefix = 'updraft_jobdata_';
+		if ( 0 !== strpos( $option_name, $prefix ) ) {
+			return '';
+		}
+
+		return substr( $option_name, strlen( $prefix ) );
+	}
+
+	/**
+	 * @param string $job_id Identifiant job UpdraftPlus.
+	 * @return array<string, mixed>
+	 */
+	private static function read_jobdata( $job_id ) {
+		$job_id = sanitize_text_field( (string) $job_id );
+		if ( '' === $job_id ) {
+			return array();
+		}
+
+		$data = get_site_option( 'updraft_jobdata_' . $job_id, array() );
+		if ( ! is_array( $data ) || empty( $data ) ) {
+			$fallback = get_option( 'updraft_jobdata_' . $job_id, array() );
+			$data     = is_array( $fallback ) ? $fallback : array();
+		}
+
+		return $data;
+	}
+
+	/**
+	 * @param array<string, mixed> $jobdata Données job UpdraftPlus.
+	 * @return bool
+	 */
+	private static function jobdata_indicates_active_backup( $jobdata ) {
+		if ( empty( $jobdata ) || ! is_array( $jobdata ) ) {
+			return false;
+		}
+
+		$job_type = sanitize_key( (string) ( $jobdata['job_type'] ?? 'backup' ) );
+		if ( '' !== $job_type && 'backup' !== $job_type ) {
+			return false;
+		}
+
+		$jobstatus = (string) ( $jobdata['jobstatus'] ?? '' );
+		if ( '' === $jobstatus || 'finished' === $jobstatus ) {
+			return false;
+		}
+
+		$backup_time = (int) ( $jobdata['backup_time'] ?? 0 );
+		if ( $backup_time > 0 && ( time() - $backup_time ) > DAY_IN_SECONDS ) {
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
@@ -377,25 +477,7 @@ class Gi_Toolkit_UpdraftPlus_Status {
 	 * @return array{sent:bool, required:bool, services:array<int, string>}
 	 */
 	private static function resolve_remote_status( array $entry, $remote_cfg ) {
-		$services = $entry['service'] ?? array();
-		if ( is_string( $services ) ) {
-			$services = array( $services );
-		}
-		if ( ! is_array( $services ) ) {
-			$services = array();
-		}
-
-		$services = array_values(
-			array_filter(
-				array_map(
-					static function ( $service ) {
-						$service = sanitize_key( (string) $service );
-						return ( '' !== $service && 'none' !== $service ) ? $service : '';
-					},
-					$services
-				)
-			)
-		);
+		$services = self::collect_remote_services_from_entry( $entry );
 
 		if ( ! empty( $entry['meta_remote_sent'] ) || ! empty( $entry['meta']['remote_sent'] ) ) {
 			return array(
@@ -417,6 +499,55 @@ class Gi_Toolkit_UpdraftPlus_Status {
 			'sent'     => false,
 			'required' => $remote_cfg,
 			'services' => array(),
+		);
+	}
+
+	/**
+	 * Services distants enregistrés pour un backup (historique + jobdata lié).
+	 *
+	 * @param array<string, mixed> $entry Entrée historique.
+	 * @return array<int, string>
+	 */
+	private static function collect_remote_services_from_entry( array $entry ) {
+		$services = self::normalize_service_list( $entry['service'] ?? array() );
+
+		if ( ! empty( $entry['nonce'] ) ) {
+			$jobdata = self::read_jobdata( (string) $entry['nonce'] );
+			if ( ! empty( $jobdata['service'] ) ) {
+				$services = array_merge( $services, self::normalize_service_list( $jobdata['service'] ) );
+			}
+		}
+
+		return array_values( array_unique( $services ) );
+	}
+
+	/**
+	 * @param mixed $services Liste brute UpdraftPlus.
+	 * @return array<int, string>
+	 */
+	private static function normalize_service_list( $services ) {
+		if ( is_string( $services ) ) {
+			$services = array( $services );
+		}
+		if ( ! is_array( $services ) ) {
+			return array();
+		}
+
+		$ignored = array( 'none', 'email', 'remotesend', 'local' );
+
+		return array_values(
+			array_filter(
+				array_map(
+					static function ( $service ) {
+						$service = sanitize_key( (string) $service );
+						return '' !== $service ? $service : '';
+					},
+					$services
+				),
+				static function ( $service ) use ( $ignored ) {
+					return ! in_array( $service, $ignored, true );
+				}
+			)
 		);
 	}
 
