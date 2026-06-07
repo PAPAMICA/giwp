@@ -4,23 +4,23 @@
 	function lineChartAnimations() {
 		return {
 			animation: {
-				duration: 1500,
+				duration: 2800,
 				easing: 'easeOutQuart'
 			},
 			animations: {
 				x: {
 					type: 'number',
 					easing: 'easeOutQuart',
-					duration: 1500,
+					duration: 2800,
 					from: NaN,
 					delay: function (ctx) {
-						return ctx.type === 'data' ? ctx.dataIndex * 14 : 0;
+						return ctx.type === 'data' ? ctx.dataIndex * 28 : 0;
 					}
 				},
 				y: {
 					type: 'number',
 					easing: 'easeOutCubic',
-					duration: 1300,
+					duration: 2500,
 					from: function (ctx) {
 						if (!ctx.chart || !ctx.chart.scales || !ctx.chart.scales.y) {
 							return undefined;

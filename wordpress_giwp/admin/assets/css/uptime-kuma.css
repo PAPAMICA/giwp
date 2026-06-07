@@ -84,14 +84,15 @@
 	margin-bottom: 10px;
 	overflow-x: auto;
 	padding-bottom: 2px;
+	width: 100%;
 }
 
 .gi-uptime-kuma-status-strip__bar {
 	border-radius: 3px 3px 1px 1px;
-	flex: 1 1 4px;
-	max-width: 8px;
+	flex: 1 1 0;
 	min-height: 8px;
-	min-width: 4px;
+	min-width: 3px;
+	width: 0;
 }
 
 .gi-uptime-kuma-status-strip__bar.level-green {
@@ -284,23 +285,23 @@
 }
 
 .gi-uptime-kuma-dashboard--ready .gi-uptime-kuma-status-strip__bar {
-	animation: gi-uptime-bar-rise 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-	animation-delay: calc(var(--bar-i, 0) * 12ms + 80ms);
+	animation: gi-uptime-bar-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+	animation-delay: calc(var(--bar-i, 0) * 22ms + 180ms);
 }
 
 .gi-uptime-kuma-animate-in {
-	animation: gi-uptime-slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-	animation-delay: calc(var(--gi-animate-i, 0) * 65ms + 200ms);
+	animation: gi-uptime-slide-up 0.95s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: calc(var(--gi-animate-i, 0) * 110ms + 380ms);
 }
 
 .gi-uptime-kuma-animate-pop {
-	animation: gi-uptime-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-	animation-delay: 0.45s;
+	animation: gi-uptime-pop 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: 0.85s;
 }
 
 .gi-uptime-kuma-chart-panel.gi-uptime-kuma-animate-in {
-	animation: gi-uptime-slide-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
-	animation-delay: 0.35s;
+	animation: gi-uptime-slide-up 1.15s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: 0.65s;
 }
 
 @keyframes gi-uptime-bar-rise {

@@ -529,8 +529,8 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 }
 
 .gi-matomo-bar-row__fill.gi-matomo-bar-animate {
-	animation: gi-matomo-bar-grow 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-	animation-delay: calc(var(--gi-bar-i, 0) * 40ms + 350ms);
+	animation: gi-matomo-bar-grow 1.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+	animation-delay: calc(var(--gi-bar-i, 0) * 70ms + 650ms);
 }
 
 .gi-matomo-bar-row__value {
@@ -673,11 +673,11 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 
 .gi-matomo-uptime-content.is-revealed .gi-uptime-kuma-dashboard,
 .gi-matomo-uptime-content.is-revealed .gi-uptime-kuma-setup-panel {
-	animation: gi-matomo-fade-in 0.35s ease;
+	animation: gi-matomo-fade-in 0.65s ease;
 }
 
 #gi-matomo-dashboard.is-revealed > :not(.gi-matomo-skeleton) {
-	animation: gi-matomo-fade-in 0.35s ease;
+	animation: gi-matomo-fade-in 0.65s ease;
 }
 
 @keyframes gi-matomo-shimmer {
@@ -1143,18 +1143,18 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 }
 
 .gi-matomo-animate-in {
-	animation: gi-matomo-slide-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-	animation-delay: calc(var(--gi-animate-i, 0) * 70ms + 120ms);
+	animation: gi-matomo-slide-up 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: calc(var(--gi-animate-i, 0) * 120ms + 220ms);
 }
 
 .gi-matomo-donut-legend__row--animate {
-	animation: gi-matomo-legend-in 0.45s ease both;
-	animation-delay: calc(var(--gi-legend-i, 0) * 55ms + 500ms);
+	animation: gi-matomo-legend-in 0.85s ease both;
+	animation-delay: calc(var(--gi-legend-i, 0) * 90ms + 900ms);
 }
 
 .gi-matomo-map-animate {
-	animation: gi-matomo-map-in 0.8s ease both;
-	animation-delay: 0.35s;
+	animation: gi-matomo-map-in 1.35s ease both;
+	animation-delay: 0.65s;
 }
 
 @keyframes gi-matomo-slide-up {

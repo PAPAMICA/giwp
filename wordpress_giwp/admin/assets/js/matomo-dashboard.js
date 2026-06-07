@@ -26,23 +26,23 @@
 	function lineChartAnimations() {
 		return {
 			animation: {
-				duration: 1600,
+				duration: 2900,
 				easing: 'easeOutQuart',
 			},
 			animations: {
 				x: {
 					type: 'number',
 					easing: 'easeOutQuart',
-					duration: 1600,
+					duration: 2900,
 					from: NaN,
 					delay: function ( ctx ) {
-						return ctx.type === 'data' ? ctx.dataIndex * 18 : 0;
+						return ctx.type === 'data' ? ctx.dataIndex * 32 : 0;
 					},
 				},
 				y: {
 					type: 'number',
 					easing: 'easeOutCubic',
-					duration: 1400,
+					duration: 2600,
 					from: function ( ctx ) {
 						if ( ! ctx.chart || ! ctx.chart.scales || ! ctx.chart.scales.y ) {
 							return undefined;
@@ -59,12 +59,12 @@
 			animation: {
 				animateRotate: true,
 				animateScale: true,
-				duration: 1300,
+				duration: 2400,
 				easing: 'easeOutCubic',
 			},
 			animations: {
 				arc: {
-					duration: 1300,
+					duration: 2400,
 					easing: 'easeOutCubic',
 				},
 			},
@@ -631,7 +631,7 @@
 
 	$( function () {
 		var $wrap = $( '#gi-matomo-dashboard-wrap' );
-		currentPeriod = $wrap.data( 'period' ) || cfg.defaultPeriod || 'last7';
+		currentPeriod = $wrap.data( 'period' ) || cfg.defaultPeriod || 'last30';
 
 		loadUptimeSection( false );
 

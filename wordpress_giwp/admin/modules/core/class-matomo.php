@@ -438,7 +438,7 @@ class Gi_Toolkit_Matomo {
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$period_key = isset( $_POST['period'] ) ? sanitize_key( wp_unslash( $_POST['period'] ) ) : 'last7';
+		$period_key = isset( $_POST['period'] ) ? sanitize_key( wp_unslash( $_POST['period'] ) ) : Gi_Toolkit_Matomo_Dashboard_Data::DEFAULT_PERIOD_KEY;
 		$settings   = $this->get_settings();
 		$data = Gi_Toolkit_Matomo_Dashboard_Data::fetch( $settings, $period_key );
 
@@ -1192,7 +1192,7 @@ class Gi_Toolkit_Matomo {
 				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
 				'nonce'         => wp_create_nonce( 'gi_toolkit_matomo_dashboard' ),
 				'settingsUrl'   => self::get_settings_admin_url(),
-				'defaultPeriod' => 'last7',
+				'defaultPeriod' => Gi_Toolkit_Matomo_Dashboard_Data::DEFAULT_PERIOD_KEY,
 				'i18n'          => array(
 					'loading'       => __( 'Chargement…', 'gi-toolkit' ),
 					'loadingStats'  => __( 'Récupération des statistiques Matomo…', 'gi-toolkit' ),
@@ -1211,7 +1211,7 @@ class Gi_Toolkit_Matomo {
 		);
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$period_key = isset( $_GET['period'] ) ? sanitize_key( wp_unslash( $_GET['period'] ) ) : 'last7';
+		$period_key = isset( $_GET['period'] ) ? sanitize_key( wp_unslash( $_GET['period'] ) ) : Gi_Toolkit_Matomo_Dashboard_Data::DEFAULT_PERIOD_KEY;
 
 		$is_ready = self::is_dashboard_ready( $settings );
 

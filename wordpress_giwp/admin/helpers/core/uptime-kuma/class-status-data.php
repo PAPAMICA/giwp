@@ -67,16 +67,16 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 		$beats         = $snapshot['beats'];
 		$uptime_bundle = is_array( $snapshot['uptime_bundle'] ?? null ) ? $snapshot['uptime_bundle'] : array();
 
-		$hourly     = self::aggregate_hourly_bars( $beats );
-		$check_bars = self::aggregate_check_bars( $beats, 72 );
-		$latest     = self::latest_beat_summary( $beats );
-		$chart      = self::build_ping_chart_series( $beats, 36 );
-
 		$interval = 60;
 		$monitor  = is_array( $uptime_bundle['monitor'] ?? null ) ? $uptime_bundle['monitor'] : null;
 		if ( is_array( $monitor ) && ! empty( $monitor['interval'] ) ) {
 			$interval = max( 20, absint( $monitor['interval'] ) );
 		}
+
+		$hourly     = self::aggregate_hourly_bars( $beats );
+		$check_bars = self::aggregate_check_bars( $beats, 72, $interval );
+		$latest     = self::latest_beat_summary( $beats );
+		$chart      = self::build_ping_chart_series( $beats, 36 );
 
 		$uptime_30d = null;
 		$uptime_1y  = null;
@@ -121,11 +121,14 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 	/**
 	 * Barres par heartbeat (bandeau type Uptime Kuma).
 	 *
-	 * @param array<int, array<string, mixed>> $beats Heartbeats.
-	 * @param int                               $max   Nombre max.
+	 * @param array<int, array<string, mixed>> $beats    Heartbeats.
+	 * @param int                               $max      Nombre max.
+	 * @param int                               $interval Intervalle monitor (secondes).
 	 * @return array{bars: array<int, array{level:string}>, from_label: string, to_label: string}
 	 */
-	public static function aggregate_check_bars( array $beats, $max = 90 ) {
+	public static function aggregate_check_bars( array $beats, $max = 90, $interval = 60 ) {
+		$max      = max( 1, absint( $max ) );
+		$interval = max( 20, absint( $interval ) );
 		$rows = array();
 		foreach ( $beats as $beat ) {
 			if ( ! is_array( $beat ) ) {
@@ -164,6 +167,15 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 		$bars_only = array();
 		foreach ( $rows as $row ) {
 			$bars_only[] = array( 'level' => $row['level'] );
+		}
+
+		$slot_count = min( $max, max( 1, (int) floor( HOUR_IN_SECONDS / $interval ) ) );
+		$bar_count  = count( $bars_only );
+		if ( $bar_count > 0 && $bar_count < $slot_count ) {
+			$bars_only = array_merge(
+				array_fill( 0, $slot_count - $bar_count, array( 'level' => 'unknown' ) ),
+				$bars_only
+			);
 		}
 
 		$from_label = '';

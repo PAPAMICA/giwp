@@ -151,7 +151,10 @@ class Gi_Toolkit_Matomo_API {
 	 * @param string               $period_key Clé période UI (today, last7, …).
 	 * @return string
 	 */
-	public static function get_site_dashboard_url( array $settings, $period_key = 'last7' ) {
+	public static function get_site_dashboard_url( array $settings, $period_key = null ) {
+		if ( null === $period_key || '' === (string) $period_key ) {
+			$period_key = Gi_Toolkit_Matomo_Dashboard_Data::DEFAULT_PERIOD_KEY;
+		}
 		$base    = self::normalize_matomo_url( $settings['matomo_url'] ?? '' );
 		$site_id = absint( $settings['site_id'] ?? 0 );
 
@@ -174,7 +177,7 @@ class Gi_Toolkit_Matomo_API {
 			? Gi_Toolkit_Matomo_Dashboard_Data::resolve_period( $period_key )
 			: array(
 				'period' => 'range',
-				'date'   => 'last7',
+				'date'   => Gi_Toolkit_Matomo_Dashboard_Data::DEFAULT_PERIOD_KEY,
 			);
 
 		return add_query_arg(

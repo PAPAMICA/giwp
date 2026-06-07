@@ -8,6 +8,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Gi_Toolkit_Matomo_Dashboard_Data {
 
+	const DEFAULT_PERIOD_KEY = 'last30';
+
 	/**
 	 * Clés de période disponibles dans l’interface.
 	 *
@@ -89,7 +91,7 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 			),
 		);
 
-		return $map[ $period_key ] ?? $map['last7'];
+		return $map[ $period_key ] ?? $map[ self::DEFAULT_PERIOD_KEY ];
 	}
 
 	/**
@@ -109,7 +111,7 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 			'last3months' => array( 'period' => 'day', 'date' => 'last90' ),
 			'lastyear'    => array( 'period' => 'month', 'date' => 'last12' ),
 		);
-		$p = $map[ $period_key ] ?? $map['last7'];
+		$p = $map[ $period_key ] ?? $map[ self::DEFAULT_PERIOD_KEY ];
 
 		return array(
 			'idSite' => $site_id,
@@ -412,7 +414,10 @@ class Gi_Toolkit_Matomo_Dashboard_Data {
 	 * @param string               $period_key Période.
 	 * @return array<string, mixed>
 	 */
-	public static function fetch( array $settings, $period_key = 'last7' ) {
+	public static function fetch( array $settings, $period_key = null ) {
+		if ( null === $period_key || '' === (string) $period_key ) {
+			$period_key = self::DEFAULT_PERIOD_KEY;
+		}
 		if ( 'live' === $period_key ) {
 			require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/matomo/class-live-data.php';
 			return Gi_Toolkit_Matomo_Live_Data::fetch( $settings );

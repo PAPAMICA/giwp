@@ -4,7 +4,7 @@ Tags: all in one plugin, admin, security, disable features, easy to use
 Requires at least: 6.0.0
 Tested up to: 6.9.3
 Requires PHP: 7.4
-Stable tag: 2.25.4
+Stable tag: 2.25.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -194,6 +194,10 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 4. Code snippets
 
 == Changelog ==
+
+= 2.25.5 =
+* Fix: barre Uptime Kuma — remplissage sur toute la largeur (barres extensibles + créneaux manquants complétés sur 1 h).
+* Update: animations page Statistiques ralenties (~2×) pour un rendu plus lisible.
 
 = 2.25.4 =
 * Perf: Uptime Kuma — une seule connexion Socket.IO (plus de double login), cache 15 min + repli sur dernières données connues.
