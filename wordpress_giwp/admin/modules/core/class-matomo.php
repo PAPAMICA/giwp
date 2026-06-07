@@ -57,6 +57,7 @@ class Gi_Toolkit_Matomo {
 		add_action( 'wp_ajax_gi_toolkit_matomo_test_connection', array( $this, 'ajax_test_connection' ) );
 		add_action( 'wp_ajax_gi_toolkit_matomo_sync_site', array( $this, 'ajax_sync_site' ) );
 		add_action( 'wp_ajax_gi_toolkit_matomo_dashboard', array( $this, 'ajax_dashboard' ) );
+		add_action( 'wp_ajax_gi_toolkit_matomo_uptime_section', array( $this, 'ajax_uptime_section' ) );
 
 		add_action( 'admin_bar_menu', array( $this, 'register_admin_bar_stats' ), 100 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_bar_assets' ) );
@@ -380,6 +381,47 @@ class Gi_Toolkit_Matomo {
 				'message' => ! empty( $result['created'] )
 					? __( 'Site Matomo créé.', 'gi-toolkit' )
 					: __( 'Site Matomo associé.', 'gi-toolkit' ),
+			)
+		);
+	}
+
+	/**
+	 * Section Uptime Kuma (chargée en AJAX sur la page Statistiques).
+	 *
+	 * @return void
+	 */
+	public function ajax_uptime_section() {
+		check_ajax_referer( 'gi_toolkit_matomo_dashboard', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Accès refusé.', 'gi-toolkit' ) ) );
+		}
+
+		if ( ! class_exists( 'Gi_Toolkit_Uptime_Kuma' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Module Uptime Kuma indisponible.', 'gi-toolkit' ) ) );
+		}
+
+		Gi_Toolkit_Uptime_Kuma::load_deploy_dependencies();
+		$settings      = Gi_Toolkit_Uptime_Kuma::get_settings_static();
+		$force_refresh = ! empty( $_POST['refresh'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$dashboard     = Gi_Toolkit_Uptime_Kuma_Status_Data::fetch_dashboard( $settings, $force_refresh );
+		$chart_id      = 'gi-uptime-kuma-ping-chart-matomo';
+
+		ob_start();
+		Gi_Toolkit_Uptime_Kuma::render_dashboard_markup(
+			$dashboard,
+			$settings,
+			array(
+				'chart_canvas_id' => $chart_id,
+				'settings_url'    => Gi_Toolkit_Uptime_Kuma::get_settings_admin_url(),
+			)
+		);
+		$html = ob_get_clean();
+
+		wp_send_json_success(
+			array(
+				'html'  => $html,
+				'chart' => ( ! empty( $dashboard['ready'] ) && ! empty( $dashboard['chart'] ) ) ? $dashboard['chart'] : null,
+				'ready' => ! empty( $dashboard['ready'] ),
 			)
 		);
 	}
@@ -1092,11 +1134,19 @@ class Gi_Toolkit_Matomo {
 
 		if ( class_exists( 'Gi_Toolkit_Uptime_Kuma' ) ) {
 			Gi_Toolkit_Uptime_Kuma::load_deploy_dependencies();
-			$kuma_dashboard = Gi_Toolkit_Uptime_Kuma_Status_Data::fetch_dashboard(
-				Gi_Toolkit_Uptime_Kuma::get_settings_static(),
-				! empty( $_GET['gi_uptime_kuma_refresh'] )
+			wp_enqueue_style(
+				'gi-toolkit-uptime-kuma',
+				GI_TOOLKIT_PLUGIN_URL . 'admin/assets/css/uptime-kuma.css',
+				array(),
+				$version
 			);
-			Gi_Toolkit_Uptime_Kuma::enqueue_dashboard_assets( $kuma_dashboard, $version, 'gi-uptime-kuma-ping-chart-matomo' );
+			wp_enqueue_script(
+				'gi-toolkit-uptime-kuma-dashboard',
+				GI_TOOLKIT_PLUGIN_URL . 'admin/assets/js/uptime-kuma-dashboard.js',
+				array( 'chartjs' ),
+				$version,
+				true
+			);
 		}
 
 		wp_enqueue_style(
@@ -1142,26 +1192,26 @@ class Gi_Toolkit_Matomo {
 				'settingsUrl'   => self::get_settings_admin_url(),
 				'defaultPeriod' => 'last7',
 				'i18n'          => array(
-					'loading'  => __( 'Chargement…', 'gi-toolkit' ),
-					'error'    => __( 'Impossible de charger les statistiques.', 'gi-toolkit' ),
-					'visits'   => __( 'Visites', 'gi-toolkit' ),
-					'unique'   => __( 'Visiteurs uniques', 'gi-toolkit' ),
-					'actions'  => __( 'Pages vues', 'gi-toolkit' ),
-					'mapEmpty' => __( 'Aucune donnée géographique pour cette période.', 'gi-toolkit' ),
-					'liveNow'  => __( 'Actualisation automatique', 'gi-toolkit' ),
+					'loading'       => __( 'Chargement…', 'gi-toolkit' ),
+					'loadingStats'  => __( 'Récupération des statistiques Matomo…', 'gi-toolkit' ),
+					'loadingUptime' => __( 'Chargement de la disponibilité…', 'gi-toolkit' ),
+					'error'         => __( 'Impossible de charger les statistiques.', 'gi-toolkit' ),
+					'visits'        => __( 'Visites', 'gi-toolkit' ),
+					'unique'        => __( 'Visiteurs uniques', 'gi-toolkit' ),
+					'actions'       => __( 'Pages vues', 'gi-toolkit' ),
+					'mapEmpty'      => __( 'Aucune donnée géographique pour cette période.', 'gi-toolkit' ),
+					'liveNow'       => __( 'Actualisation automatique', 'gi-toolkit' ),
+					'pingLabel'     => __( 'Temps de réponse (ms)', 'gi-toolkit' ),
 				),
 				'liveRefresh' => 10,
+				'deferLoad'   => true,
 			)
 		);
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$period_key = isset( $_GET['period'] ) ? sanitize_key( wp_unslash( $_GET['period'] ) ) : 'last7';
-		$dashboard  = array( 'success' => false );
 
 		$is_ready = self::is_dashboard_ready( $settings );
-		if ( $is_ready ) {
-			$dashboard = Gi_Toolkit_Matomo_Dashboard_Data::fetch( $settings, $period_key );
-		}
 
 		$settings_url = self::get_settings_admin_url();
 
@@ -1212,13 +1262,17 @@ class Gi_Toolkit_Matomo {
 					?>
 				</nav>
 
-				<div id="gi-matomo-dashboard-wrap" class="gi-matomo-dashboard-wrap" data-period="<?php echo esc_attr( $period_key ); ?>">
-					<div id="gi-matomo-loader" class="gi-matomo-loader" role="status" aria-live="polite" aria-busy="false" hidden>
-						<span class="gi-matomo-loader__ring" aria-hidden="true"></span>
+				<div id="gi-matomo-dashboard-wrap" class="gi-matomo-dashboard-wrap is-deferred-load is-loading" data-period="<?php echo esc_attr( $period_key ); ?>">
+					<div id="gi-matomo-loader" class="gi-matomo-loader" role="status" aria-live="polite" aria-busy="true">
+						<span class="gi-matomo-loader__visual" aria-hidden="true">
+							<span class="gi-matomo-loader__ring"></span>
+							<span class="gi-matomo-loader__pulse"></span>
+						</span>
 						<span class="gi-matomo-loader__label"><?php esc_html_e( 'Chargement des statistiques…', 'gi-toolkit' ); ?></span>
+						<span class="gi-matomo-loader__hint"><?php esc_html_e( 'Connexion à Matomo en cours', 'gi-toolkit' ); ?></span>
 					</div>
 					<div id="gi-matomo-dashboard">
-						<?php $this->render_dashboard_markup( $dashboard ); ?>
+						<?php $this->render_dashboard_skeleton(); ?>
 					</div>
 				</div>
 			<?php endif; ?>
@@ -1236,19 +1290,7 @@ class Gi_Toolkit_Matomo {
 			return;
 		}
 
-		Gi_Toolkit_Uptime_Kuma::load_deploy_dependencies();
-		$kuma_settings = Gi_Toolkit_Uptime_Kuma::get_settings_static();
 		$force_refresh = ! empty( $_GET['gi_uptime_kuma_refresh'] );
-		$dashboard     = Gi_Toolkit_Uptime_Kuma_Status_Data::fetch_dashboard( $kuma_settings, $force_refresh );
-		$chart_id      = 'gi-uptime-kuma-ping-chart-matomo';
-		$refresh_url   = add_query_arg(
-			array(
-				'page'                    => self::STATS_PAGE_SLUG,
-				'period'                  => isset( $_GET['period'] ) ? sanitize_key( wp_unslash( $_GET['period'] ) ) : 'last7',
-				'gi_uptime_kuma_refresh'  => '1',
-			),
-			admin_url( 'admin.php' )
-		);
 
 		?>
 		<section class="gi-matomo-uptime-section" aria-labelledby="gi-matomo-uptime-heading">
@@ -1257,23 +1299,77 @@ class Gi_Toolkit_Matomo {
 					<span class="dashicons dashicons-heart" aria-hidden="true"></span>
 					<?php esc_html_e( 'Disponibilité', 'gi-toolkit' ); ?>
 				</h2>
-				<?php if ( ! empty( $dashboard['ready'] ) ) : ?>
-					<a class="button button-secondary" href="<?php echo esc_url( $refresh_url ); ?>">
-						<?php esc_html_e( 'Actualiser', 'gi-toolkit' ); ?>
-					</a>
-				<?php endif; ?>
+				<button type="button" class="button button-secondary" id="gi-matomo-uptime-refresh">
+					<?php esc_html_e( 'Actualiser', 'gi-toolkit' ); ?>
+				</button>
 			</div>
-			<?php
-			Gi_Toolkit_Uptime_Kuma::render_dashboard_markup(
-				$dashboard,
-				$kuma_settings,
-				array(
-					'chart_canvas_id' => $chart_id,
-					'settings_url'    => Gi_Toolkit_Uptime_Kuma::get_settings_admin_url(),
-				)
-			);
-			?>
+			<div
+				id="gi-matomo-uptime-content"
+				class="gi-matomo-uptime-content is-loading"
+				data-defer-load="1"
+				data-refresh="<?php echo $force_refresh ? '1' : '0'; ?>"
+			>
+				<?php $this->render_uptime_skeleton(); ?>
+			</div>
 		</section>
+		<?php
+	}
+
+	/**
+	 * Placeholder affiché pendant le chargement AJAX Matomo.
+	 *
+	 * @return void
+	 */
+	private function render_dashboard_skeleton() {
+		?>
+		<div class="gi-matomo-skeleton" aria-hidden="true">
+			<div class="gi-matomo-skeleton__meta">
+				<span class="gi-matomo-skeleton-block gi-matomo-skeleton-block--line gi-matomo-skeleton-block--w40"></span>
+				<span class="gi-matomo-skeleton-block gi-matomo-skeleton-block--line gi-matomo-skeleton-block--w25"></span>
+			</div>
+			<div class="gi-matomo-skeleton__kpis">
+				<?php for ( $i = 0; $i < 6; $i++ ) : ?>
+					<div class="gi-matomo-skeleton__kpi">
+						<span class="gi-matomo-skeleton-block gi-matomo-skeleton-block--icon"></span>
+						<span class="gi-matomo-skeleton-block gi-matomo-skeleton-block--line gi-matomo-skeleton-block--w60"></span>
+						<span class="gi-matomo-skeleton-block gi-matomo-skeleton-block--line gi-matomo-skeleton-block--w40"></span>
+					</div>
+				<?php endfor; ?>
+			</div>
+			<div class="gi-matomo-skeleton__chart gi-matomo-skeleton-block"></div>
+			<div class="gi-matomo-skeleton__bottom">
+				<div class="gi-matomo-skeleton__map gi-matomo-skeleton-block"></div>
+				<div class="gi-matomo-skeleton__donuts">
+					<div class="gi-matomo-skeleton-block"></div>
+					<div class="gi-matomo-skeleton-block"></div>
+					<div class="gi-matomo-skeleton-block"></div>
+				</div>
+			</div>
+			<div class="gi-matomo-skeleton__tables">
+				<?php for ( $i = 0; $i < 3; $i++ ) : ?>
+					<div class="gi-matomo-skeleton__table gi-matomo-skeleton-block"></div>
+				<?php endfor; ?>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Placeholder Uptime Kuma pendant le chargement AJAX.
+	 *
+	 * @return void
+	 */
+	private function render_uptime_skeleton() {
+		?>
+		<div class="gi-matomo-uptime-skeleton" aria-hidden="true">
+			<div class="gi-matomo-uptime-skeleton__stats">
+				<?php for ( $i = 0; $i < 4; $i++ ) : ?>
+					<div class="gi-matomo-uptime-skeleton__stat gi-matomo-skeleton-block"></div>
+				<?php endfor; ?>
+			</div>
+			<div class="gi-matomo-uptime-skeleton__chart gi-matomo-skeleton-block"></div>
+		</div>
+		<p class="gi-matomo-uptime-loading-label screen-reader-text"><?php esc_html_e( 'Chargement de la disponibilité…', 'gi-toolkit' ); ?></p>
 		<?php
 	}
 

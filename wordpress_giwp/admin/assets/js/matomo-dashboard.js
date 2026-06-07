@@ -426,7 +426,8 @@
 
 	function renderDashboard( html, meta ) {
 		meta = meta || {};
-		$( '#gi-matomo-dashboard' ).html( html );
+		var $dashboard = $( '#gi-matomo-dashboard' );
+		$dashboard.removeClass( 'is-revealed' ).html( html );
 
 		if ( meta.is_live ) {
 			destroyCharts();
@@ -440,6 +441,10 @@
 		if ( meta.matomoUrl ) {
 			$( '#gi-matomo-external-link' ).attr( 'href', meta.matomoUrl );
 		}
+
+		requestAnimationFrame( function () {
+			$dashboard.addClass( 'is-revealed' );
+		} );
 	}
 
 	function loadPeriod( period, silent ) {
@@ -492,15 +497,59 @@
 			} );
 	}
 
+	function loadUptimeSection( forceRefresh ) {
+		var $content = $( '#gi-matomo-uptime-content' );
+		if ( ! $content.length || ! $content.data( 'deferLoad' ) ) {
+			return;
+		}
+
+		$content.addClass( 'is-loading' ).removeClass( 'is-loaded is-revealed' );
+
+		$.post( cfg.ajaxUrl, {
+			action: 'gi_toolkit_matomo_uptime_section',
+			nonce: cfg.nonce,
+			refresh: forceRefresh ? 1 : ( $content.data( 'refresh' ) || 0 ),
+		} )
+			.done( function ( res ) {
+				if ( ! res.success || ! res.data || ! res.data.html ) {
+					return;
+				}
+				$content.html( res.data.html );
+				if ( res.data.chart && typeof window.giToolkitInitUptimeKumaChart === 'function' ) {
+					window.giToolkitInitUptimeKumaChart( {
+						chart: res.data.chart,
+						canvasId: 'gi-uptime-kuma-ping-chart-matomo',
+						i18n: {
+							pingLabel: ( cfg.i18n && cfg.i18n.pingLabel ) || 'ms',
+						},
+					} );
+				}
+				requestAnimationFrame( function () {
+					$content.removeClass( 'is-loading' ).addClass( 'is-loaded is-revealed' );
+				} );
+			} )
+			.always( function () {
+				$content.data( 'refresh', 0 );
+			} );
+	}
+
 	$( function () {
 		var $wrap = $( '#gi-matomo-dashboard-wrap' );
-		currentPeriod = $wrap.data( 'period' ) || 'last7';
+		currentPeriod = $wrap.data( 'period' ) || cfg.defaultPeriod || 'last7';
 
-		if ( currentPeriod === 'live' ) {
+		loadUptimeSection( false );
+
+		if ( $wrap.hasClass( 'is-deferred-load' ) ) {
+			loadPeriod( currentPeriod, false );
+		} else if ( currentPeriod === 'live' ) {
 			startLiveRefresh( cfg.liveRefresh );
 		} else {
 			initCharts();
 		}
+
+		$( document ).on( 'click', '#gi-matomo-uptime-refresh', function () {
+			loadUptimeSection( true );
+		} );
 
 		$( document ).on( 'click', '.gi-matomo-period-btn[data-period]', function ( e ) {
 			var period = $( this ).data( 'period' );

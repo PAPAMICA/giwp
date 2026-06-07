@@ -557,14 +557,150 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 	position: relative;
 }
 
+.gi-matomo-dashboard-wrap.is-deferred-load {
+	min-height: 520px;
+}
+
+.gi-matomo-skeleton-block {
+	animation: gi-matomo-shimmer 1.35s ease-in-out infinite;
+	background: linear-gradient(90deg, #e9ecef 0%, #f6f7f7 45%, #e9ecef 90%);
+	background-size: 220% 100%;
+	border-radius: 8px;
+	display: block;
+}
+
+.gi-matomo-skeleton {
+	display: grid;
+	gap: 18px;
+}
+
+.gi-matomo-skeleton__meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.gi-matomo-skeleton-block--line {
+	height: 14px;
+}
+
+.gi-matomo-skeleton-block--w25 {
+	width: 25%;
+	min-width: 120px;
+}
+
+.gi-matomo-skeleton-block--w40 {
+	width: 40%;
+	min-width: 180px;
+}
+
+.gi-matomo-skeleton-block--w60 {
+	width: 60%;
+}
+
+.gi-matomo-skeleton-block--icon {
+	border-radius: 50%;
+	height: 36px;
+	width: 36px;
+}
+
+.gi-matomo-skeleton__kpis {
+	display: grid;
+	gap: 12px;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.gi-matomo-skeleton__kpi {
+	background: #fff;
+	border: 1px solid #e2e4e7;
+	border-radius: 10px;
+	display: grid;
+	gap: 8px;
+	padding: 14px;
+}
+
+.gi-matomo-skeleton__chart {
+	height: 280px;
+}
+
+.gi-matomo-skeleton__bottom {
+	display: grid;
+	gap: 14px;
+	grid-template-columns: 1.2fr 1fr;
+}
+
+.gi-matomo-skeleton__map {
+	min-height: 220px;
+}
+
+.gi-matomo-skeleton__donuts {
+	display: grid;
+	gap: 12px;
+}
+
+.gi-matomo-skeleton__donuts .gi-matomo-skeleton-block {
+	height: 120px;
+}
+
+.gi-matomo-skeleton__tables {
+	display: grid;
+	gap: 12px;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.gi-matomo-skeleton__table {
+	height: 160px;
+}
+
+.gi-matomo-uptime-content.is-loading .gi-matomo-uptime-skeleton {
+	opacity: 1;
+}
+
+.gi-matomo-uptime-skeleton {
+	display: grid;
+	gap: 14px;
+}
+
+.gi-matomo-uptime-skeleton__stats {
+	display: grid;
+	gap: 10px;
+	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.gi-matomo-uptime-skeleton__stat {
+	height: 72px;
+}
+
+.gi-matomo-uptime-skeleton__chart {
+	height: 200px;
+}
+
+.gi-matomo-uptime-content.is-revealed .gi-uptime-kuma-dashboard,
+.gi-matomo-uptime-content.is-revealed .gi-uptime-kuma-setup-panel {
+	animation: gi-matomo-fade-in 0.35s ease;
+}
+
+#gi-matomo-dashboard.is-revealed > :not(.gi-matomo-skeleton) {
+	animation: gi-matomo-fade-in 0.35s ease;
+}
+
+@keyframes gi-matomo-shimmer {
+	0% {
+		background-position: 120% 0;
+	}
+	100% {
+		background-position: -120% 0;
+	}
+}
+
 .gi-matomo-loader {
 	align-items: center;
-	backdrop-filter: blur(3px);
-	background: rgba(246, 247, 247, 0.92);
-	border-radius: 10px;
+	backdrop-filter: blur(4px);
+	background: rgba(246, 247, 247, 0.94);
+	border-radius: 12px;
 	display: flex;
 	flex-direction: column;
-	gap: 14px;
+	gap: 10px;
 	inset: 0;
 	justify-content: center;
 	position: absolute;
@@ -575,19 +711,62 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 	display: none !important;
 }
 
+.gi-matomo-loader__visual {
+	height: 64px;
+	position: relative;
+	width: 64px;
+}
+
 .gi-matomo-loader__ring {
-	animation: gi-matomo-spin 0.75s linear infinite;
+	animation: gi-matomo-spin 0.85s linear infinite;
 	border: 4px solid #dcdcde;
 	border-radius: 50%;
 	border-top-color: #2271b1;
 	height: 48px;
+	left: 8px;
+	position: absolute;
+	top: 8px;
 	width: 48px;
+}
+
+.gi-matomo-loader__pulse {
+	animation: gi-matomo-loader-pulse 1.6s ease-in-out infinite;
+	background: radial-gradient(circle, rgba(34, 113, 177, 0.25) 0%, rgba(34, 113, 177, 0) 70%);
+	border-radius: 50%;
+	height: 64px;
+	left: 0;
+	position: absolute;
+	top: 0;
+	width: 64px;
 }
 
 .gi-matomo-loader__label {
 	color: #1d2327;
-	font-size: 14px;
-	font-weight: 500;
+	font-size: 15px;
+	font-weight: 600;
+}
+
+.gi-matomo-loader__hint {
+	color: #646970;
+	font-size: 13px;
+}
+
+@keyframes gi-matomo-loader-pulse {
+	0%,
+	100% {
+		opacity: 0.35;
+		transform: scale(0.92);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@media (max-width: 960px) {
+	.gi-matomo-skeleton__bottom {
+		grid-template-columns: 1fr;
+	}
 }
 
 .gi-matomo-dashboard-wrap.is-loading #gi-matomo-dashboard {
