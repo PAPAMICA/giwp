@@ -47,22 +47,13 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 	margin-bottom: 28px;
 }
 
-.gi-matomo-uptime-section__head {
-	align-items: center;
-	display: flex;
-	flex-wrap: wrap;
-	gap: 12px;
-	justify-content: space-between;
-	margin-bottom: 14px;
-}
-
 .gi-matomo-uptime-section__title {
 	align-items: center;
 	display: flex;
 	font-size: 18px;
 	font-weight: 600;
 	gap: 8px;
-	margin: 0;
+	margin: 0 0 14px;
 }
 
 .gi-matomo-uptime-section__title .dashicons {
@@ -533,8 +524,13 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 	border-radius: 4px;
 	display: block;
 	height: 100%;
-	min-width: 2px;
-	transition: width 0.3s ease;
+	min-width: 0;
+	width: 0;
+}
+
+.gi-matomo-bar-row__fill.gi-matomo-bar-animate {
+	animation: gi-matomo-bar-grow 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+	animation-delay: calc(var(--gi-bar-i, 0) * 40ms + 350ms);
 }
 
 .gi-matomo-bar-row__value {
@@ -1135,4 +1131,61 @@ body.gi-matomo-track-manual .gi-matomo-row-manual-code {
 	padding: 10px;
 	white-space: pre-wrap;
 	word-break: break-word;
+}
+
+@keyframes gi-matomo-bar-grow {
+	from {
+		width: 0;
+	}
+	to {
+		width: var(--bar-width, 0%);
+	}
+}
+
+.gi-matomo-animate-in {
+	animation: gi-matomo-slide-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: calc(var(--gi-animate-i, 0) * 70ms + 120ms);
+}
+
+.gi-matomo-donut-legend__row--animate {
+	animation: gi-matomo-legend-in 0.45s ease both;
+	animation-delay: calc(var(--gi-legend-i, 0) * 55ms + 500ms);
+}
+
+.gi-matomo-map-animate {
+	animation: gi-matomo-map-in 0.8s ease both;
+	animation-delay: 0.35s;
+}
+
+@keyframes gi-matomo-slide-up {
+	from {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes gi-matomo-legend-in {
+	from {
+		opacity: 0;
+		transform: translateX(-8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@keyframes gi-matomo-map-in {
+	from {
+		opacity: 0;
+		transform: scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
 }

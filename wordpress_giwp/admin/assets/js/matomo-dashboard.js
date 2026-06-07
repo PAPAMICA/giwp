@@ -23,6 +23,86 @@
 		],
 	};
 
+	function lineChartAnimations() {
+		return {
+			animation: {
+				duration: 1600,
+				easing: 'easeOutQuart',
+			},
+			animations: {
+				x: {
+					type: 'number',
+					easing: 'easeOutQuart',
+					duration: 1600,
+					from: NaN,
+					delay: function ( ctx ) {
+						return ctx.type === 'data' ? ctx.dataIndex * 18 : 0;
+					},
+				},
+				y: {
+					type: 'number',
+					easing: 'easeOutCubic',
+					duration: 1400,
+					from: function ( ctx ) {
+						if ( ! ctx.chart || ! ctx.chart.scales || ! ctx.chart.scales.y ) {
+							return undefined;
+						}
+						return ctx.chart.scales.y.getPixelForValue( 0 );
+					},
+				},
+			},
+		};
+	}
+
+	function donutChartAnimations() {
+		return {
+			animation: {
+				animateRotate: true,
+				animateScale: true,
+				duration: 1300,
+				easing: 'easeOutCubic',
+			},
+			animations: {
+				arc: {
+					duration: 1300,
+					easing: 'easeOutCubic',
+				},
+			},
+		};
+	}
+
+	function animateDashboardEntrance( root ) {
+		if ( ! root ) {
+			return;
+		}
+		root.classList.add( 'is-charts-ready' );
+
+		root.querySelectorAll( '.gi-matomo-kpi' ).forEach( function ( kpi, index ) {
+			kpi.style.setProperty( '--gi-animate-i', String( index ) );
+			kpi.classList.add( 'gi-matomo-animate-in' );
+		} );
+
+		root.querySelectorAll( '.gi-matomo-chart-panel' ).forEach( function ( panel, index ) {
+			panel.style.setProperty( '--gi-animate-i', String( index ) );
+			panel.classList.add( 'gi-matomo-animate-in' );
+		} );
+
+		root.querySelectorAll( '.gi-matomo-table-panel' ).forEach( function ( panel, index ) {
+			panel.style.setProperty( '--gi-animate-i', String( index ) );
+			panel.classList.add( 'gi-matomo-animate-in' );
+		} );
+
+		root.querySelectorAll( '.gi-matomo-bar-row__fill' ).forEach( function ( bar, index ) {
+			bar.style.setProperty( '--gi-bar-i', String( index ) );
+			bar.classList.add( 'gi-matomo-bar-animate' );
+		} );
+
+		var mapWrap = root.querySelector( '.gi-matomo-map-wrap' );
+		if ( mapWrap ) {
+			mapWrap.classList.add( 'gi-matomo-map-animate' );
+		}
+	}
+
 	function clearDonutLegends() {
 		document.querySelectorAll( '.gi-matomo-donut-legend' ).forEach( function ( el ) {
 			el.remove();
@@ -123,24 +203,27 @@
 					},
 				],
 			},
-			options: {
-				responsive: true,
-				maintainAspectRatio: false,
-				interaction: { mode: 'index', intersect: false },
-				plugins: {
-					legend: { position: 'bottom' },
-				},
-				scales: {
-					x: {
-						grid: { display: false },
-						ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: maxTicks },
+			options: Object.assign(
+				{
+					responsive: true,
+					maintainAspectRatio: false,
+					interaction: { mode: 'index', intersect: false },
+					plugins: {
+						legend: { position: 'bottom' },
 					},
-					y: {
-						beginAtZero: true,
-						ticks: { precision: 0 },
+					scales: {
+						x: {
+							grid: { display: false },
+							ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: maxTicks },
+						},
+						y: {
+							beginAtZero: true,
+							ticks: { precision: 0 },
+						},
 					},
 				},
-			},
+				lineChartAnimations()
+			),
 		} );
 		chartInstances.push( chart );
 	}
@@ -279,9 +362,10 @@
 			return b.value - a.value;
 		} );
 
-		rows.forEach( function ( row ) {
+		rows.forEach( function ( row, index ) {
 			var item = document.createElement( 'li' );
-			item.className = 'gi-matomo-donut-legend__row';
+			item.className = 'gi-matomo-donut-legend__row gi-matomo-donut-legend__row--animate';
+			item.style.setProperty( '--gi-legend-i', String( index ) );
 
 			var dot = document.createElement( 'span' );
 			dot.className = 'gi-matomo-donut-legend__dot';
@@ -339,34 +423,37 @@
 					},
 				],
 			},
-			options: {
-				responsive: true,
-				maintainAspectRatio: false,
-				cutout: '58%',
-				layout: {
-					padding: { top: 4, bottom: 4 },
-				},
-				plugins: {
-					legend: { display: false },
-					tooltip: {
-						callbacks: {
-							label: function ( context ) {
-								var total = context.dataset.data.reduce( function ( a, b ) {
-									return a + b;
-								}, 0 );
-								return (
-									context.label +
-									': ' +
-									formatCount( context.parsed ) +
-									' (' +
-									formatPercent( context.parsed, total ) +
-									')'
-								);
+			options: Object.assign(
+				{
+					responsive: true,
+					maintainAspectRatio: false,
+					cutout: '58%',
+					layout: {
+						padding: { top: 4, bottom: 4 },
+					},
+					plugins: {
+						legend: { display: false },
+						tooltip: {
+							callbacks: {
+								label: function ( context ) {
+									var total = context.dataset.data.reduce( function ( a, b ) {
+										return a + b;
+									}, 0 );
+									return (
+										context.label +
+										': ' +
+										formatCount( context.parsed ) +
+										' (' +
+										formatPercent( context.parsed, total ) +
+										')'
+									);
+								},
 							},
 						},
 					},
 				},
-			},
+				donutChartAnimations()
+			),
 		} );
 		chartInstances.push( chart );
 		renderDonutLegend( canvasId, labels, values, colors );
@@ -384,6 +471,7 @@
 		initDonutChart( 'gi-matomo-chart-countries', charts.countries );
 		initDonutChart( 'gi-matomo-chart-devices', charts.devices );
 		initWorldMap( charts.world_map );
+		animateDashboardEntrance( document.getElementById( 'gi-matomo-dashboard' ) );
 	}
 
 	function stopLiveRefresh() {
@@ -497,13 +585,15 @@
 			} );
 	}
 
-	function loadUptimeSection( forceRefresh ) {
+	function loadUptimeSection( forceRefresh, silent ) {
 		var $content = $( '#gi-matomo-uptime-content' );
 		if ( ! $content.length || ! $content.data( 'deferLoad' ) ) {
 			return;
 		}
 
-		$content.addClass( 'is-loading' ).removeClass( 'is-loaded is-revealed' );
+		if ( ! silent ) {
+			$content.addClass( 'is-loading' ).removeClass( 'is-loaded is-revealed' );
+		}
 
 		$.post( cfg.ajaxUrl, {
 			action: 'gi_toolkit_matomo_uptime_section',
@@ -524,9 +614,15 @@
 						},
 					} );
 				}
+				if ( typeof window.giToolkitAnimateUptimeDashboard === 'function' ) {
+					window.giToolkitAnimateUptimeDashboard( $content.get( 0 ) );
+				}
 				requestAnimationFrame( function () {
 					$content.removeClass( 'is-loading' ).addClass( 'is-loaded is-revealed' );
 				} );
+				if ( res.data.stale && ! forceRefresh ) {
+					loadUptimeSection( true, true );
+				}
 			} )
 			.always( function () {
 				$content.data( 'refresh', 0 );
@@ -548,7 +644,7 @@
 		}
 
 		$( document ).on( 'click', '#gi-matomo-uptime-refresh', function () {
-			loadUptimeSection( true );
+			loadUptimeSection( true, false );
 		} );
 
 		$( document ).on( 'click', '.gi-matomo-period-btn[data-period]', function ( e ) {

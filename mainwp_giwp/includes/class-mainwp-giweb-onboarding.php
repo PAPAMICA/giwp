@@ -10,6 +10,19 @@ class MainWP_GIWeb_Onboarding {
 
 	const LOG_OPTION = 'mainwp_giweb_onboarding_logs';
 
+	const CRON_HOOK = 'mainwp_giweb_run_onboarding';
+
+	const JOB_TRANSIENT_PREFIX = 'mainwp_giweb_onboarding_job_';
+
+	const LOCK_TRANSIENT_PREFIX = 'mainwp_giweb_onboarding_lock_';
+
+	/**
+	 * Jobs mis en file lors de l’ajout de site (traités au shutdown).
+	 *
+	 * @var array<int, array<string, mixed>>
+	 */
+	private static $queued_jobs = array();
+
 	/**
 	 * @return void
 	 */
@@ -17,6 +30,7 @@ class MainWP_GIWeb_Onboarding {
 		add_action( 'mainwp_manage_sites_edit', array( __CLASS__, 'render_add_site_fields' ), 20, 1 );
 		add_action( 'mainwp_site_added', array( __CLASS__, 'handle_site_added' ), 20, 2 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_add_site_assets' ) );
+		add_action( self::CRON_HOOK, array( __CLASS__, 'run_scheduled_job' ), 10, 1 );
 	}
 
 	/**
@@ -132,13 +146,174 @@ class MainWP_GIWeb_Onboarding {
 			return;
 		}
 
-		if ( function_exists( 'set_time_limit' ) ) {
-			set_time_limit( 300 );
+		self::queue_job( $site_id, $opts, $website );
+	}
+
+	/**
+	 * Planifie l’onboarding en arrière-plan pour ne pas bloquer l’AJAX MainWP « Add Site ».
+	 *
+	 * @param int                  $site_id ID site.
+	 * @param array<string, mixed> $opts    Options onboarding.
+	 * @param object               $website Site MainWP.
+	 */
+	private static function queue_job( $site_id, array $opts, $website ) {
+		$site_id = absint( $site_id );
+		if ( ! $site_id ) {
+			return;
 		}
 
-		$result = self::process( $site_id, $opts, $website );
+		$job = array(
+			'site_id' => $site_id,
+			'opts'    => $opts,
+			'website' => self::website_snapshot( $website ),
+		);
+
+		set_transient( self::job_transient_key( $site_id ), $job, 2 * HOUR_IN_SECONDS );
+		self::$queued_jobs[ $site_id ] = $job;
+
+		if ( ! has_action( 'shutdown', array( __CLASS__, 'maybe_run_on_shutdown' ) ) ) {
+			add_action( 'shutdown', array( __CLASS__, 'maybe_run_on_shutdown' ), 5 );
+		}
+
+		if ( ! wp_next_scheduled( self::CRON_HOOK, array( $site_id ) ) ) {
+			wp_schedule_single_event( time() + 60, self::CRON_HOOK, array( $site_id ) );
+		}
+
+		if ( ! defined( 'DOING_CRON' ) && function_exists( 'spawn_cron' ) ) {
+			spawn_cron();
+		}
+
+		set_transient(
+			'mainwp_giweb_onboarding_notice',
+			array(
+				'type'    => 'info',
+				'message' => __( 'Installation GI-Toolkit et déploiement du profil en cours en arrière-plan. Rechargez cette page dans quelques instants pour voir le résultat.', 'mainwp-giweb' ),
+			),
+			MINUTE_IN_SECONDS * 10
+		);
+	}
+
+	/**
+	 * Exécute les jobs en file une fois la réponse MainWP envoyée au navigateur.
+	 *
+	 * @return void
+	 */
+	public static function maybe_run_on_shutdown() {
+		if ( empty( self::$queued_jobs ) ) {
+			return;
+		}
+
+		if ( function_exists( 'fastcgi_finish_request' ) ) {
+			fastcgi_finish_request();
+		}
+
+		$jobs = self::$queued_jobs;
+		self::$queued_jobs = array();
+
+		foreach ( $jobs as $site_id => $job ) {
+			unset( $job );
+			self::execute_job( absint( $site_id ), true );
+		}
+	}
+
+	/**
+	 * Repli WP-Cron si le shutdown n’a pas pu terminer (timeout hébergeur, etc.).
+	 *
+	 * @param int $site_id ID site.
+	 */
+	public static function run_scheduled_job( $site_id ) {
+		self::execute_job( absint( $site_id ), true );
+	}
+
+	/**
+	 * @param int  $site_id  ID site.
+	 * @param bool $deferred Mode arrière-plan (délais d’attente plus longs).
+	 */
+	private static function execute_job( $site_id, $deferred = false ) {
+		$site_id = absint( $site_id );
+		if ( ! $site_id ) {
+			return;
+		}
+
+		$job_key  = self::job_transient_key( $site_id );
+		$lock_key = self::lock_transient_key( $site_id );
+		$job      = get_transient( $job_key );
+		if ( ! is_array( $job ) || empty( $job['opts'] ) || ! is_array( $job['opts'] ) ) {
+			wp_clear_scheduled_hook( self::CRON_HOOK, array( $site_id ) );
+			return;
+		}
+
+		if ( get_transient( $lock_key ) ) {
+			$locked_at = (int) get_transient( $lock_key );
+			if ( $locked_at > 0 && ( time() - $locked_at ) < 10 * MINUTE_IN_SECONDS ) {
+				if ( ! wp_next_scheduled( self::CRON_HOOK, array( $site_id ) ) ) {
+					wp_schedule_single_event( time() + 60, self::CRON_HOOK, array( $site_id ) );
+				}
+				return;
+			}
+		}
+
+		set_transient( $lock_key, (string) time(), 15 * MINUTE_IN_SECONDS );
+
+		if ( function_exists( 'set_time_limit' ) ) {
+			set_time_limit( 600 );
+		}
+		if ( function_exists( 'ignore_user_abort' ) ) {
+			ignore_user_abort( true );
+		}
+
+		$website = self::website_from_snapshot( $job['website'] ?? null );
+		$result  = self::process( $site_id, $job['opts'], $website, $deferred );
 		self::log_result( $site_id, $result );
 		self::store_admin_notice( $result );
+
+		delete_transient( $job_key );
+		delete_transient( $lock_key );
+		wp_clear_scheduled_hook( self::CRON_HOOK, array( $site_id ) );
+	}
+
+	/**
+	 * @param object $website Site MainWP.
+	 * @return array{id:int, name:string, url:string}|null
+	 */
+	private static function website_snapshot( $website ) {
+		if ( ! is_object( $website ) || empty( $website->id ) ) {
+			return null;
+		}
+
+		return array(
+			'id'   => (int) $website->id,
+			'name' => (string) ( $website->name ?? '' ),
+			'url'  => (string) ( $website->url ?? '' ),
+		);
+	}
+
+	/**
+	 * @param array<string, mixed>|null $snapshot Snapshot site.
+	 * @return object|null
+	 */
+	private static function website_from_snapshot( $snapshot ) {
+		if ( ! is_array( $snapshot ) || empty( $snapshot['id'] ) ) {
+			return null;
+		}
+
+		return (object) $snapshot;
+	}
+
+	/**
+	 * @param int $site_id ID site.
+	 * @return string
+	 */
+	private static function job_transient_key( $site_id ) {
+		return self::JOB_TRANSIENT_PREFIX . absint( $site_id );
+	}
+
+	/**
+	 * @param int $site_id ID site.
+	 * @return string
+	 */
+	private static function lock_transient_key( $site_id ) {
+		return self::LOCK_TRANSIENT_PREFIX . absint( $site_id );
 	}
 
 	/**
@@ -182,13 +357,16 @@ class MainWP_GIWeb_Onboarding {
 	/**
 	 * @param int                             $site_id ID site.
 	 * @param array{install:bool, apply_profile:bool, template_id:string} $opts Options.
+	 * @param object|null                     $website Site MainWP.
+	 * @param bool                            $deferred Mode arrière-plan.
 	 * @return array<string, mixed>
 	 */
-	public static function process( $site_id, array $opts, $website = null ) {
+	public static function process( $site_id, array $opts, $website = null, $deferred = false ) {
 		$site_id = absint( $site_id );
 		$logs    = array();
 		$ok      = true;
 		$profile_ok = false;
+		$wait_attempts = $deferred ? 15 : 8;
 
 		if ( ! empty( $opts['install'] ) ) {
 			$status = MainWP_GIWeb_API::get_status( $site_id );
@@ -200,10 +378,21 @@ class MainWP_GIWeb_Onboarding {
 				if ( empty( $install['success'] ) ) {
 					$ok = false;
 				} else {
-					$wait = MainWP_GIWeb_Plugin_Installer::wait_for_gi_toolkit( $site_id, 8 );
+					$wait = MainWP_GIWeb_Plugin_Installer::wait_for_gi_toolkit( $site_id, $wait_attempts );
 					if ( empty( $wait['success'] ) ) {
-						$logs[] = __( 'GI-Toolkit installé mais non détecté immédiatement — le déploiement du profil peut échouer.', 'mainwp-giweb' );
+						$logs[] = __( 'GI-Toolkit installé mais non détecté immédiatement — nouvelle tentative avant le déploiement du profil.', 'mainwp-giweb' );
 					}
+				}
+			}
+		}
+
+		if ( $ok && ! empty( $opts['apply_profile'] ) ) {
+			$status = MainWP_GIWeb_API::get_status( $site_id );
+			if ( empty( $status['success'] ) ) {
+				$wait = MainWP_GIWeb_Plugin_Installer::wait_for_gi_toolkit( $site_id, $wait_attempts );
+				if ( empty( $wait['success'] ) ) {
+					$logs[] = __( 'GI-Toolkit injoignable via l’API — déploiement du profil impossible pour l’instant.', 'mainwp-giweb' );
+					$ok     = false;
 				}
 			}
 		}

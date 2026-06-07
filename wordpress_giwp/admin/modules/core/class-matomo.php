@@ -411,8 +411,9 @@ class Gi_Toolkit_Matomo {
 			$dashboard,
 			$settings,
 			array(
-				'chart_canvas_id' => $chart_id,
-				'settings_url'    => Gi_Toolkit_Uptime_Kuma::get_settings_admin_url(),
+				'chart_canvas_id'  => $chart_id,
+				'settings_url'     => Gi_Toolkit_Uptime_Kuma::get_settings_admin_url(),
+				'animate_entrance' => true,
 			)
 		);
 		$html = ob_get_clean();
@@ -422,6 +423,7 @@ class Gi_Toolkit_Matomo {
 				'html'  => $html,
 				'chart' => ( ! empty( $dashboard['ready'] ) && ! empty( $dashboard['chart'] ) ) ? $dashboard['chart'] : null,
 				'ready' => ! empty( $dashboard['ready'] ),
+				'stale' => ! empty( $dashboard['stale'] ),
 			)
 		);
 	}
@@ -1233,6 +1235,11 @@ class Gi_Toolkit_Matomo {
 							<?php esc_html_e( 'Ouvrir dans Matomo', 'gi-toolkit' ); ?>
 						</a>
 					<?php endif; ?>
+					<?php if ( class_exists( 'Gi_Toolkit_Uptime_Kuma' ) ) : ?>
+						<button type="button" class="button button-secondary" id="gi-matomo-uptime-refresh">
+							<?php esc_html_e( 'Actualiser', 'gi-toolkit' ); ?>
+						</button>
+					<?php endif; ?>
 				</div>
 			</header>
 
@@ -1294,15 +1301,10 @@ class Gi_Toolkit_Matomo {
 
 		?>
 		<section class="gi-matomo-uptime-section" aria-labelledby="gi-matomo-uptime-heading">
-			<div class="gi-matomo-uptime-section__head">
-				<h2 id="gi-matomo-uptime-heading" class="gi-matomo-uptime-section__title">
-					<span class="dashicons dashicons-heart" aria-hidden="true"></span>
-					<?php esc_html_e( 'Disponibilité', 'gi-toolkit' ); ?>
-				</h2>
-				<button type="button" class="button button-secondary" id="gi-matomo-uptime-refresh">
-					<?php esc_html_e( 'Actualiser', 'gi-toolkit' ); ?>
-				</button>
-			</div>
+			<h2 id="gi-matomo-uptime-heading" class="gi-matomo-uptime-section__title">
+				<span class="dashicons dashicons-heart" aria-hidden="true"></span>
+				<?php esc_html_e( 'Disponibilité', 'gi-toolkit' ); ?>
+			</h2>
 			<div
 				id="gi-matomo-uptime-content"
 				class="gi-matomo-uptime-content is-loading"
@@ -1763,7 +1765,7 @@ class Gi_Toolkit_Matomo {
 								<?php echo esc_html( $row['label'] ); ?>
 							</span>
 							<span class="gi-matomo-bar-row__track" aria-hidden="true">
-								<span class="gi-matomo-bar-row__fill" style="width: <?php echo esc_attr( (string) ( $row['percent'] ?? 0 ) ); ?>%"></span>
+								<span class="gi-matomo-bar-row__fill" style="--bar-width: <?php echo esc_attr( (string) ( $row['percent'] ?? 0 ) ); ?>%"></span>
 							</span>
 							<span class="gi-matomo-bar-row__value">
 								<?php echo esc_html( number_format_i18n( (int) $row['value'] ) ); ?>

@@ -270,3 +270,71 @@
 		grid-template-columns: 1fr 1fr;
 	}
 }
+
+.gi-uptime-kuma-dashboard__stale {
+	color: #996800;
+	font-style: italic;
+	margin-left: 6px;
+}
+
+.gi-uptime-kuma-dashboard--animate .gi-uptime-kuma-status-strip__bar {
+	opacity: 0;
+	transform: scaleY(0);
+	transform-origin: bottom center;
+}
+
+.gi-uptime-kuma-dashboard--ready .gi-uptime-kuma-status-strip__bar {
+	animation: gi-uptime-bar-rise 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+	animation-delay: calc(var(--bar-i, 0) * 12ms + 80ms);
+}
+
+.gi-uptime-kuma-animate-in {
+	animation: gi-uptime-slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: calc(var(--gi-animate-i, 0) * 65ms + 200ms);
+}
+
+.gi-uptime-kuma-animate-pop {
+	animation: gi-uptime-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: 0.45s;
+}
+
+.gi-uptime-kuma-chart-panel.gi-uptime-kuma-animate-in {
+	animation: gi-uptime-slide-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: 0.35s;
+}
+
+@keyframes gi-uptime-bar-rise {
+	from {
+		opacity: 0;
+		transform: scaleY(0);
+	}
+	to {
+		opacity: 1;
+		transform: scaleY(1);
+	}
+}
+
+@keyframes gi-uptime-slide-up {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes gi-uptime-pop {
+	0% {
+		opacity: 0;
+		transform: scale(0.85);
+	}
+	70% {
+		transform: scale(1.04);
+	}
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}

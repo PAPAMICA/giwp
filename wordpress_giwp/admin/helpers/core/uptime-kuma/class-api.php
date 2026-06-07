@@ -169,6 +169,67 @@ class Gi_Toolkit_Uptime_Kuma_API {
 	}
 
 	/**
+	 * Heartbeats + stats uptime en une seule connexion Socket.IO (évite double login).
+	 *
+	 * @param int $monitor_id ID monitor.
+	 * @param int $hours        Période heartbeats (heures).
+	 * @return array{beats: array<int, array<string, mixed>>|null, uptime_bundle: array{stats: array<string, float>|null, monitor: array<string, mixed>|null}}|null
+	 */
+	public function get_monitor_dashboard_snapshot( $monitor_id, $hours = 24 ) {
+		$monitor_id = absint( $monitor_id );
+		$hours      = max( 1, min( 168, absint( $hours ) ) );
+
+		return $this->with_client(
+			function ( Gi_Toolkit_Uptime_Kuma_Socket_Client $client ) use ( $monitor_id, $hours ) {
+				if ( empty( $this->login_client( $client )['ok'] ) ) {
+					return null;
+				}
+
+				$beats_response = $client->emit( 'getMonitorBeats', $monitor_id, $hours );
+				if ( ! is_array( $beats_response ) || empty( $beats_response['ok'] ) ) {
+					$this->last_error = is_array( $beats_response ) && ! empty( $beats_response['msg'] )
+						? (string) $beats_response['msg']
+						: __( 'Impossible de récupérer les heartbeats.', 'gi-toolkit' );
+					return array(
+						'beats'         => null,
+						'uptime_bundle' => array(
+							'stats'   => null,
+							'monitor' => null,
+						),
+					);
+				}
+
+				$beats = is_array( $beats_response['data'] ?? null ) ? $beats_response['data'] : array();
+
+				$client->emit( 'getMonitorList' );
+				$client->poll_incoming( 12 );
+				$stats   = $client->get_uptime_for_monitor( $monitor_id );
+				$list    = $client->get_last_event( 'monitorList' );
+				$monitor = null;
+				if ( is_array( $list ) && isset( $list[ $monitor_id ] ) && is_array( $list[ $monitor_id ] ) ) {
+					$monitor = $list[ $monitor_id ];
+				} elseif ( is_array( $list ) ) {
+					foreach ( $list as $key => $row ) {
+						$id = is_array( $row ) && isset( $row['id'] ) ? absint( $row['id'] ) : absint( $key );
+						if ( $id === $monitor_id ) {
+							$monitor = is_array( $row ) ? $row : null;
+							break;
+						}
+					}
+				}
+
+				return array(
+					'beats'         => $beats,
+					'uptime_bundle' => array(
+						'stats'   => is_array( $stats ) && ! empty( $stats ) ? $stats : null,
+						'monitor' => $monitor,
+					),
+				);
+			}
+		);
+	}
+
+	/**
 	 * @param int $monitor_id ID monitor.
 	 * @param int $hours        Période en heures.
 	 * @return array<int, array<string, mixed>>|null

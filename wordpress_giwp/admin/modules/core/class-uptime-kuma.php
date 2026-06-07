@@ -398,6 +398,7 @@ class Gi_Toolkit_Uptime_Kuma {
 				'show_section_heading' => false,
 				'chart_canvas_id'      => 'gi-uptime-kuma-ping-chart',
 				'settings_url'         => self::get_settings_admin_url(),
+				'animate_entrance'     => false,
 			)
 		);
 
@@ -434,17 +435,31 @@ class Gi_Toolkit_Uptime_Kuma {
 			)
 			: '';
 		?>
-		<div class="gi-uptime-kuma-dashboard">
+		<div class="gi-uptime-kuma-dashboard<?php echo ! empty( $args['animate_entrance'] ) ? ' gi-uptime-kuma-dashboard--animate' : ''; ?>">
 			<?php if ( '' !== $fetched_label ) : ?>
-				<p class="gi-uptime-kuma-dashboard__meta description"><?php echo esc_html( $fetched_label ); ?></p>
+				<p class="gi-uptime-kuma-dashboard__meta description">
+					<?php echo esc_html( $fetched_label ); ?>
+					<?php if ( ! empty( $dashboard['stale'] ) ) : ?>
+						<span class="gi-uptime-kuma-dashboard__stale"><?php esc_html_e( '(cache — actualisation en cours)', 'gi-toolkit' ); ?></span>
+					<?php endif; ?>
+				</p>
 			<?php endif; ?>
 
 			<div class="gi-uptime-kuma-status-panel">
 				<div class="gi-uptime-kuma-status-panel__main">
 					<div class="gi-uptime-kuma-status-strip" aria-hidden="true">
-						<?php foreach ( (array) ( $dashboard['check_bars'] ?? array() ) as $bar ) : ?>
-							<span class="gi-uptime-kuma-status-strip__bar level-<?php echo esc_attr( (string) ( $bar['level'] ?? 'unknown' ) ); ?>"></span>
-						<?php endforeach; ?>
+						<?php
+						$bar_index = 0;
+						foreach ( (array) ( $dashboard['check_bars'] ?? array() ) as $bar ) :
+							?>
+							<span
+								class="gi-uptime-kuma-status-strip__bar level-<?php echo esc_attr( (string) ( $bar['level'] ?? 'unknown' ) ); ?>"
+								style="<?php echo ! empty( $args['animate_entrance'] ) ? '--bar-i: ' . (int) $bar_index . ';' : ''; ?>"
+							></span>
+							<?php
+							++$bar_index;
+						endforeach;
+						?>
 					</div>
 					<div class="gi-uptime-kuma-status-panel__footer">
 						<span class="gi-uptime-kuma-status-panel__range">

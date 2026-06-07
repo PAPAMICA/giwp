@@ -10,6 +10,7 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 
 	const TRANSIENT_TOOLBAR    = 'gi_uptime_kuma_toolbar_v2_';
 	const TRANSIENT_DASHBOARD  = 'gi_uptime_kuma_dashboard_';
+	const STALE_DASHBOARD      = 'gi_uptime_kuma_dashboard_stale_';
 
 	/**
 	 * Données tableau de bord (page réglages).
@@ -33,6 +34,12 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 			if ( is_array( $cached ) ) {
 				return $cached;
 			}
+
+			$stale = get_option( self::STALE_DASHBOARD . $monitor_id, array() );
+			if ( is_array( $stale ) && ! empty( $stale['ready'] ) ) {
+				$stale['stale'] = true;
+				return $stale;
+			}
 		}
 
 		$api = new Gi_Toolkit_Uptime_Kuma_API( $settings );
@@ -43,33 +50,37 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 			);
 		}
 
-		$beats = $api->get_monitor_beats( $monitor_id, 24 );
-		if ( ! is_array( $beats ) ) {
+		$snapshot = $api->get_monitor_dashboard_snapshot( $monitor_id, 24 );
+		if ( ! is_array( $snapshot ) || ! is_array( $snapshot['beats'] ?? null ) ) {
+			$stale = get_option( self::STALE_DASHBOARD . $monitor_id, array() );
+			if ( is_array( $stale ) && ! empty( $stale['ready'] ) ) {
+				$stale['stale']      = true;
+				$stale['fetch_error'] = $api->get_last_error() ?: __( 'Impossible de charger les heartbeats.', 'gi-toolkit' );
+				return $stale;
+			}
 			return array(
 				'ready'   => false,
 				'message' => $api->get_last_error() ?: __( 'Impossible de charger les heartbeats.', 'gi-toolkit' ),
 			);
 		}
 
-		$hourly     = self::aggregate_hourly_bars( $beats );
-		$check_bars = self::aggregate_check_bars( $beats, 90 );
-		$latest     = self::latest_beat_summary( $beats );
-		$chart      = self::build_ping_chart_series( $beats, 48 );
+		$beats         = $snapshot['beats'];
+		$uptime_bundle = is_array( $snapshot['uptime_bundle'] ?? null ) ? $snapshot['uptime_bundle'] : array();
 
-		$uptime_bundle = $api->get_monitor_uptime_stats( $monitor_id );
-		$interval      = 60;
-		$monitor       = ( is_array( $uptime_bundle ) && is_array( $uptime_bundle['monitor'] ?? null ) )
-			? $uptime_bundle['monitor']
-			: null;
+		$hourly     = self::aggregate_hourly_bars( $beats );
+		$check_bars = self::aggregate_check_bars( $beats, 72 );
+		$latest     = self::latest_beat_summary( $beats );
+		$chart      = self::build_ping_chart_series( $beats, 36 );
+
+		$interval = 60;
+		$monitor  = is_array( $uptime_bundle['monitor'] ?? null ) ? $uptime_bundle['monitor'] : null;
 		if ( is_array( $monitor ) && ! empty( $monitor['interval'] ) ) {
 			$interval = max( 20, absint( $monitor['interval'] ) );
 		}
 
 		$uptime_30d = null;
 		$uptime_1y  = null;
-		$uptime_raw = ( is_array( $uptime_bundle ) && is_array( $uptime_bundle['stats'] ?? null ) )
-			? $uptime_bundle['stats']
-			: array();
+		$uptime_raw = is_array( $uptime_bundle['stats'] ?? null ) ? $uptime_bundle['stats'] : array();
 		if ( isset( $uptime_raw['720'] ) ) {
 			$uptime_30d = Gi_Toolkit_Uptime_Kuma_API::uptime_ratio_to_percent( $uptime_raw['720'] );
 		} elseif ( isset( $uptime_raw[720] ) ) {
@@ -101,7 +112,8 @@ class Gi_Toolkit_Uptime_Kuma_Status_Data {
 			'fetched_at'     => time(),
 		);
 
-		set_transient( $cache_key, $payload, 5 * MINUTE_IN_SECONDS );
+		set_transient( $cache_key, $payload, 15 * MINUTE_IN_SECONDS );
+		update_option( self::STALE_DASHBOARD . $monitor_id, $payload, false );
 
 		return $payload;
 	}
