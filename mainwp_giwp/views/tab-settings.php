@@ -280,7 +280,7 @@ $logs            = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 					</label>
 					<label class="mainwp-giweb-settings-check">
 						<input type="checkbox" name="ftp_auto_on_deploy" value="1" <?php checked( '1', $settings['ftp_auto_on_deploy'] ?? '1' ); ?> />
-						<?php esc_html_e( 'Vérifier le dossier FTP à chaque déploiement', 'mainwp-giweb' ); ?>
+						<?php esc_html_e( 'Vérifier ou créer le dossier FTP à chaque déploiement et à l’ajout de site', 'mainwp-giweb' ); ?>
 					</label>
 					<div class="mainwp-giweb-settings-actions">
 						<button type="button" class="button button-secondary" id="mainwp-giweb-ftp-test" <?php disabled( ! MainWP_GIWeb_Ftp_Backup::is_configured() ); ?>>

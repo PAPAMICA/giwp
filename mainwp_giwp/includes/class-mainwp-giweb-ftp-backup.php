@@ -312,22 +312,51 @@ class MainWP_GIWeb_Ftp_Backup {
 	}
 
 	/**
-	 * @param int  $site_id   ID MainWP.
-	 * @param bool $deploy_ok Déploiement GI réussi.
+	 * @param int                  $site_id   ID MainWP.
+	 * @param bool                 $deploy_ok Déploiement GI réussi.
 	 * @return string
 	 */
 	public static function maybe_ensure_on_deploy( $site_id, $deploy_ok ) {
-		if ( ! $deploy_ok || ! self::is_auto_on_deploy_enabled() ) {
+		if ( ! $deploy_ok ) {
 			return '';
 		}
 
-		global $mainwp_giweb_activator;
-		$row = MainWP_GIWeb_Sites::find_by_id( absint( $site_id ), $mainwp_giweb_activator ?? null );
-		if ( empty( $row['id'] ) ) {
-			return '';
+		$result = self::ensure_for_site_row( absint( $site_id ) );
+		return self::format_result_note( $result );
+	}
+
+	/**
+	 * @param array{id:int, name:string, url:string} $row Site normalisé.
+	 * @return array<string, mixed>
+	 */
+	public static function ensure_for_site_row( array $row ) {
+		if ( ! self::is_auto_on_deploy_enabled() ) {
+			return array(
+				'success' => false,
+				'message' => '',
+			);
 		}
 
-		$result = self::ensure_folder_for_site( $row );
+		if ( empty( $row['url'] ) && empty( $row['id'] ) ) {
+			return array(
+				'success' => false,
+				'message' => '',
+			);
+		}
+
+		if ( '' === (string) ( $row['url'] ?? '' ) && ! empty( $row['id'] ) ) {
+			global $mainwp_giweb_activator;
+			$row = MainWP_GIWeb_Sites::find_by_id( (int) $row['id'], $mainwp_giweb_activator ?? null );
+		}
+
+		return self::ensure_folder_for_site( $row );
+	}
+
+	/**
+	 * @param array<string, mixed> $result Résultat ensure_folder_for_site.
+	 * @return string
+	 */
+	public static function format_result_note( $result ) {
 		return ! empty( $result['message'] ) ? '[FTP] ' . (string) $result['message'] : '';
 	}
 
