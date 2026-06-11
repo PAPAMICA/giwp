@@ -690,6 +690,12 @@ class Gi_Toolkit_Modules_Data {
 				'pro'           => false,
 				'path'          => 'pro/class-add-essentials-shortcodes.php',
 			),
+			'Gi_Toolkit_Geo_Shortcodes' => array(
+				'original_name' => 'Geo Shortcodes',
+				'group'         => 'content-media',
+				'pro'           => false,
+				'path'          => 'core/class-geo-shortcodes.php',
+			),
 			'Gi_Toolkit_410_manager' => array(
 				'original_name' => "410 Manager",
 				'group'         => 'seo-and-speed-optimizations',
@@ -1281,6 +1287,10 @@ class Gi_Toolkit_Modules_Data {
 			'Gi_Toolkit_Add_Essentials_Shortcodes' => array(
 				'name' => esc_html_x( "Add Essentials Shortcodes", "Module name", 'gi-toolkit' ),
 				'desc' => esc_html_x( "Insert dynamic variables into your titles and content via shortcodes.", "Module description", 'gi-toolkit' ),
+			),
+			'Gi_Toolkit_Geo_Shortcodes' => array(
+				'name' => esc_html_x( 'Geo Shortcodes', 'Module name', 'gi-toolkit' ),
+				'desc' => esc_html_x( 'Shortcodes par pays du visiteur (ex. [geo_phone], [geo_currency]) avec éditeur de variables, prévisualisation et compatibilité cache WP Rocket.', 'Module description', 'gi-toolkit' ),
 			),
 			'Gi_Toolkit_410_manager' => array(
 				'name' => esc_html_x( "410 Manager", "Module name", 'gi-toolkit' ),
