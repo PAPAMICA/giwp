@@ -1454,7 +1454,7 @@ class Gi_Toolkit_Mail_Catcher {
 	 *
 	 * @return array<string, mixed>
 	 */
-	public static function get_mainwp_status_payload() {
+	public static function get_mainwp_status_payload( $failures_limit = 5 ) {
 		$db_options = get_option( GI_TOOLKIT_PLUGIN_SETTINGS, array() );
 		$active     = is_array( $db_options )
 			&& ! empty( $db_options['Gi_Toolkit_Mail_Catcher'] )
@@ -1499,7 +1499,7 @@ class Gi_Toolkit_Mail_Catcher {
 			'chart_labels'     => isset( $stats['chart_labels'] ) && is_array( $stats['chart_labels'] ) ? $stats['chart_labels'] : array(),
 			'chart_sent'       => isset( $stats['chart_sent'] ) && is_array( $stats['chart_sent'] ) ? array_map( 'intval', $stats['chart_sent'] ) : array(),
 			'chart_failed'     => isset( $stats['chart_failed'] ) && is_array( $stats['chart_failed'] ) ? array_map( 'intval', $stats['chart_failed'] ) : array(),
-			'recent_failures'  => $mc->get_recent_failures( 5 ),
+			'recent_failures'  => $mc->get_recent_failures( max( 1, min( 20, absint( $failures_limit ) ) ) ),
 		);
 	}
 

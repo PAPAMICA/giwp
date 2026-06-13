@@ -30,6 +30,8 @@ class MainWP_GIWeb_Sync_Ajax {
 		add_action( 'wp_ajax_mainwp_giweb_plugin_deploy_site', array( __CLASS__, 'ajax_plugin_deploy_site' ) );
 		add_action( 'wp_ajax_mainwp_giweb_plugin_deploy_cleanup', array( __CLASS__, 'ajax_plugin_deploy_cleanup' ) );
 		add_action( 'wp_ajax_mainwp_giweb_widget_refresh', array( __CLASS__, 'ajax_widget_refresh' ) );
+		add_action( 'wp_ajax_mainwp_giweb_get_site_mail', array( __CLASS__, 'ajax_get_site_mail' ) );
+		add_action( 'wp_ajax_mainwp_giweb_get_mail_network', array( __CLASS__, 'ajax_get_mail_network' ) );
 	}
 
 	/**
@@ -383,6 +385,94 @@ class MainWP_GIWeb_Sync_Ajax {
 					'updated_at' => $updated_at,
 				)
 			);
+		} catch ( Throwable $e ) {
+			self::send_exception( $e );
+		} catch ( Exception $e ) {
+			self::send_exception( $e );
+		}
+	}
+
+	/**
+	 * Statistiques mail d’un site (cache ou appel API enfant).
+	 *
+	 * POST : site_id (int), refresh (0|1), failures_limit (optionnel).
+	 *
+	 * @return void
+	 */
+	public static function ajax_get_site_mail() {
+		self::bootstrap_ajax();
+		try {
+			self::verify_request();
+
+			$site_id = isset( $_POST['site_id'] ) ? absint( $_POST['site_id'] ) : 0;
+			if ( ! $site_id ) {
+				wp_send_json_error( array( 'message' => __( 'ID de site invalide.', 'mainwp-giweb' ) ) );
+			}
+
+			$refresh = ! empty( $_POST['refresh'] );
+			$limit   = isset( $_POST['failures_limit'] ) ? absint( $_POST['failures_limit'] ) : 5;
+			$limit   = max( 1, min( 20, $limit ) );
+
+			$act   = self::activator();
+			$row   = MainWP_GIWeb_Sites::find_by_id( $site_id, $act );
+			$label = (string) ( $row['name'] ?? ( $row['url'] ?? ( '#' . $site_id ) ) );
+			$url   = (string) ( $row['url'] ?? '' );
+
+			if ( $refresh ) {
+				$api = MainWP_GIWeb_API::get_mail(
+					$site_id,
+					array(
+						'failures_limit' => $limit,
+					)
+				);
+				MainWP_GIWeb_Mail_Stats::record_site_sync( $site_id, $label, $url, $api );
+				if ( empty( $api['success'] ) ) {
+					$raw = ! empty( $api['errors'][0] ) ? (string) $api['errors'][0] : '';
+					wp_send_json_error(
+						array(
+							'message' => MainWP_GIWeb_API::format_site_error( $site_id, $label, $raw, $api ),
+							'site_id' => $site_id,
+						)
+					);
+				}
+			}
+
+			$mail = MainWP_GIWeb_API::resolve_site_mail( $site_id, false );
+			if ( ! is_array( $mail ) ) {
+				wp_send_json_error(
+					array(
+						'message' => __( 'Aucune donnée mail disponible pour ce site.', 'mainwp-giweb' ),
+						'site_id' => $site_id,
+					)
+				);
+			}
+
+			wp_send_json_success(
+				array(
+					'site_id' => $site_id,
+					'label'   => $label,
+					'url'     => $url,
+					'mail'    => $mail,
+				)
+			);
+		} catch ( Throwable $e ) {
+			self::send_exception( $e );
+		} catch ( Exception $e ) {
+			self::send_exception( $e );
+		}
+	}
+
+	/**
+	 * Agrégat mail de tous les sites (cache dashboard).
+	 *
+	 * @return void
+	 */
+	public static function ajax_get_mail_network() {
+		self::bootstrap_ajax();
+		try {
+			self::verify_request();
+
+			wp_send_json_success( MainWP_GIWeb_API::get_mail_network() );
 		} catch ( Throwable $e ) {
 			self::send_exception( $e );
 		} catch ( Exception $e ) {

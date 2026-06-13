@@ -312,6 +312,76 @@ class MainWP_GIWeb_API {
 	}
 
 	/**
+	 * Statistiques Mail Catcher d’un site enfant (action API dédiée).
+	 *
+	 * @param int                  $website_id ID MainWP.
+	 * @param array<string, mixed> $args       failures_limit (1–20).
+	 * @return array<string, mixed>
+	 */
+	public static function get_mail( $website_id, $args = array() ) {
+		$payload = array();
+		if ( isset( $args['failures_limit'] ) ) {
+			$payload['failures_limit'] = max( 1, min( 20, absint( $args['failures_limit'] ) ) );
+		}
+		return self::request( $website_id, 'mail', $payload );
+	}
+
+	/**
+	 * Extrait le payload mail d’une réponse API (status ou mail).
+	 *
+	 * @param array<string, mixed>|null $response Réponse normalisée.
+	 * @return array<string, mixed>|null
+	 */
+	public static function extract_mail_payload( $response ) {
+		if ( ! is_array( $response ) || empty( $response['success'] ) || ! is_array( $response['data'] ?? null ) ) {
+			return null;
+		}
+
+		$data = $response['data'];
+		if ( ! empty( $data['mail_catcher'] ) && is_array( $data['mail_catcher'] ) ) {
+			return $data['mail_catcher'];
+		}
+		if ( array_key_exists( 'module_active', $data ) ) {
+			return $data;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Agrégat mail du réseau (cache dashboard, sans appel enfant).
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function get_mail_network() {
+		return MainWP_GIWeb_Mail_Stats::get_aggregate();
+	}
+
+	/**
+	 * Mail d’un site : cache agrégat, sinon appel API enfant.
+	 *
+	 * @param int  $website_id ID MainWP.
+	 * @param bool $refresh    Forcer un appel distant.
+	 * @return array<string, mixed>|null
+	 */
+	public static function resolve_site_mail( $website_id, $refresh = false ) {
+		$website_id = absint( $website_id );
+		if ( ! $website_id ) {
+			return null;
+		}
+
+		if ( ! $refresh ) {
+			$cached = MainWP_GIWeb_Mail_Stats::get_site_mail( $website_id );
+			if ( is_array( $cached ) ) {
+				return $cached;
+			}
+		}
+
+		$response = self::get_mail( $website_id );
+		return self::extract_mail_payload( $response );
+	}
+
+	/**
 	 * @param int $website_id Site ID.
 	 * @return array<string, mixed>
 	 */

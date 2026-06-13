@@ -49,10 +49,19 @@ class MainWP_GIWeb_Mail_Stats {
 	 * @return array<string, mixed>|null
 	 */
 	public static function extract_mail( $data ) {
-		if ( ! is_array( $data ) || empty( $data['mail_catcher'] ) || ! is_array( $data['mail_catcher'] ) ) {
+		if ( ! is_array( $data ) ) {
 			return null;
 		}
-		return $data['mail_catcher'];
+
+		if ( ! empty( $data['mail_catcher'] ) && is_array( $data['mail_catcher'] ) ) {
+			return $data['mail_catcher'];
+		}
+
+		if ( array_key_exists( 'module_active', $data ) ) {
+			return $data;
+		}
+
+		return null;
 	}
 
 	/**

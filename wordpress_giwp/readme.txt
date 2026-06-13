@@ -4,7 +4,7 @@ Tags: all in one plugin, admin, security, disable features, easy to use
 Requires at least: 6.0.0
 Tested up to: 6.9.3
 Requires PHP: 7.4
-Stable tag: 2.26.1
+Stable tag: 2.26.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -194,6 +194,9 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 4. Code snippets
 
 == Changelog ==
+
+= 2.26.2 =
+* Add: API MainWP — action `mail` (statistiques Mail Catcher sans appeler `status`).
 
 = 2.26.1 =
 * Add: Mail catcher — widget barre admin (enveloppe verte = e-mails OK sur 7 jours, enveloppe rouge = erreurs sur 7 jours, lien vers le module).

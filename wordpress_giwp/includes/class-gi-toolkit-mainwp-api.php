@@ -28,6 +28,8 @@ class Gi_Toolkit_MainWP_API {
 		switch ( $action ) {
 			case 'status':
 				return self::success( self::get_status() );
+			case 'mail':
+				return self::handle_mail( $data );
 			case 'export':
 				return self::handle_export();
 			case 'import':
@@ -156,6 +158,31 @@ class Gi_Toolkit_MainWP_API {
 		}
 
 		return $payload;
+	}
+
+	/**
+	 * Statistiques Mail Catcher pour MainWP (action dédiée, plus légère que status).
+	 *
+	 * @param array<string, mixed> $data Payload requête.
+	 * @return array<string, mixed>
+	 */
+	private static function handle_mail( $data = array() ) {
+		if ( ! is_array( $data ) ) {
+			$data = array();
+		}
+
+		if ( ! class_exists( 'Gi_Toolkit_Mail_Catcher' ) ) {
+			return self::success(
+				array(
+					'module_active' => false,
+				)
+			);
+		}
+
+		$limit = isset( $data['failures_limit'] ) ? absint( $data['failures_limit'] ) : 5;
+		$limit = max( 1, min( 20, $limit ) );
+
+		return self::success( Gi_Toolkit_Mail_Catcher::get_mainwp_status_payload( $limit ) );
 	}
 
 	/**
