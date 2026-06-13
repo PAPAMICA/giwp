@@ -62,6 +62,9 @@ class Gi_Toolkit_Mail_Catcher {
 		add_action( 'wp_mail_succeeded', array( $this, 'on_mail_send_finished' ), 10, 1 );
 		add_action( 'shutdown', array( $this, 'finalize_pending_mail_logs' ), 20 );
 		add_action( 'wp_ajax_gi_toolkit_mail_catcher_preview', array( $this, 'mail_catcher_preview' ) );
+		add_action( 'admin_bar_menu', array( $this, 'register_admin_bar_stats' ), 103 );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_bar_assets' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_admin_bar_assets' ) );
 	}
 
 	/**
@@ -1312,6 +1315,138 @@ class Gi_Toolkit_Mail_Catcher {
 		}
 
 		return $out;
+	}
+
+	/**
+	 * Compteurs 7 jours pour la barre admin.
+	 *
+	 * @return array{ready:bool, success_7d:int, failed_7d:int}
+	 */
+	public static function get_admin_bar_counts() {
+		$empty = array(
+			'ready'      => false,
+			'success_7d' => 0,
+			'failed_7d'  => 0,
+		);
+
+		$mc = self::instance();
+		if ( ! $mc || ! $mc->is_table_exist() ) {
+			return $empty;
+		}
+
+		$stats = $mc->get_mail_statistics();
+
+		return array(
+			'ready'      => true,
+			'success_7d' => array_sum( array_map( 'intval', (array) ( $stats['chart_sent'] ?? array() ) ) ),
+			'failed_7d'  => array_sum( array_map( 'intval', (array) ( $stats['chart_failed'] ?? array() ) ) ),
+		);
+	}
+
+	/**
+	 * URL page Mail catcher (filtre statut optionnel : 1 = OK, 2 = échec).
+	 *
+	 * @param int $status Filtre liste.
+	 * @return string
+	 */
+	public static function get_module_admin_url( $status = 0 ) {
+		$url = admin_url( 'admin.php?page=gi-toolkit-settings-mail-catcher' );
+		$status = absint( $status );
+		if ( 1 === $status || 2 === $status ) {
+			$url = add_query_arg( 'status', (string) $status, $url );
+		}
+		return $url;
+	}
+
+	/**
+	 * @param WP_Admin_Bar $wp_admin_bar Barre admin.
+	 * @return void
+	 */
+	public function register_admin_bar_stats( $wp_admin_bar ) {
+		if ( ! is_admin_bar_showing() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$counts = self::get_admin_bar_counts();
+		if ( empty( $counts['ready'] ) ) {
+			return;
+		}
+
+		$success_7d = (int) ( $counts['success_7d'] ?? 0 );
+		$failed_7d  = (int) ( $counts['failed_7d'] ?? 0 );
+
+		$success_title = sprintf(
+			'<span class="gi-mail-catcher-ab-wrap gi-mail-catcher-ab-wrap--success"><span class="dashicons dashicons-email gi-mail-catcher-ab-icon" aria-hidden="true"></span><span class="gi-mail-catcher-ab-count">%s</span></span>',
+			esc_html( number_format_i18n( $success_7d ) )
+		);
+
+		$wp_admin_bar->add_node(
+			array(
+				'id'    => 'gi-mail-catcher-toolbar-success',
+				'title' => $success_title,
+				'href'  => self::get_module_admin_url( 1 ),
+				'meta'  => array(
+					'class' => 'gi-mail-catcher-ab-menu gi-mail-catcher-ab-menu--success',
+					'title' => esc_attr(
+						sprintf(
+							/* translators: %d: number of emails */
+							_n( '%d e-mail envoyé sur 7 jours', '%d e-mails envoyés sur 7 jours', $success_7d, 'gi-toolkit' ),
+							$success_7d
+						)
+					),
+				),
+			)
+		);
+
+		if ( $failed_7d < 1 ) {
+			return;
+		}
+
+		$failed_title = sprintf(
+			'<span class="gi-mail-catcher-ab-wrap gi-mail-catcher-ab-wrap--failed"><span class="dashicons dashicons-email gi-mail-catcher-ab-icon" aria-hidden="true"></span><span class="gi-mail-catcher-ab-count">%s</span></span>',
+			esc_html( number_format_i18n( $failed_7d ) )
+		);
+
+		$wp_admin_bar->add_node(
+			array(
+				'id'    => 'gi-mail-catcher-toolbar-failed',
+				'title' => $failed_title,
+				'href'  => self::get_module_admin_url( 2 ),
+				'meta'  => array(
+					'class' => 'gi-mail-catcher-ab-menu gi-mail-catcher-ab-menu--failed',
+					'title' => esc_attr(
+						sprintf(
+							/* translators: %d: number of emails */
+							_n( '%d e-mail en erreur sur 7 jours', '%d e-mails en erreur sur 7 jours', $failed_7d, 'gi-toolkit' ),
+							$failed_7d
+						)
+					),
+				),
+			)
+		);
+	}
+
+	/**
+	 * @param string $hook_suffix Hook admin.
+	 * @return void
+	 */
+	public function enqueue_admin_bar_assets( $hook_suffix = '' ) {
+		unset( $hook_suffix );
+
+		if ( ! is_admin_bar_showing() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		if ( empty( self::get_admin_bar_counts()['ready'] ) ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'gi-toolkit-mail-catcher-admin-bar',
+			GI_TOOLKIT_PLUGIN_URL . 'admin/assets/css/mail-catcher-admin-bar.css',
+			array( 'dashicons' ),
+			GI_TOOLKIT_VERSION
+		);
 	}
 
 	/**

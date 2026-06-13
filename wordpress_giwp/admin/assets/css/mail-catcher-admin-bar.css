@@ -1,0 +1,46 @@
+#wpadminbar #wp-admin-bar-gi-mail-catcher-toolbar-success > .ab-item,
+#wpadminbar #wp-admin-bar-gi-mail-catcher-toolbar-failed > .ab-item {
+	align-items: center;
+	display: flex;
+	height: 32px;
+	padding: 0 10px;
+}
+
+#wpadminbar .gi-mail-catcher-ab-wrap {
+	align-items: center;
+	display: inline-flex;
+	gap: 6px;
+	line-height: 1;
+}
+
+#wpadminbar .gi-mail-catcher-ab-icon {
+	display: inline-block;
+	font-family: dashicons;
+	font-size: 18px;
+	height: 18px;
+	line-height: 1;
+	width: 18px;
+}
+
+#wpadminbar .gi-mail-catcher-ab-count {
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1;
+}
+
+#wpadminbar .gi-mail-catcher-ab-wrap--success .gi-mail-catcher-ab-icon,
+#wpadminbar .gi-mail-catcher-ab-wrap--success .gi-mail-catcher-ab-count {
+	color: #4ade80;
+}
+
+#wpadminbar .gi-mail-catcher-ab-wrap--failed .gi-mail-catcher-ab-icon,
+#wpadminbar .gi-mail-catcher-ab-wrap--failed .gi-mail-catcher-ab-count {
+	color: #f87171;
+}
+
+#wpadminbar #wp-admin-bar-gi-mail-catcher-toolbar-success:hover > .ab-item,
+#wpadminbar #wp-admin-bar-gi-mail-catcher-toolbar-success .ab-item:focus,
+#wpadminbar #wp-admin-bar-gi-mail-catcher-toolbar-failed:hover > .ab-item,
+#wpadminbar #wp-admin-bar-gi-mail-catcher-toolbar-failed .ab-item:focus {
+	background: #2c3338;
+}
