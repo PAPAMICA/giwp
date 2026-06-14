@@ -18,6 +18,9 @@ class MainWP_GIWeb_Rest_Mail_Controller extends MainWP_REST_Controller {
 	/** @var string */
 	protected $rest_base = 'gi-toolkit-mail';
 
+	/** @var string */
+	protected $title = 'gi-toolkit-mail';
+
 	/**
 	 * @return self
 	 */

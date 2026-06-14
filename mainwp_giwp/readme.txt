@@ -3,7 +3,7 @@ Contributors: genevois-informatique
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.6.9
+Stable tag: 1.6.10
 License: GPLv2 or later
 
 Gérez et déployez GI-Toolkit sur tous vos sites WordPress via MainWP.
@@ -54,6 +54,10 @@ MainWP > Extensions > GI-Toolkit Manager
 - [ ] Modèle « Default » défini comme profil par défaut dans Réglages
 
 == Changelog ==
+
+= 1.6.10 =
+* Fix: REST API v1 — authentification `curl -u` (Basic Auth) via le validateur MainWP v2 ; injection consumer_key/secret pour le repli legacy.
+* Fix: REST API v2 — propriété `$title` manquante sur le contrôleur (warning PHP).
 
 = 1.6.9 =
 * Add: REST API MainWP v1 — `GET /gi-toolkit-mail/get-network` et `GET /gi-toolkit-mail/get-site-mail` (consumer_key + consumer_secret).
