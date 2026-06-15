@@ -3,7 +3,7 @@ Contributors: genevois-informatique
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.6.10
+Stable tag: 1.6.11
 License: GPLv2 or later
 
 Gérez et déployez GI-Toolkit sur tous vos sites WordPress via MainWP.
@@ -54,6 +54,9 @@ MainWP > Extensions > GI-Toolkit Manager
 - [ ] Modèle « Default » défini comme profil par défaut dans Réglages
 
 == Changelog ==
+
+= 1.6.11 =
+* Add: REST API v1/v2 — `GET /gi-toolkit-backup/get-network` (v1) et `GET /gi-toolkit-backup` (v2) : statut backup de tous les sites en un appel (date, taille, localisation, statut).
 
 = 1.6.10 =
 * Fix: REST API v1 — authentification `curl -u` (Basic Auth) via le validateur MainWP v2 ; injection consumer_key/secret pour le repli legacy.

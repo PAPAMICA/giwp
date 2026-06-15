@@ -274,6 +274,7 @@ class Gi_Toolkit_UpdraftPlus_Status {
 			'plugin_active'     => true,
 			'plugin_version'    => $version,
 			'remote_configured' => $remote_cfg,
+			'local_path'        => self::get_backup_directory(),
 		);
 
 		if ( is_array( $last ) && ! empty( $last['timestamp'] ) ) {

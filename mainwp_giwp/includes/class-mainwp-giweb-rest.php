@@ -28,10 +28,14 @@ class MainWP_GIWeb_Rest {
 			return;
 		}
 
+		require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-rest-auth.php';
 		require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-rest-mail-data.php';
 		require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-rest-mail-v1.php';
+		require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-rest-backup-data.php';
+		require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-rest-backup-v1.php';
 
 		add_action( 'rest_api_init', array( 'MainWP_GIWeb_Rest_Mail_V1', 'register_routes' ) );
+		add_action( 'rest_api_init', array( 'MainWP_GIWeb_Rest_Backup_V1', 'register_routes' ) );
 	}
 
 	/**
@@ -49,14 +53,20 @@ class MainWP_GIWeb_Rest {
 
 		require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-rest-mail-data.php';
 		require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-rest-mail.php';
+		require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-rest-backup-data.php';
+		require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-rest-backup.php';
 
-		if ( ! class_exists( 'MainWP_GIWeb_Rest_Mail_Controller', false ) ) {
-			return $namespaces;
+		if ( class_exists( 'MainWP_GIWeb_Rest_Mail_Controller', false ) ) {
+			$namespaces['mainwp/v2/gi-toolkit-mail'] = array(
+				'gi-toolkit-mail' => 'MainWP_GIWeb_Rest_Mail_Controller',
+			);
 		}
 
-		$namespaces['mainwp/v2/gi-toolkit-mail'] = array(
-			'gi-toolkit-mail' => 'MainWP_GIWeb_Rest_Mail_Controller',
-		);
+		if ( class_exists( 'MainWP_GIWeb_Rest_Backup_Controller', false ) ) {
+			$namespaces['mainwp/v2/gi-toolkit-backup'] = array(
+				'gi-toolkit-backup' => 'MainWP_GIWeb_Rest_Backup_Controller',
+			);
+		}
 
 		return $namespaces;
 	}

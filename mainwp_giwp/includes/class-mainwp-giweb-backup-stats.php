@@ -420,4 +420,117 @@ class MainWP_GIWeb_Backup_Stats {
 
 		return $html;
 	}
+
+	/**
+	 * Payload API REST : statut backup de tous les sites (un seul appel).
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function build_api_network_payload() {
+		global $mainwp_giweb_activator;
+
+		$aggregate = self::get_aggregate();
+		$by_id     = is_array( $aggregate['sites'] ?? null ) ? $aggregate['sites'] : array();
+		$sites     = array();
+
+		foreach ( MainWP_GIWeb_Sites::fetch_all( $mainwp_giweb_activator ) as $site ) {
+			$normalized = MainWP_GIWeb_Sites::normalize_one( $site );
+			$site_id    = (int) ( $normalized['id'] ?? 0 );
+			if ( ! $site_id ) {
+				continue;
+			}
+
+			$row     = is_array( $by_id[ $site_id ] ?? null ) ? $by_id[ $site_id ] : array();
+			$label   = (string) ( $row['label'] ?? ( $normalized['name'] ?? ( $normalized['url'] ?? ( '#' . $site_id ) ) ) );
+			$url     = (string) ( $row['url'] ?? ( $normalized['url'] ?? '' ) );
+			$backup  = $row['backup'] ?? self::get_site_backup( $site_id );
+			$synced  = (int) ( $row['synced_at'] ?? 0 );
+
+			$sites[] = self::format_api_site_entry( $site_id, $label, $url, $backup, $synced );
+		}
+
+		return array(
+			'updated_at'  => (int) ( $aggregate['updated_at'] ?? 0 ),
+			'network'     => is_array( $aggregate['network'] ?? null ) ? $aggregate['network'] : self::compute_network( $by_id ),
+			'total_sites' => count( $sites ),
+			'sites'       => $sites,
+		);
+	}
+
+	/**
+	 * @param int                       $site_id   ID MainWP.
+	 * @param string                    $label     Nom site.
+	 * @param string                    $url       URL site.
+	 * @param array<string, mixed>|null $backup    Payload backup.
+	 * @param int                       $synced_at Dernière synchro agrégat.
+	 * @return array<string, mixed>
+	 */
+	public static function format_api_site_entry( $site_id, $label, $url, $backup, $synced_at = 0 ) {
+		$site_id = absint( $site_id );
+
+		if ( ! is_array( $backup ) || empty( $backup['plugin_active'] ) ) {
+			return array(
+				'site_id'        => $site_id,
+				'label'          => $label,
+				'url'            => $url,
+				'plugin_active'  => false,
+				'status'         => 'inactive',
+				'status_label'   => self::format_status_label( $backup ),
+				'state'          => 'inactive',
+				'is_stale'       => true,
+				'last_backup_time'     => 0,
+				'last_backup_date'     => null,
+				'last_backup_age_days' => null,
+				'last_backup_label'    => '',
+				'size_bytes'     => 0,
+				'size_human'     => '—',
+				'location'       => null,
+				'synced_at'      => $synced_at,
+			);
+		}
+
+		$timestamp = (int) ( $backup['last_backup_time'] ?? 0 );
+		$size      = (int) ( $backup['size_bytes'] ?? 0 );
+
+		return array(
+			'site_id'              => $site_id,
+			'label'                => $label,
+			'url'                  => $url,
+			'plugin_active'        => true,
+			'status'               => (string) ( $backup['status'] ?? 'none' ),
+			'status_label'         => self::format_status_label( $backup ),
+			'state'                => self::get_visual_state( $backup ),
+			'is_stale'             => ! self::is_fresh( $backup ),
+			'last_backup_time'     => $timestamp,
+			'last_backup_date'     => $timestamp > 0 ? gmdate( 'c', $timestamp ) : null,
+			'last_backup_age_days' => isset( $backup['last_backup_age_days'] )
+				? (float) $backup['last_backup_age_days']
+				: ( $timestamp > 0 ? round( ( time() - $timestamp ) / DAY_IN_SECONDS, 1 ) : null ),
+			'last_backup_label'    => (string) ( $backup['last_backup_label'] ?? '' ),
+			'size_bytes'           => $size,
+			'size_human'           => '' !== (string) ( $backup['size_human'] ?? '' )
+				? (string) $backup['size_human']
+				: self::format_size_gb( $backup ),
+			'location'             => self::format_api_location( $backup ),
+			'synced_at'            => $synced_at,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $backup Payload backup.
+	 * @return array<string, mixed>
+	 */
+	public static function format_api_location( $backup ) {
+		$services = isset( $backup['remote_services'] ) && is_array( $backup['remote_services'] )
+			? array_values( $backup['remote_services'] )
+			: array();
+
+		return array(
+			'label'               => self::format_remote_label( $backup ),
+			'local_path'          => (string) ( $backup['local_path'] ?? '' ),
+			'remote_configured'   => ! empty( $backup['remote_configured'] ),
+			'remote_sent'         => ! empty( $backup['remote_sent'] ),
+			'remote_services'     => $services,
+		);
+	}
 }
