@@ -9,6 +9,10 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
  */
 class Gi_Toolkit_Mail_Catcher {
 
+	const SEND_STATUS_SUCCESS = 'success';
+	const SEND_STATUS_FAILED  = 'failed';
+	const SEND_STATUS_SPAM    = 'spam';
+
 	/**
 	 * Instance unique (évite une double instanciation depuis la list table).
 	 *
@@ -29,6 +33,13 @@ class Gi_Toolkit_Mail_Catcher {
 	 * @var bool|null
 	 */
 	private static $last_phpmailer_send_ok = null;
+
+	/**
+	 * Cache présence colonne send_status.
+	 *
+	 * @var bool|null
+	 */
+	private $send_status_column_exists = null;
 
 	private $option_id;
     private $nonce;
@@ -101,6 +112,63 @@ class Gi_Toolkit_Mail_Catcher {
 		}
 
 		return '' !== trim( (string) ( $row['error'] ?? '' ) );
+	}
+
+	/**
+	 * Indique si le message d’erreur correspond à un blocage RBL (spam).
+	 *
+	 * @param string $message Message SMTP.
+	 * @return bool
+	 */
+	public static function is_rbl_spam_error( $message ) {
+		return false !== stripos( (string) $message, 'is rbl blacklisted' );
+	}
+
+	/**
+	 * Déduit le statut d’envoi à partir du message d’erreur.
+	 *
+	 * @param string $message Message d’erreur (vide = succès).
+	 * @return string
+	 */
+	public static function classify_send_status_from_error( $message ) {
+		$message = trim( (string) $message );
+		if ( '' === $message ) {
+			return self::SEND_STATUS_SUCCESS;
+		}
+		if ( self::is_rbl_spam_error( $message ) ) {
+			return self::SEND_STATUS_SPAM;
+		}
+
+		return self::SEND_STATUS_FAILED;
+	}
+
+	/**
+	 * Statut d’envoi d’une ligne journal.
+	 *
+	 * @param array<string, mixed>|null $row Ligne SQL.
+	 * @return string
+	 */
+	public static function get_row_send_status( $row ) {
+		if ( ! is_array( $row ) ) {
+			return self::SEND_STATUS_SUCCESS;
+		}
+
+		$stored = isset( $row['send_status'] ) ? (string) $row['send_status'] : '';
+		if ( in_array( $stored, array( self::SEND_STATUS_SUCCESS, self::SEND_STATUS_FAILED, self::SEND_STATUS_SPAM ), true ) ) {
+			return $stored;
+		}
+
+		return self::classify_send_status_from_error( (string) ( $row['error'] ?? '' ) );
+	}
+
+	/**
+	 * Indique si l’envoi n’est pas un succès (échec ou spam).
+	 *
+	 * @param array<string, mixed>|null $row Ligne SQL.
+	 * @return bool
+	 */
+	public static function log_row_has_issue( $row ) {
+		return self::SEND_STATUS_SUCCESS !== self::get_row_send_status( $row );
 	}
 
 	/**
@@ -244,10 +312,73 @@ class Gi_Toolkit_Mail_Catcher {
 		}
 
 		$table = $this->get_table_name();
+		if ( $this->table_has_send_status_column() ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			return (int) $wpdb->get_var(
+				"SELECT id FROM {$table} WHERE send_status = '" . self::SEND_STATUS_SUCCESS . "' ORDER BY id DESC LIMIT 1"
+			);
+		}
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		return (int) $wpdb->get_var(
 			"SELECT id FROM {$table} WHERE (error IS NULL OR TRIM(error) = '') ORDER BY id DESC LIMIT 1"
 		);
+	}
+
+	/**
+	 * @return bool
+	 */
+	private function table_has_send_status_column() {
+		if ( null !== $this->send_status_column_exists ) {
+			return $this->send_status_column_exists;
+		}
+
+		$this->send_status_column_exists = false;
+		if ( ! $this->is_table_exist() ) {
+			return false;
+		}
+
+		global $wpdb;
+		$table = $this->get_table_name();
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$columns = $wpdb->get_col( "DESCRIBE {$table}", 0 );
+		$this->send_status_column_exists = is_array( $columns ) && in_array( 'send_status', $columns, true );
+
+		return $this->send_status_column_exists;
+	}
+
+	/**
+	 * Clause SQL de filtre par statut (1 = succès, 2 = échec, 3 = spam).
+	 *
+	 * @param int $status Filtre liste.
+	 * @return string
+	 */
+	private function get_status_where_sql( $status ) {
+		$status = absint( $status );
+		if ( ! $status ) {
+			return '';
+		}
+
+		$has_col = $this->table_has_send_status_column();
+		switch ( $status ) {
+			case 1:
+				if ( $has_col ) {
+					return " WHERE send_status = '" . self::SEND_STATUS_SUCCESS . "'";
+				}
+				return " WHERE (error IS NULL OR TRIM(error) = '')";
+			case 2:
+				if ( $has_col ) {
+					return " WHERE send_status = '" . self::SEND_STATUS_FAILED . "'";
+				}
+				return " WHERE (error IS NOT NULL AND TRIM(error) <> '' AND LOWER(error) NOT LIKE '%is rbl blacklisted%')";
+			case 3:
+				if ( $has_col ) {
+					return " WHERE send_status = '" . self::SEND_STATUS_SPAM . "'";
+				}
+				return " WHERE (error IS NOT NULL AND TRIM(error) <> '' AND LOWER(error) LIKE '%is rbl blacklisted%')";
+		}
+
+		return '';
 	}
 
 	/**
@@ -268,12 +399,19 @@ class Gi_Toolkit_Mail_Catcher {
 			return;
 		}
 
+		$data   = array( 'error' => $message );
+		$format = array( '%s' );
+		if ( $this->table_has_send_status_column() ) {
+			$data['send_status'] = self::classify_send_status_from_error( $message );
+			$format[]            = '%s';
+		}
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->update(
 			$this->get_table_name(),
-			array( 'error' => $message ),
+			$data,
 			array( 'id' => $id ),
-			array( '%s' ),
+			$format,
 			array( '%d' )
 		);
 	}
@@ -354,7 +492,7 @@ class Gi_Toolkit_Mail_Catcher {
 			}
 
 			$row = $this->get_log_by_id( $id );
-			if ( ! is_array( $row ) || self::log_row_has_error( $row ) ) {
+			if ( ! is_array( $row ) || self::log_row_has_issue( $row ) ) {
 				continue;
 			}
 
@@ -548,15 +686,7 @@ class Gi_Toolkit_Mail_Catcher {
 			}
 			$select .= 'FROM ' . esc_sql( $this->get_table_name() );
 
-			$status_where = '';
-			switch ( $status ) {
-				case 1:
-					$status_where .= ' WHERE (error IS NULL OR TRIM(error) = \'\')';
-					break;
-				case 2:
-					$status_where .= ' WHERE (error IS NOT NULL AND TRIM(error) <> \'\')';
-					break;
-			}
+			$status_where = $this->get_status_where_sql( absint( $status ) );
 
 			$search_where = '';
 			if ( ! empty( $search ) ) {
@@ -628,15 +758,7 @@ class Gi_Toolkit_Mail_Catcher {
 
 		if ( $this->is_table_exist() ) {
 
-			$status_where = '';
-			switch ( $status ) {
-				case 1:
-					$status_where .= ' WHERE (error IS NULL OR TRIM(error) = \'\')';
-					break;
-				case 2:
-					$status_where .= ' WHERE (error IS NOT NULL AND TRIM(error) <> \'\')';
-					break;
-			}
+			$status_where = $this->get_status_where_sql( absint( $status ) );
 
 			//phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 			return $wpdb->get_var( "SELECT COUNT(*) FROM {$this->get_table_name()} {$status_where}" );
@@ -697,6 +819,7 @@ class Gi_Toolkit_Mail_Catcher {
 					'confirmResend'     => __( 'Renvoyer cet e-mail ?', 'gi-toolkit' ),
 					'chartSent'         => __( 'Envoyés', 'gi-toolkit' ),
 					'chartFailed'       => __( 'Échoués', 'gi-toolkit' ),
+					'chartSpam'         => __( 'Spam / RBL', 'gi-toolkit' ),
 					'chartVolume'       => __( 'Volume (7 jours)', 'gi-toolkit' ),
 					'chartSuccessRate'  => __( 'Taux de succès', 'gi-toolkit' ),
 				),
@@ -954,11 +1077,18 @@ class Gi_Toolkit_Mail_Catcher {
 		$html .= $this->render_preview_field( __( 'Sujet', 'gi-toolkit' ), esc_html( $item['subject'] ?? '' ) );
 		$html .= $this->render_preview_field( __( 'En-têtes', 'gi-toolkit' ), $headers_html );
 
-		if ( self::log_row_has_error( $item ) ) {
+		if ( self::log_row_has_issue( $item ) ) {
+			$status = self::get_row_send_status( $item );
+			$label  = self::SEND_STATUS_SPAM === $status
+				? __( 'Spam / RBL', 'gi-toolkit' )
+				: __( 'Erreur', 'gi-toolkit' );
+			$error_class = self::SEND_STATUS_SPAM === $status
+				? 'gi-toolkit-email-preview__content__item__content__spam'
+				: 'gi-toolkit-email-preview__content__item__content__error';
 			$html .= $this->render_preview_field(
-				__( 'Erreur', 'gi-toolkit' ),
+				$label,
 				esc_html( (string) ( $item['error'] ?? '' ) ),
-				'gi-toolkit-email-preview__content__item__content__error'
+				$error_class
 			);
 		}
 
@@ -1221,11 +1351,13 @@ class Gi_Toolkit_Mail_Catcher {
 			'total'        => 0,
 			'success'      => 0,
 			'failed'       => 0,
+			'spam'         => 0,
 			'today'        => 0,
 			'resent_total' => 0,
 			'chart_labels' => array(),
 			'chart_sent'   => array(),
 			'chart_failed' => array(),
+			'chart_spam'   => array(),
 		);
 
 		if ( ! $this->is_table_exist() ) {
@@ -1239,36 +1371,80 @@ class Gi_Toolkit_Mail_Catcher {
 		$empty['total']   = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
 		$empty['success'] = (int) $this->get_logs_count( 1 );
 		$empty['failed']  = (int) $this->get_logs_count( 2 );
+		$empty['spam']    = (int) $this->get_logs_count( 3 );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$empty['today'] = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d", $today ) );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$empty['resent_total'] = (int) $wpdb->get_var( "SELECT COALESCE(SUM(resent_count), 0) FROM {$table}" );
+
+		$has_col = $this->table_has_send_status_column();
 
 		for ( $i = 6; $i >= 0; $i-- ) {
 			$day_start = strtotime( '-' . $i . ' days', $today );
 			$day_end   = $day_start + DAY_IN_SECONDS;
 			$label     = wp_date( 'D d/m', $day_start );
 
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$sent = (int) $wpdb->get_var(
-				$wpdb->prepare(
-					"SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d AND unixtime < %d AND (error IS NULL OR TRIM(error) = '')",
-					$day_start,
-					$day_end
-				)
-			);
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$failed = (int) $wpdb->get_var(
-				$wpdb->prepare(
-					"SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d AND unixtime < %d AND error IS NOT NULL AND TRIM(error) <> ''",
-					$day_start,
-					$day_end
-				)
-			);
+			if ( $has_col ) {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$sent = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d AND unixtime < %d AND send_status = %s",
+						$day_start,
+						$day_end,
+						self::SEND_STATUS_SUCCESS
+					)
+				);
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$failed = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d AND unixtime < %d AND send_status = %s",
+						$day_start,
+						$day_end,
+						self::SEND_STATUS_FAILED
+					)
+				);
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$spam = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d AND unixtime < %d AND send_status = %s",
+						$day_start,
+						$day_end,
+						self::SEND_STATUS_SPAM
+					)
+				);
+			} else {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$sent = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d AND unixtime < %d AND (error IS NULL OR TRIM(error) = '')",
+						$day_start,
+						$day_end
+					)
+				);
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$failed = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d AND unixtime < %d AND error IS NOT NULL AND TRIM(error) <> '' AND LOWER(error) NOT LIKE %s",
+						$day_start,
+						$day_end,
+						'%is rbl blacklisted%'
+					)
+				);
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$spam = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT COUNT(*) FROM {$table} WHERE unixtime >= %d AND unixtime < %d AND error IS NOT NULL AND TRIM(error) <> '' AND LOWER(error) LIKE %s",
+						$day_start,
+						$day_end,
+						'%is rbl blacklisted%'
+					)
+				);
+			}
 
 			$empty['chart_labels'][] = $label;
 			$empty['chart_sent'][]   = $sent;
 			$empty['chart_failed'][] = $failed;
+			$empty['chart_spam'][]   = $spam;
 		}
 
 		return $empty;
@@ -1289,10 +1465,14 @@ class Gi_Toolkit_Mail_Catcher {
 		}
 
 		$table = $this->get_table_name();
+		$where = $this->table_has_send_status_column()
+			? "send_status = '" . self::SEND_STATUS_FAILED . "'"
+			: "(error IS NOT NULL AND TRIM(error) <> '' AND LOWER(error) NOT LIKE '%is rbl blacklisted%')";
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT id, receiver, subject, error, unixtime FROM {$table} WHERE error IS NOT NULL AND TRIM(error) <> '' ORDER BY unixtime DESC LIMIT %d",
+				"SELECT id, receiver, subject, error, unixtime FROM {$table} WHERE {$where} ORDER BY unixtime DESC LIMIT %d",
 				$limit
 			),
 			ARRAY_A
@@ -1311,6 +1491,55 @@ class Gi_Toolkit_Mail_Catcher {
 				'error'     => isset( $row['error'] ) ? (string) $row['error'] : '',
 				'unixtime'  => isset( $row['unixtime'] ) ? (int) $row['unixtime'] : 0,
 				'sent_at'   => ! empty( $row['unixtime'] ) ? wp_date( 'Y-m-d H:i', (int) $row['unixtime'] ) : '',
+				'status'    => self::SEND_STATUS_FAILED,
+			);
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Derniers envois classés spam / RBL.
+	 *
+	 * @param int $limit Nombre max.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function get_recent_spam( $limit = 5 ) {
+		global $wpdb;
+
+		$limit = max( 1, min( 20, absint( $limit ) ) );
+		if ( ! $this->is_table_exist() ) {
+			return array();
+		}
+
+		$table = $this->get_table_name();
+		$where = $this->table_has_send_status_column()
+			? "send_status = '" . self::SEND_STATUS_SPAM . "'"
+			: "(error IS NOT NULL AND TRIM(error) <> '' AND LOWER(error) LIKE '%is rbl blacklisted%')";
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT id, receiver, subject, error, unixtime FROM {$table} WHERE {$where} ORDER BY unixtime DESC LIMIT %d",
+				$limit
+			),
+			ARRAY_A
+		);
+
+		if ( ! is_array( $rows ) ) {
+			return array();
+		}
+
+		$out = array();
+		foreach ( $rows as $row ) {
+			$out[] = array(
+				'id'        => isset( $row['id'] ) ? (int) $row['id'] : 0,
+				'receiver'  => isset( $row['receiver'] ) ? (string) $row['receiver'] : '',
+				'subject'   => isset( $row['subject'] ) ? (string) $row['subject'] : '',
+				'error'     => isset( $row['error'] ) ? (string) $row['error'] : '',
+				'unixtime'  => isset( $row['unixtime'] ) ? (int) $row['unixtime'] : 0,
+				'sent_at'   => ! empty( $row['unixtime'] ) ? wp_date( 'Y-m-d H:i', (int) $row['unixtime'] ) : '',
+				'status'    => self::SEND_STATUS_SPAM,
 			);
 		}
 
@@ -1352,7 +1581,7 @@ class Gi_Toolkit_Mail_Catcher {
 	public static function get_module_admin_url( $status = 0 ) {
 		$url = admin_url( 'admin.php?page=gi-toolkit-settings-mail-catcher' );
 		$status = absint( $status );
-		if ( 1 === $status || 2 === $status ) {
+		if ( 1 === $status || 2 === $status || 3 === $status ) {
 			$url = add_query_arg( 'status', (string) $status, $url );
 		}
 		return $url;
@@ -1481,6 +1710,7 @@ class Gi_Toolkit_Mail_Catcher {
 				'total'         => 0,
 				'success'       => 0,
 				'failed'        => 0,
+				'spam'          => 0,
 				'today'         => 0,
 				'resent_total'  => 0,
 			);
@@ -1488,18 +1718,23 @@ class Gi_Toolkit_Mail_Catcher {
 
 		$stats = $mc->get_mail_statistics();
 
+		$limit = max( 1, min( 20, absint( $failures_limit ) ) );
+
 		return array(
 			'module_active'    => true,
 			'table_ready'      => true,
 			'total'            => (int) ( $stats['total'] ?? 0 ),
 			'success'          => (int) ( $stats['success'] ?? 0 ),
 			'failed'           => (int) ( $stats['failed'] ?? 0 ),
+			'spam'             => (int) ( $stats['spam'] ?? 0 ),
 			'today'            => (int) ( $stats['today'] ?? 0 ),
 			'resent_total'     => (int) ( $stats['resent_total'] ?? 0 ),
 			'chart_labels'     => isset( $stats['chart_labels'] ) && is_array( $stats['chart_labels'] ) ? $stats['chart_labels'] : array(),
 			'chart_sent'       => isset( $stats['chart_sent'] ) && is_array( $stats['chart_sent'] ) ? array_map( 'intval', $stats['chart_sent'] ) : array(),
 			'chart_failed'     => isset( $stats['chart_failed'] ) && is_array( $stats['chart_failed'] ) ? array_map( 'intval', $stats['chart_failed'] ) : array(),
-			'recent_failures'  => $mc->get_recent_failures( max( 1, min( 20, absint( $failures_limit ) ) ) ),
+			'chart_spam'       => isset( $stats['chart_spam'] ) && is_array( $stats['chart_spam'] ) ? array_map( 'intval', $stats['chart_spam'] ) : array(),
+			'recent_failures'  => $mc->get_recent_failures( $limit ),
+			'recent_spam'      => $mc->get_recent_spam( $limit ),
 		);
 	}
 
@@ -1643,8 +1878,23 @@ class Gi_Toolkit_Mail_Catcher {
 			return;
 		}
 
-		$id    = absint( $id );
-		$error = self::normalize_log_error_message( $error );
+		$id          = absint( $id );
+		$error       = self::normalize_log_error_message( $error );
+		$send_status = self::classify_send_status_from_error( $error );
+
+		if ( $this->table_has_send_status_column() ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->query(
+				$wpdb->prepare(
+					"UPDATE {$this->get_table_name()} SET resent_count = resent_count + 1, last_resent_at = %d, error = %s, send_status = %s WHERE id = %d",
+					time(),
+					$error,
+					$send_status,
+					$id
+				)
+			);
+			return;
+		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(
@@ -1714,6 +1964,21 @@ class Gi_Toolkit_Mail_Catcher {
 		if ( ! in_array( 'last_resent_at', $columns, true ) ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
 			$wpdb->query( "ALTER TABLE {$table} ADD COLUMN last_resent_at int(10) unsigned NOT NULL DEFAULT 0" );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$columns = $wpdb->get_col( "DESCRIBE {$table}", 0 );
+		}
+		if ( ! in_array( 'send_status', $columns, true ) ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
+			$wpdb->query( "ALTER TABLE {$table} ADD COLUMN send_status varchar(20) NOT NULL DEFAULT 'success' AFTER error" );
+			$this->send_status_column_exists = true;
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
+			$wpdb->query(
+				"UPDATE {$table} SET send_status = CASE
+					WHEN error IS NULL OR TRIM(error) = '' THEN 'success'
+					WHEN LOWER(error) LIKE '%is rbl blacklisted%' THEN 'spam'
+					ELSE 'failed'
+				END"
+			);
 		}
 	}
 
@@ -1770,6 +2035,7 @@ class Gi_Toolkit_Mail_Catcher {
             headers text NULL,
             attachments varchar(800) NOT NULL DEFAULT '',
             error varchar(400) NULL DEFAULT '',
+            send_status varchar(20) NOT NULL DEFAULT 'success',
             host varchar(200) NOT NULL DEFAULT '',
             unixtime int(10) NOT NULL DEFAULT '0',
             resent_count int(10) unsigned NOT NULL DEFAULT '0',
@@ -2030,6 +2296,10 @@ class Gi_Toolkit_Mail_Catcher {
 				<div class="gi-toolkit-mail-catcher-stats__card gi-toolkit-mail-catcher-stats__card--failed">
 					<span class="gi-toolkit-mail-catcher-stats__label"><?php esc_html_e( 'Échoués', 'gi-toolkit' ); ?></span>
 					<strong class="gi-toolkit-mail-catcher-stats__value"><?php echo esc_html( number_format_i18n( $stats['failed'] ) ); ?></strong>
+				</div>
+				<div class="gi-toolkit-mail-catcher-stats__card gi-toolkit-mail-catcher-stats__card--spam">
+					<span class="gi-toolkit-mail-catcher-stats__label"><?php esc_html_e( 'Spam / RBL', 'gi-toolkit' ); ?></span>
+					<strong class="gi-toolkit-mail-catcher-stats__value"><?php echo esc_html( number_format_i18n( $stats['spam'] ) ); ?></strong>
 				</div>
 				<div class="gi-toolkit-mail-catcher-stats__card">
 					<span class="gi-toolkit-mail-catcher-stats__label"><?php esc_html_e( 'Aujourd’hui', 'gi-toolkit' ); ?></span>

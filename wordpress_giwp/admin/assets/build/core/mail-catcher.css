@@ -79,3 +79,5 @@
 .gi-toolkit-modern-post-list .gi-toolkit-mail-catcher-table--log .check-column input[type=checkbox]:indeterminate::before,.gi-toolkit-modern-post-list .gi-toolkit-mail-catcher-table--log .gi-toolkit-mail-catcher-row-cb:indeterminate::before{background:#fff;border:0;content:"";display:block;height:2px;left:3px;margin:0!important;position:absolute;top:7px;transform:none;width:10px}
 .gi-toolkit-modern-post-list .gi-toolkit-mail-catcher-table--log .check-column input[type=checkbox]:focus,.gi-toolkit-modern-post-list .gi-toolkit-mail-catcher-table--log .gi-toolkit-mail-catcher-row-cb:focus{border-color:#2271b1;box-shadow:0 0 0 1px #2271b1;outline:2px solid transparent}
 .gi-toolkit-mail-catcher-table--log .wp-list-table tbody tr.is-selected td,.gi-toolkit-mail-catcher-table--log .wp-list-table tbody tr.is-selected th.check-column{background:#eef4ff!important}
+
+.gi-toolkit-mail-catcher-badge--spam{background:#fff4e5;color:#b54708;border:1px solid #f79009}.gi-toolkit-mail-catcher-stats__card--spam{border-color:#f79009}.gi-toolkit-email-preview__content__item__content__spam{color:#b54708;font-weight:600}

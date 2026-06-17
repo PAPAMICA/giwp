@@ -803,3 +803,7 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-settings-warn {
 .mainwp-giweb-settings-card select {
 	max-width: 100%;
 }
+
+.mainwp-giweb-mail-metric--spam {
+	color: #b54708;
+}

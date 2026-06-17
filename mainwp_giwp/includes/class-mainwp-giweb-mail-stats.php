@@ -37,6 +37,20 @@ class MainWP_GIWeb_Mail_Stats {
 	}
 
 	/**
+	 * Nombre d’e-mails classés spam / RBL.
+	 *
+	 * @param array<string, mixed>|null $mail Payload mail.
+	 * @return int
+	 */
+	public static function get_spam_count( $mail ) {
+		if ( ! is_array( $mail ) ) {
+			return 0;
+		}
+
+		return max( 0, (int) ( $mail['spam'] ?? 0 ) );
+	}
+
+	/**
 	 * @param array<string, mixed>|null $mail Payload mail.
 	 * @return bool
 	 */
@@ -161,6 +175,7 @@ class MainWP_GIWeb_Mail_Stats {
 			'total'                 => 0,
 			'success'               => 0,
 			'failed'                => 0,
+			'spam'                  => 0,
 			'today'                 => 0,
 			'resent_total'          => 0,
 			'sites_tracked'         => 0,
@@ -169,6 +184,7 @@ class MainWP_GIWeb_Mail_Stats {
 			'chart_labels'          => array(),
 			'chart_sent'            => array(),
 			'chart_failed'          => array(),
+			'chart_spam'            => array(),
 		);
 
 		if ( ! is_array( $sites ) ) {
@@ -189,6 +205,7 @@ class MainWP_GIWeb_Mail_Stats {
 			$network['total']        += (int) ( $m['total'] ?? 0 );
 			$network['success']      += (int) ( $m['success'] ?? 0 );
 			$network['failed']       += (int) ( $m['failed'] ?? 0 );
+			$network['spam']         += (int) ( $m['spam'] ?? 0 );
 			$network['today']        += (int) ( $m['today'] ?? 0 );
 			$network['resent_total'] += (int) ( $m['resent_total'] ?? 0 );
 
@@ -199,11 +216,13 @@ class MainWP_GIWeb_Mail_Stats {
 			$labels = isset( $m['chart_labels'] ) && is_array( $m['chart_labels'] ) ? $m['chart_labels'] : array();
 			$sent   = isset( $m['chart_sent'] ) && is_array( $m['chart_sent'] ) ? $m['chart_sent'] : array();
 			$failed = isset( $m['chart_failed'] ) && is_array( $m['chart_failed'] ) ? $m['chart_failed'] : array();
+			$spam   = isset( $m['chart_spam'] ) && is_array( $m['chart_spam'] ) ? $m['chart_spam'] : array();
 
 			if ( empty( $network['chart_labels'] ) && ! empty( $labels ) ) {
 				$network['chart_labels'] = $labels;
 				$network['chart_sent']   = array_fill( 0, count( $labels ), 0 );
 				$network['chart_failed'] = array_fill( 0, count( $labels ), 0 );
+				$network['chart_spam']   = array_fill( 0, count( $labels ), 0 );
 			}
 
 			foreach ( $labels as $i => $label ) {
@@ -211,9 +230,11 @@ class MainWP_GIWeb_Mail_Stats {
 					$network['chart_labels'][ $i ] = $label;
 					$network['chart_sent'][ $i ]   = 0;
 					$network['chart_failed'][ $i ] = 0;
+					$network['chart_spam'][ $i ]   = 0;
 				}
 				$network['chart_sent'][ $i ]   += (int) ( $sent[ $i ] ?? 0 );
 				$network['chart_failed'][ $i ] += (int) ( $failed[ $i ] ?? 0 );
+				$network['chart_spam'][ $i ]   += (int) ( $spam[ $i ] ?? 0 );
 			}
 		}
 
@@ -397,6 +418,7 @@ class MainWP_GIWeb_Mail_Stats {
 		}
 
 		$failed  = self::get_failed_count( $mail );
+		$spam    = self::get_spam_count( $mail );
 		$success = (int) ( $mail['success'] ?? 0 );
 		$total   = (int) ( $mail['total'] ?? 0 );
 		$today   = (int) ( $mail['today'] ?? 0 );
@@ -423,6 +445,10 @@ class MainWP_GIWeb_Mail_Stats {
 		$html .= esc_html( (string) $success ) . ' <small>' . esc_html__( 'OK', 'mainwp-giweb' ) . '</small></span>';
 		$html .= '<span class="mainwp-giweb-mail-metric mainwp-giweb-mail-metric--fail" title="' . esc_attr__( 'En échec', 'mainwp-giweb' ) . '">';
 		$html .= esc_html( (string) $failed ) . ' <small>' . esc_html__( 'KO', 'mainwp-giweb' ) . '</small></span>';
+		if ( $spam > 0 ) {
+			$html .= '<span class="mainwp-giweb-mail-metric mainwp-giweb-mail-metric--spam" title="' . esc_attr__( 'Spam / RBL', 'mainwp-giweb' ) . '">';
+			$html .= esc_html( (string) $spam ) . ' <small>' . esc_html__( 'spam', 'mainwp-giweb' ) . '</small></span>';
+		}
 		$html .= '<span class="mainwp-giweb-mail-metric" title="' . esc_attr__( 'Aujourd’hui', 'mainwp-giweb' ) . '">';
 		$html .= esc_html( (string) $today ) . ' <small>' . esc_html__( 'auj.', 'mainwp-giweb' ) . '</small></span>';
 		if ( $resent > 0 ) {

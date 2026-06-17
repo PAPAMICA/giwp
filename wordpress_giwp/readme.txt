@@ -195,6 +195,9 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 
 == Changelog ==
 
+= 2.26.4 =
+* Fix: Mail catcher — erreurs SMTP « is rbl blacklisted » classées en spam/RBL (hors compteur d’échecs, filtre dédié, API MainWP).
+
 = 2.26.3 =
 * Add: payload UpdraftPlus MainWP — chemin local des backups (`local_path`).
 

@@ -98,6 +98,7 @@ class Gi_Toolkit_Mail_Catcher_Logs_List_Table extends WP_List_Table {
 			0 => __( 'Tous', 'gi-toolkit' ),
 			1 => __( 'Réussis', 'gi-toolkit' ),
 			2 => __( 'Échoués', 'gi-toolkit' ),
+			3 => __( 'Spam / RBL', 'gi-toolkit' ),
 		);
 
 		$email_log_page_url = add_query_arg( 'page', $this->mail_catcher->page_id, admin_url( 'admin.php' ) );
@@ -285,9 +286,12 @@ class Gi_Toolkit_Mail_Catcher_Logs_List_Table extends WP_List_Table {
 	 * @param array<string, mixed> $item Ligne.
 	 */
 	private function get_status_badge( $item ) {
-		$failed = Gi_Toolkit_Mail_Catcher::log_row_has_error( $item );
-		if ( $failed ) {
+		$status = Gi_Toolkit_Mail_Catcher::get_row_send_status( $item );
+		if ( Gi_Toolkit_Mail_Catcher::SEND_STATUS_FAILED === $status ) {
 			return '<span class="gi-toolkit-mail-catcher-badge gi-toolkit-mail-catcher-badge--failed">' . esc_html__( 'Échec', 'gi-toolkit' ) . '</span>';
+		}
+		if ( Gi_Toolkit_Mail_Catcher::SEND_STATUS_SPAM === $status ) {
+			return '<span class="gi-toolkit-mail-catcher-badge gi-toolkit-mail-catcher-badge--spam">' . esc_html__( 'Spam / RBL', 'gi-toolkit' ) . '</span>';
 		}
 		return '<span class="gi-toolkit-mail-catcher-badge gi-toolkit-mail-catcher-badge--success">' . esc_html__( 'Envoyé', 'gi-toolkit' ) . '</span>';
 	}

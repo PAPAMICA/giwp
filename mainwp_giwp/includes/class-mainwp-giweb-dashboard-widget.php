@@ -457,6 +457,7 @@ class MainWP_GIWeb_Dashboard_Widget {
 						<th><?php esc_html_e( 'Total', 'mainwp-giweb' ); ?></th>
 						<th><?php esc_html_e( 'OK', 'mainwp-giweb' ); ?></th>
 						<th><?php esc_html_e( 'Échecs', 'mainwp-giweb' ); ?></th>
+						<th><?php esc_html_e( 'Spam / RBL', 'mainwp-giweb' ); ?></th>
 						<th><?php esc_html_e( 'Aujourd’hui', 'mainwp-giweb' ); ?></th>
 					</tr>
 				</thead>
@@ -473,6 +474,7 @@ class MainWP_GIWeb_Dashboard_Widget {
 							<td><?php echo esc_html( number_format_i18n( (int) ( $row['total'] ?? 0 ) ) ); ?></td>
 							<td><?php echo esc_html( number_format_i18n( (int) ( $row['success'] ?? 0 ) ) ); ?></td>
 							<td><?php echo esc_html( number_format_i18n( (int) ( $row['failed'] ?? 0 ) ) ); ?></td>
+							<td><?php echo esc_html( number_format_i18n( (int) ( $row['spam'] ?? 0 ) ) ); ?></td>
 							<td><?php echo esc_html( number_format_i18n( (int) ( $row['today'] ?? 0 ) ) ); ?></td>
 						</tr>
 					<?php endforeach; ?>
@@ -751,6 +753,7 @@ class MainWP_GIWeb_Dashboard_Widget {
 		$normalized = MainWP_GIWeb_Sites::find_by_id( $site_id, $mainwp_giweb_activator );
 		$label      = MainWP_GIWeb_Widget_UI::site_label( $normalized, $site_row );
 		$failed = MainWP_GIWeb_Mail_Stats::get_failed_count( $mail );
+		$spam   = MainWP_GIWeb_Mail_Stats::get_spam_count( $mail );
 		$ready  = ! empty( $mail['table_ready'] );
 
 		if ( ! $ready ) {
@@ -779,6 +782,7 @@ class MainWP_GIWeb_Dashboard_Widget {
 			'total'         => (int) ( $mail['total'] ?? 0 ),
 			'success'       => (int) ( $mail['success'] ?? 0 ),
 			'failed'        => $failed,
+			'spam'          => $spam,
 			'today'         => (int) ( $mail['today'] ?? 0 ),
 			'search'        => strtolower( $label . ' ' . MainWP_GIWeb_Widget_UI::site_url_host( $site_row['url'] ?? '' ) ),
 		);
@@ -812,6 +816,12 @@ class MainWP_GIWeb_Dashboard_Widget {
 					<span class="giweb-gw-card__row-label"><?php esc_html_e( 'Échecs', 'mainwp-giweb' ); ?></span>
 					<span class="giweb-gw-card__row-value"><?php echo esc_html( number_format_i18n( (int) ( $row['failed'] ?? 0 ) ) ); ?></span>
 				</div>
+				<?php if ( (int) ( $row['spam'] ?? 0 ) > 0 ) : ?>
+				<div class="giweb-gw-card__row">
+					<span class="giweb-gw-card__row-label"><?php esc_html_e( 'Spam / RBL', 'mainwp-giweb' ); ?></span>
+					<span class="giweb-gw-card__row-value"><?php echo esc_html( number_format_i18n( (int) ( $row['spam'] ?? 0 ) ) ); ?></span>
+				</div>
+				<?php endif; ?>
 				<div class="giweb-gw-card__row">
 					<span class="giweb-gw-card__row-label"><?php esc_html_e( 'Aujourd’hui', 'mainwp-giweb' ); ?></span>
 					<span class="giweb-gw-card__row-value"><?php echo esc_html( number_format_i18n( (int) ( $row['today'] ?? 0 ) ) ); ?></span>

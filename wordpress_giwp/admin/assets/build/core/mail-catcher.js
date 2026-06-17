@@ -242,6 +242,12 @@
 								backgroundColor: 'rgba(240, 68, 56, 0.85)',
 								borderRadius: 6,
 							},
+							{
+								label: i18n.chartSpam || 'Spam / RBL',
+								data: stats.chart_spam || [],
+								backgroundColor: 'rgba(247, 144, 9, 0.85)',
+								borderRadius: 6,
+							},
 						],
 					},
 					options: {
@@ -254,14 +260,22 @@
 			}
 
 			if ( status ) {
+				var donutLabels = [ i18n.chartSent || 'Réussis', i18n.chartFailed || 'Échoués' ];
+				var donutData = [ stats.success || 0, stats.failed || 0 ];
+				var donutColors = [ '#12b76a', '#f04438' ];
+				if ( ( stats.spam || 0 ) > 0 ) {
+					donutLabels.push( i18n.chartSpam || 'Spam / RBL' );
+					donutData.push( stats.spam || 0 );
+					donutColors.push( '#f79009' );
+				}
 				new window.Chart( status, {
 					type: 'doughnut',
 					data: {
-						labels: [ i18n.chartSent || 'Réussis', i18n.chartFailed || 'Échoués' ],
+						labels: donutLabels,
 						datasets: [
 							{
-								data: [ stats.success || 0, stats.failed || 0 ],
-								backgroundColor: [ '#12b76a', '#f04438' ],
+								data: donutData,
+								backgroundColor: donutColors,
 								borderWidth: 0,
 							},
 						],

@@ -55,6 +55,9 @@ MainWP > Extensions > GI-Toolkit Manager
 
 == Changelog ==
 
+= 1.6.12 =
+* Update: Mail Catcher — agrégation et affichage du statut spam/RBL (hors alertes d’échec) ; payload API enrichi (`spam`, `chart_spam`, `recent_spam`).
+
 = 1.6.11 =
 * Add: REST API v1/v2 — `GET /gi-toolkit-backup/get-network` (v1) et `GET /gi-toolkit-backup` (v2) : statut backup de tous les sites en un appel (date, taille, localisation, statut).
 
