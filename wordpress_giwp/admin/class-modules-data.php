@@ -1376,7 +1376,7 @@ class Gi_Toolkit_Modules_Data {
 			),
 			'Gi_Toolkit_AI_Agent_Tool' => array(
 				'name' => esc_html_x( "AI Agent Tool", "Module name", 'gi-toolkit' ),
-				'desc' => esc_html_x( "Expose une API REST dédiée (clé API propre) pour piloter le site depuis un agent IA : purge de cache, lecture des erreurs PHP, gestion des plugins, mode maintenance.", "Module description", 'gi-toolkit' ),
+				'desc' => esc_html_x( "Expose une API REST dédiée (clé API propre, routes activables/désactivables) pour piloter le site depuis un agent IA : cache, plugins, thèmes, fichiers (avec sauvegarde auto), utilisateurs, Wordfence, UpdraftPlus, Elementor, cron, base de données.", "Module description", 'gi-toolkit' ),
 			),
 		);
 

@@ -4,7 +4,7 @@ Tags: all in one plugin, admin, security, disable features, easy to use
 Requires at least: 6.0.0
 Tested up to: 6.9.3
 Requires PHP: 7.4
-Stable tag: 2.27.0
+Stable tag: 2.28.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -194,6 +194,9 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 4. Code snippets
 
 == Changelog ==
+
+= 2.28.0 =
+* Add: AI Agent Tool — extension majeure. Ajout de ~25 routes couvrant plugins (liste/toggle/update/delete), thèmes (liste/activation), fichiers dans wp-content (liste/lecture/écriture avec sauvegarde automatique avant modification), utilisateurs (liste/création/reset mot de passe), maintenance (mode maintenance, optimisation base de données), cron (liste/exécution), Wordfence (statut, déclenchement scan, déblocage IP), UpdraftPlus (statut, déclenchement sauvegarde), Elementor (purge cache). Chaque route est activable/désactivable individuellement depuis Réglages > AI Agent Tool ; toutes activées par défaut. Détection automatique du stack (UpdraftPlus, Wordfence, Elementor, WP Rocket, MainWP Child).
 
 = 2.27.0 =
 * Add: nouveau module "AI Agent Tool" — API REST dédiée (`/wp-json/gi-toolkit/v1/ai-agent/*`) avec clé API propre, IP allowlist et rate limit, permettant à un agent IA de purger le cache (WP Rocket, WP Super Cache, W3TC, LiteSpeed, WP Fastest Cache, object cache), lire les erreurs PHP récentes, lister/activer/désactiver des plugins, activer un mode maintenance, et consulter le statut/santé du site.
