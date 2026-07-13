@@ -324,6 +324,12 @@ class Gi_Toolkit_Modules_Data {
 				'pro'           => false,
 				'path'          => 'core/class-hide-php-versions.php',
 			),
+			'Gi_Toolkit_Hide_PHP_Errors' => array(
+				'original_name' => 'Hide PHP Errors',
+				'group'         => 'security',
+				'pro'           => false,
+				'path'          => 'core/class-hide-php-errors.php',
+			),
 			'Gi_Toolkit_Nav_Menu_Visibility' => array(
 				'original_name' => "Nav Menu Visibility",
 				'group'         => 'content-media',
@@ -1045,6 +1051,10 @@ class Gi_Toolkit_Modules_Data {
 			'Gi_Toolkit_Hide_PHP_Versions' => array(
 				'name' => esc_html_x( "Hide PHP Versions", "Module name", 'gi-toolkit' ),
 				'desc' => esc_html_x( "Some servers send a header called X-Powered-By that contains the PHP version used on your site. It may be a useful information for attackers, and should be removed.", "Module description", 'gi-toolkit' ),
+			),
+			'Gi_Toolkit_Hide_PHP_Errors' => array(
+				'name' => esc_html_x( 'Masquer les erreurs PHP', 'Module name', 'gi-toolkit' ),
+				'desc' => esc_html_x( 'Force le masquage des erreurs PHP à l’écran (display_errors, WP_DEBUG_DISPLAY) même si wp-config ou un autre module les réactive.', 'Module description', 'gi-toolkit' ),
 			),
 			'Gi_Toolkit_Nav_Menu_Visibility' => array(
 				'name' => esc_html_x( "Nav Menu Visibility", "Module name", 'gi-toolkit' ),

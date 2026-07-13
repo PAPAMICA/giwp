@@ -195,6 +195,9 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 
 == Changelog ==
 
+= 2.28.1 =
+* Add: module « Masquer les erreurs PHP » — force display_errors à 0 et WP_DEBUG_DISPLAY à false (wp-config + exécution).
+
 = 2.28.0 =
 * Add: AI Agent Tool — extension majeure. Ajout de ~25 routes couvrant plugins (liste/toggle/update/delete), thèmes (liste/activation), fichiers dans wp-content (liste/lecture/écriture avec sauvegarde automatique avant modification), utilisateurs (liste/création/reset mot de passe), maintenance (mode maintenance, optimisation base de données), cron (liste/exécution), Wordfence (statut, déclenchement scan, déblocage IP), UpdraftPlus (statut, déclenchement sauvegarde), Elementor (purge cache). Chaque route est activable/désactivable individuellement depuis Réglages > AI Agent Tool ; toutes activées par défaut. Détection automatique du stack (UpdraftPlus, Wordfence, Elementor, WP Rocket, MainWP Child).
 
