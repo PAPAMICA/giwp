@@ -4,7 +4,7 @@ Tags: all in one plugin, admin, security, disable features, easy to use
 Requires at least: 6.0.0
 Tested up to: 6.9.3
 Requires PHP: 7.4
-Stable tag: 2.26.3
+Stable tag: 2.27.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -194,6 +194,10 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 4. Code snippets
 
 == Changelog ==
+
+= 2.27.0 =
+* Add: nouveau module "AI Agent Tool" — API REST dédiée (`/wp-json/gi-toolkit/v1/ai-agent/*`) avec clé API propre, IP allowlist et rate limit, permettant à un agent IA de purger le cache (WP Rocket, WP Super Cache, W3TC, LiteSpeed, WP Fastest Cache, object cache), lire les erreurs PHP récentes, lister/activer/désactiver des plugins, activer un mode maintenance, et consulter le statut/santé du site.
+* Add: action MainWP `ai_agent_cache_purge` pour déclencher la purge de cache depuis le Dashboard MainWP sans clé API dédiée.
 
 = 2.26.4 =
 * Fix: Mail catcher — erreurs SMTP « is rbl blacklisted » classées en spam/RBL (hors compteur d’échecs, filtre dédié, API MainWP).

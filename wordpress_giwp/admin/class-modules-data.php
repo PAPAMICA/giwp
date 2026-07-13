@@ -816,6 +816,12 @@ class Gi_Toolkit_Modules_Data {
 				'pro'           => false,
 				'path'          => 'core/class-search-replace-in-database.php',
 			),
+			'Gi_Toolkit_AI_Agent_Tool' => array(
+				'original_name' => "AI Agent Tool",
+				'group'         => 'debug',
+				'pro'           => false,
+				'path'          => 'core/class-ai-agent-tool.php',
+			),
 		);
 		
 		/**
@@ -1367,6 +1373,10 @@ class Gi_Toolkit_Modules_Data {
 			'Gi_Toolkit_Search_Replace_In_Database' => array(
 				'name' => esc_html_x( "Search Replace in database", "Module name", 'gi-toolkit' ),
 				'desc' => esc_html_x( "Search and replace data in your WordPress database safely and efficiently.", "Module description", 'gi-toolkit' ),
+			),
+			'Gi_Toolkit_AI_Agent_Tool' => array(
+				'name' => esc_html_x( "AI Agent Tool", "Module name", 'gi-toolkit' ),
+				'desc' => esc_html_x( "Expose une API REST dédiée (clé API propre) pour piloter le site depuis un agent IA : purge de cache, lecture des erreurs PHP, gestion des plugins, mode maintenance.", "Module description", 'gi-toolkit' ),
 			),
 		);
 
