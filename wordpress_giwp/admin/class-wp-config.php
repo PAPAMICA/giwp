@@ -69,24 +69,23 @@ class Gi_Toolkit_WP_Config {
      * @return string
      */
     public static function get_backup_folder_path() {
-        // Add wp-config-backup folder to gi_toolkit folders
-        add_filter( 'gi_toolkit/folders', function( $folders ) {
-            $folders['gi-toolkit']['wp-config-backup'] = array();
-            return $folders;
-        }, 10, 1 );
-        
-        // Ensure folders exist
         gi_toolkit_folders();
 
-        $path = WP_CONTENT_DIR . '/gi_toolkit/wp-config-backup';
+        $path = trailingslashit( gi_toolkit_folders() ) . 'wp-config-backup';
+
+        if ( ! is_dir( $path ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir
+            wp_mkdir_p( $path );
+            gi_toolkit_create_index_file( $path );
+        }
 
 		//phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable
-        if( ! file_exists( $path ) ||  ! is_writable( $path ) ) {
+        if ( ! is_dir( $path ) || ! is_writable( $path ) ) {
 			//phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log( 'Gi_Toolkit: wp-config-backup folder does not exist or is not writable: ' . $path );
             return false;
         }
-        
+
         return $path;
     }
     

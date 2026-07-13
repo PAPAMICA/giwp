@@ -47,10 +47,12 @@ foreach ( $gi_toolkit_tables as $gi_toolkit_table ) {
 	$wpdb->query( "DROP TABLE IF EXISTS `{$gi_toolkit_table}`" );
 }
 
-// Dossier de données du plugin.
-$gi_toolkit_data_dir = WP_CONTENT_DIR . '/gi_toolkit';
-if ( is_dir( $gi_toolkit_data_dir ) ) {
-	gi_toolkit_uninstall_remove_directory( $gi_toolkit_data_dir );
+// Dossiers de données du plugin (nom canonique + ancien chemin).
+foreach ( array( 'gi-toolkit', 'gi_toolkit' ) as $gi_toolkit_dir_name ) {
+	$gi_toolkit_data_dir = WP_CONTENT_DIR . '/' . $gi_toolkit_dir_name;
+	if ( is_dir( $gi_toolkit_data_dir ) ) {
+		gi_toolkit_uninstall_remove_directory( $gi_toolkit_data_dir );
+	}
 }
 
 /**

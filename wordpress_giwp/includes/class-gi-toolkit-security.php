@@ -172,10 +172,7 @@ class Gi_Toolkit_Security {
 		if ( function_exists( 'gi_toolkit_folders' ) ) {
 			gi_toolkit_folders();
 		}
-		$dir = trailingslashit( WP_CONTENT_DIR ) . 'gi_toolkit';
-		if ( ! is_dir( $dir ) ) {
-			wp_mkdir_p( $dir );
-		}
+		$dir  = function_exists( 'gi_toolkit_folders' ) ? gi_toolkit_folders() : trailingslashit( WP_CONTENT_DIR ) . 'gi-toolkit';
 		$file = $dir . '/security-audit.log';
 		$user = wp_get_current_user();
 		$line = wp_json_encode(
@@ -199,7 +196,7 @@ class Gi_Toolkit_Security {
 	 * @return string
 	 */
 	public static function get_audit_log_path() {
-		return trailingslashit( WP_CONTENT_DIR ) . 'gi_toolkit/security-audit.log';
+		return trailingslashit( function_exists( 'gi_toolkit_folders' ) ? gi_toolkit_folders() : WP_CONTENT_DIR . '/gi-toolkit' ) . 'security-audit.log';
 	}
 }
 

@@ -305,10 +305,31 @@ function gi_toolkit_kses_svg_by_path( $relative_path ) {
  *
  * @return void
  */
+function gi_toolkit_data_dir() {
+	static $resolved = null;
+
+	if ( null !== $resolved ) {
+		return $resolved;
+	}
+
+	$canonical = WP_CONTENT_DIR . '/gi-toolkit';
+	$legacy    = WP_CONTENT_DIR . '/gi_toolkit';
+
+	if ( is_dir( $legacy ) && ! is_dir( $canonical ) ) {
+		$resolved = $legacy;
+		return $resolved;
+	}
+
+	$resolved = $canonical;
+	return $resolved;
+}
+
 function gi_toolkit_folders(){
     $path    = WP_CONTENT_DIR;
     $folders = array(
-        'gi-toolkit'   => array()
+        'gi-toolkit' => array(
+			'wp-config-backup' => array(),
+		),
     );
 
     /**
@@ -322,7 +343,7 @@ function gi_toolkit_folders(){
 
     gi_toolkit_recursive_mkdir( $folders, $path );
 
-    return WP_CONTENT_DIR . '/gi_toolkit';
+    return gi_toolkit_data_dir();
 }
 
 /**
@@ -346,7 +367,7 @@ function gi_toolkit_create_index_file($path){
  * @return void
  */
 function gi_toolkit_get_folder_url(){
-    return WP_CONTENT_URL . '/gi_toolkit';
+    return content_url( basename( gi_toolkit_data_dir() ) );
 }
 
 /**
@@ -367,8 +388,12 @@ function gi_toolkit_recursive_mkdir( $folders, $root_dir_path ){
 
     foreach ($folders as $folder_name => $sub_folders) {
         $folder_path = $root_dir_path . '/' . $folder_name;
-        if( !is_dir( $folder_path ) ){
-            $wp_filesystem->mkdir( $folder_path , 0705 );
+        if ( ! is_dir( $folder_path ) ) {
+            $wp_filesystem->mkdir( $folder_path, FS_CHMOD_DIR );
+            if ( ! is_dir( $folder_path ) ) {
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir
+                wp_mkdir_p( $folder_path );
+            }
         }
 
         gi_toolkit_create_index_file($folder_path);
