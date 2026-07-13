@@ -30,6 +30,8 @@ class Gi_Toolkit_MainWP_API {
 				return self::success( self::get_status() );
 			case 'mail':
 				return self::handle_mail( $data );
+			case 'ai_agent_cache_purge':
+				return self::handle_ai_agent_cache_purge();
 			case 'export':
 				return self::handle_export();
 			case 'import':
@@ -262,6 +264,31 @@ class Gi_Toolkit_MainWP_API {
 			'data'    => $data,
 			'errors'  => array(),
 		);
+	}
+
+	/**
+	 * Purge le cache via le module AI Agent Tool (accessible aussi depuis MainWP,
+	 * sans passer par la clé API REST dédiée — utile pour un déclenchement
+	 * groupé depuis le Dashboard MainWP).
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function handle_ai_agent_cache_purge() {
+		if ( ! class_exists( 'Gi_Toolkit_AI_Agent_Tool', false ) && defined( 'GI_TOOLKIT_PLUGIN_PATH' ) ) {
+			$path = gi_toolkit_resolve_module_path( 'core/class-ai-agent-tool.php' );
+			if ( $path && is_file( $path ) ) {
+				require_once $path;
+			}
+		}
+		if ( ! class_exists( 'Gi_Toolkit_AI_Agent_Tool' ) ) {
+			return self::error( __( 'Module AI Agent Tool indisponible.', 'gi-toolkit' ) );
+		}
+
+		$tool     = new Gi_Toolkit_AI_Agent_Tool();
+		$response = $tool->route_cache_purge( new WP_REST_Request() );
+		$data     = $response instanceof WP_REST_Response ? $response->get_data() : $response;
+
+		return self::success( is_array( $data ) ? ( $data['data'] ?? $data ) : array() );
 	}
 
 	/**
