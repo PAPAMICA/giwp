@@ -110,7 +110,7 @@ class MainWP_GIWeb_Extension_Activator {
 		// journal d'erreurs) est déployée : register_activation_hook ne se
 		// déclenchera qu'à la prochaine (dés)activation manuelle. On garantit
 		// donc aussi la création de la table via un simple check de version.
-		add_action( 'admin_init', array( __CLASS__, 'maybe_upgrade_tables' ) );
+		add_action( 'admin_init', array( $this, 'maybe_upgrade_tables' ) );
 	}
 
 	/**
