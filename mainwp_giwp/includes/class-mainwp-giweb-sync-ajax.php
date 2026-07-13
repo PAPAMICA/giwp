@@ -119,17 +119,23 @@ class MainWP_GIWeb_Sync_Ajax {
 	}
 
 	/**
-	 * @param Throwable|Exception $e Exception.
+	 * @param Throwable|Exception   $e       Exception.
+	 * @param array<string, mixed>  $context site_id, site_label, duration_ms (optionnels ;
+	 *                                        ajax_action est déduit automatiquement de $_POST['action']).
 	 * @return void
 	 */
-	private static function send_exception( $e ) {
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'MainWP GI-Toolkit AJAX: ' . $e->getMessage() );
-		}
+	private static function send_exception( $e, array $context = array() ) {
+		$context['ajax_action'] = $context['ajax_action']
+			?? ( isset( $_POST['action'] ) ? sanitize_key( wp_unslash( $_POST['action'] ) ) : '' ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+
+		$error_type = MainWP_GIWeb_Error_Log::classify( $e );
+		$error_id   = MainWP_GIWeb_Error_Log::record( $e, array_merge( $context, array( 'error_type' => $error_type ) ) );
+
 		wp_send_json_error(
 			array(
-				'message' => __( 'Erreur serveur lors du traitement. Consultez les logs PHP.', 'mainwp-giweb' ),
+				'message'    => MainWP_GIWeb_Error_Log::friendly_message( $error_type, $e->getMessage() ),
+				'error_id'   => $error_id,
+				'error_type' => $error_type,
 			)
 		);
 	}
@@ -850,11 +856,13 @@ class MainWP_GIWeb_Sync_Ajax {
 	 */
 	public static function ajax_deploy_site() {
 		self::bootstrap_ajax();
+		$deployment_id = isset( $_POST['deployment_id'] ) ? absint( $_POST['deployment_id'] ) : 0;
+		$site_id       = isset( $_POST['site_id'] ) ? absint( $_POST['site_id'] ) : 0;
+		$label         = isset( $_POST['site_label'] ) ? sanitize_text_field( wp_unslash( $_POST['site_label'] ) ) : ( '#' . $site_id );
+		$started_at    = microtime( true );
+
 		try {
 			self::verify_request();
-
-			$deployment_id = isset( $_POST['deployment_id'] ) ? absint( $_POST['deployment_id'] ) : 0;
-			$site_id       = isset( $_POST['site_id'] ) ? absint( $_POST['site_id'] ) : 0;
 
 			if ( ! $deployment_id || ! $site_id ) {
 				wp_send_json_error( array( 'message' => __( 'Paramètres de déploiement invalides.', 'mainwp-giweb' ) ) );
@@ -865,7 +873,6 @@ class MainWP_GIWeb_Sync_Ajax {
 				wp_send_json_error( array( 'message' => __( 'Session de déploiement expirée. Relancez le déploiement.', 'mainwp-giweb' ) ) );
 			}
 
-			$label  = isset( $_POST['site_label'] ) ? sanitize_text_field( wp_unslash( $_POST['site_label'] ) ) : ( '#' . $site_id );
 			$bundle = MainWP_GIWeb_Uptime_Kuma::merge_into_bundle( MainWP_GIWeb_Matomo::merge_into_bundle( $ctx['bundle'] ) );
 			$args   = MainWP_GIWeb_Overrides::apply_to_bundle( $bundle, $site_id );
 			$result = MainWP_GIWeb_API::import_site( $site_id, $bundle, $args );
@@ -879,10 +886,11 @@ class MainWP_GIWeb_Sync_Ajax {
 			MainWP_GIWeb_History::log_site_result( $deployment_id, $site_id, $ok ? 'success' : 'error', $msg, $result );
 
 			$log = sprintf(
-				'[%s] %s — %s',
+				'[%s] %s — %s (%s ms)',
 				$ok ? 'OK' : __( 'ERR', 'mainwp-giweb' ),
 				$label,
-				$msg
+				$msg,
+				(string) round( ( microtime( true ) - $started_at ) * 1000 )
 			);
 
 			wp_send_json_success(
@@ -894,10 +902,53 @@ class MainWP_GIWeb_Sync_Ajax {
 				)
 			);
 		} catch ( Throwable $e ) {
-			self::send_exception( $e );
+			self::send_deploy_exception( $e, $deployment_id, $site_id, $label, $started_at );
 		} catch ( Exception $e ) {
-			self::send_exception( $e );
+			self::send_deploy_exception( $e, $deployment_id, $site_id, $label, $started_at );
 		}
+	}
+
+	/**
+	 * Gère une exception survenue pendant le déploiement vers un site :
+	 * journalise l'erreur détaillée (via MainWP_GIWeb_Error_Log) ET
+	 * enregistre systématiquement le résultat dans l'historique de
+	 * déploiement, pour que ce site n'apparaisse jamais comme "silencieux"
+	 * dans l'onglet Historique même quand le traitement plante.
+	 *
+	 * @param Throwable|Exception $e             Exception.
+	 * @param int                  $deployment_id ID déploiement (0 si inconnu).
+	 * @param int                  $site_id       ID site (0 si inconnu).
+	 * @param string               $label         Nom affiché du site.
+	 * @param float                $started_at    microtime(true) de début de traitement.
+	 * @return void
+	 */
+	private static function send_deploy_exception( $e, $deployment_id, $site_id, $label, $started_at ) {
+		$duration_ms = (int) round( ( microtime( true ) - $started_at ) * 1000 );
+		$error_type  = MainWP_GIWeb_Error_Log::classify( $e );
+		$friendly    = MainWP_GIWeb_Error_Log::friendly_message( $error_type, $e->getMessage() );
+
+		if ( $deployment_id && $site_id ) {
+			MainWP_GIWeb_History::log_site_result(
+				$deployment_id,
+				$site_id,
+				'error',
+				$friendly,
+				array(
+					'success'    => false,
+					'errors'     => array( $friendly ),
+					'error_type' => $error_type,
+				)
+			);
+		}
+
+		self::send_exception(
+			$e,
+			array(
+				'site_id'     => $site_id,
+				'site_label'  => $label,
+				'duration_ms' => $duration_ms,
+			)
+		);
 	}
 
 	/**

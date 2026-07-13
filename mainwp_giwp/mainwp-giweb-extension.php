@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'MAINWP_GIWEB_VERSION' ) ) {
-	define( 'MAINWP_GIWEB_VERSION', '1.6.12' );
+	define( 'MAINWP_GIWEB_VERSION', '1.7.0' );
 }
 if ( ! defined( 'MAINWP_GIWEB_PLUGIN_FILE' ) ) {
 	define( 'MAINWP_GIWEB_PLUGIN_FILE', __DIR__ . '/mainwp-giwp.php' );
@@ -43,6 +43,7 @@ require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-zip.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-plugin-installer.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-onboarding.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-history.php';
+require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-error-log.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-bundle.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-module-options.php';
 require_once MAINWP_GIWEB_PLUGIN_PATH . 'includes/class-mainwp-giweb-modules-ui.php';
@@ -103,6 +104,28 @@ class MainWP_GIWeb_Extension_Activator {
 		add_action( 'admin_enqueue_scripts', array( 'MainWP_GIWeb', 'enqueue_assets' ) );
 
 		register_activation_hook( MAINWP_GIWEB_PLUGIN_FILE, array( 'MainWP_GIWeb_History', 'install_tables' ) );
+		register_activation_hook( MAINWP_GIWEB_PLUGIN_FILE, array( 'MainWP_GIWeb_Error_Log', 'install_tables' ) );
+
+		// Le plugin peut déjà être actif au moment où cette version (avec le
+		// journal d'erreurs) est déployée : register_activation_hook ne se
+		// déclenchera qu'à la prochaine (dés)activation manuelle. On garantit
+		// donc aussi la création de la table via un simple check de version.
+		add_action( 'admin_init', array( __CLASS__, 'maybe_upgrade_tables' ) );
+	}
+
+	/**
+	 * Crée la table du journal d'erreurs si ce site tourne encore une
+	 * version de l'extension antérieure à son introduction.
+	 *
+	 * @return void
+	 */
+	public function maybe_upgrade_tables() {
+		$installed = get_option( 'mainwp_giweb_error_log_table_version', '' );
+		if ( '1.7.0' === $installed ) {
+			return;
+		}
+		MainWP_GIWeb_Error_Log::install_tables();
+		update_option( 'mainwp_giweb_error_log_table_version', '1.7.0', false );
 	}
 
 	/**

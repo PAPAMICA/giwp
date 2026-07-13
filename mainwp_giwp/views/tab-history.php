@@ -54,3 +54,37 @@ $deployments = MainWP_GIWeb_History::get_recent_deployments( 30 );
 		<tbody></tbody>
 	</table>
 </div>
+
+<h2><?php esc_html_e( 'Journal d\'erreurs (toutes actions)', 'mainwp-giweb' ); ?></h2>
+<p class="description">
+	<?php esc_html_e( 'Erreurs détaillées capturées côté Dashboard MainWP (déploiements, synchronisation, etc.), avec type, durée et message précis — pas besoin d\'un accès aux logs PHP serveur.', 'mainwp-giweb' ); ?>
+</p>
+<?php $error_log = class_exists( 'MainWP_GIWeb_Error_Log' ) ? MainWP_GIWeb_Error_Log::get_recent( 50 ) : array(); ?>
+<table class="widefat striped mainwp-giweb-error-log-table">
+	<thead>
+		<tr>
+			<th><?php esc_html_e( 'Date', 'mainwp-giweb' ); ?></th>
+			<th><?php esc_html_e( 'Action', 'mainwp-giweb' ); ?></th>
+			<th><?php esc_html_e( 'Site', 'mainwp-giweb' ); ?></th>
+			<th><?php esc_html_e( 'Type', 'mainwp-giweb' ); ?></th>
+			<th><?php esc_html_e( 'Durée', 'mainwp-giweb' ); ?></th>
+			<th><?php esc_html_e( 'Message', 'mainwp-giweb' ); ?></th>
+		</tr>
+	</thead>
+	<tbody>
+		<?php if ( empty( $error_log ) ) : ?>
+			<tr><td colspan="6"><?php esc_html_e( 'Aucune erreur enregistrée.', 'mainwp-giweb' ); ?></td></tr>
+		<?php else : ?>
+			<?php foreach ( $error_log as $err ) : ?>
+				<tr>
+					<td><?php echo esc_html( $err->created_at ?? '' ); ?></td>
+					<td><code><?php echo esc_html( $err->ajax_action ?? '' ); ?></code></td>
+					<td><?php echo esc_html( $err->site_label ?: ( $err->site_id ? ( '#' . $err->site_id ) : '—' ) ); ?></td>
+					<td><span class="mainwp-giweb-badge err"><?php echo esc_html( $err->error_type ?? '' ); ?></span></td>
+					<td><?php echo esc_html( ( $err->duration_ms ?? 0 ) ? ( (string) (int) $err->duration_ms . ' ms' ) : '—' ); ?></td>
+					<td><?php echo esc_html( $err->message ?? '' ); ?> <span class="description">(<?php echo esc_html( $err->file ?? '' ); ?>:<?php echo esc_html( (string) ( $err->line ?? 0 ) ); ?>)</span></td>
+				</tr>
+			<?php endforeach; ?>
+		<?php endif; ?>
+	</tbody>
+</table>
