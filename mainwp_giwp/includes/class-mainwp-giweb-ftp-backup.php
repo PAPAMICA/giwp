@@ -312,8 +312,8 @@ class MainWP_GIWeb_Ftp_Backup {
 	}
 
 	/**
-	 * @param int                  $site_id   ID MainWP.
-	 * @param bool                 $deploy_ok Déploiement GI réussi.
+	 * @param int  $site_id   ID MainWP.
+	 * @param bool $deploy_ok Déploiement GI réussi.
 	 * @return string
 	 */
 	public static function maybe_ensure_on_deploy( $site_id, $deploy_ok ) {
