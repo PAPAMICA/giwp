@@ -321,7 +321,13 @@ class MainWP_GIWeb_Ftp_Backup {
 			return '';
 		}
 
-		$result = self::ensure_for_site_row( absint( $site_id ) );
+		$row = array(
+			'id'   => absint( $site_id ),
+			'name' => '',
+			'url'  => '',
+		);
+
+		$result = self::ensure_for_site_row( $row );
 		return self::format_result_note( $result );
 	}
 
