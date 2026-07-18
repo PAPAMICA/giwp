@@ -126,9 +126,15 @@ class Gi_Toolkit_Uptime_Kuma_Socket_Client {
 	 * @return void
 	 */
 	public function poll_incoming( $max_attempts = 15 ) {
-		$attempts = max( 1, absint( $max_attempts ) );
-		for ( $i = 0; $i < $attempts; $i++ ) {
-			$this->process_packets( $this->request( 'GET', '' ) );
+		$attempts      = max( 1, absint( $max_attempts ) );
+		$saved_timeout = $this->timeout;
+		$this->timeout = min( 10, max( 5, $saved_timeout ) );
+		try {
+			for ( $i = 0; $i < $attempts; $i++ ) {
+				$this->process_packets( $this->request( 'GET', '' ) );
+			}
+		} finally {
+			$this->timeout = $saved_timeout;
 		}
 	}
 
@@ -369,11 +375,22 @@ class Gi_Toolkit_Uptime_Kuma_Socket_Client {
 	 * @param int $ack_id ID ack attendu.
 	 * @return void
 	 */
+	/**
+	 * @param int $ack_id ID ACK attendu.
+	 * @return void
+	 */
 	private function poll_until_ack( $ack_id ) {
-		$attempts = 0;
-		while ( isset( $this->pending_acks[ $ack_id ] ) && $attempts < 12 ) {
-			$attempts++;
-			$this->process_packets( $this->request( 'GET', '' ) );
+		$saved_timeout  = $this->timeout;
+		$this->timeout  = min( 10, max( 5, $saved_timeout ) );
+		$attempts       = 0;
+		$max_attempts   = 8;
+		try {
+			while ( isset( $this->pending_acks[ $ack_id ] ) && $attempts < $max_attempts ) {
+				$attempts++;
+				$this->process_packets( $this->request( 'GET', '' ) );
+			}
+		} finally {
+			$this->timeout = $saved_timeout;
 		}
 	}
 

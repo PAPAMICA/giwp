@@ -1075,7 +1075,7 @@ class Gi_Toolkit_Uptime_Kuma {
 			);
 		}
 
-		Gi_Toolkit_Uptime_Kuma_API::set_request_timeout( 12 );
+		Gi_Toolkit_Uptime_Kuma_API::set_request_timeout( 45 );
 		$sync = Gi_Toolkit_Uptime_Kuma_Monitor::ensure_monitor_id( $settings, true );
 		Gi_Toolkit_Uptime_Kuma_API::set_request_timeout( 30 );
 
@@ -1132,7 +1132,7 @@ class Gi_Toolkit_Uptime_Kuma {
 			);
 		}
 
-		Gi_Toolkit_Uptime_Kuma_API::set_request_timeout( 15 );
+		Gi_Toolkit_Uptime_Kuma_API::set_request_timeout( 45 );
 		$sync = Gi_Toolkit_Uptime_Kuma_Monitor::ensure_monitor_id( $settings, true );
 		Gi_Toolkit_Uptime_Kuma_API::set_request_timeout( 30 );
 

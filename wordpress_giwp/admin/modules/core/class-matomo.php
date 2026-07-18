@@ -570,7 +570,7 @@ class Gi_Toolkit_Matomo {
 		}
 
 		if ( class_exists( 'Gi_Toolkit_Matomo_API', false ) ) {
-			Gi_Toolkit_Matomo_API::set_request_timeout( 12 );
+			Gi_Toolkit_Matomo_API::set_request_timeout( 25 );
 		}
 
 		$sync = class_exists( 'Gi_Toolkit_Matomo_Site', false )
@@ -634,7 +634,7 @@ class Gi_Toolkit_Matomo {
 			);
 		}
 
-		Gi_Toolkit_Matomo_API::set_request_timeout( 15 );
+		Gi_Toolkit_Matomo_API::set_request_timeout( 25 );
 		$sync = Gi_Toolkit_Matomo_Site::ensure_site_id( $settings, true );
 		Gi_Toolkit_Matomo_API::set_request_timeout( 30 );
 

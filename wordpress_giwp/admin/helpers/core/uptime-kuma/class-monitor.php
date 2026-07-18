@@ -51,7 +51,7 @@ class Gi_Toolkit_Uptime_Kuma_Monitor {
 			);
 		}
 
-		$site_url = self::get_wordpress_site_url();
+		$site_url  = self::get_wordpress_site_url();
 		$site_name = get_bloginfo( 'name' ) ?: $site_url;
 		$found     = self::find_monitor_id_by_url( $api, $site_url );
 
@@ -60,6 +60,15 @@ class Gi_Toolkit_Uptime_Kuma_Monitor {
 				'success'    => true,
 				'monitor_id' => $found,
 				'created'    => false,
+			);
+		}
+
+		// get_monitors() a échoué (réseau / auth) : ne pas tenter une création aveugle.
+		$conn_error = $api->get_last_error();
+		if ( null !== $conn_error && '' !== (string) $conn_error ) {
+			return array(
+				'success' => false,
+				'message' => (string) $conn_error,
 			);
 		}
 

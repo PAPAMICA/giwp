@@ -105,7 +105,8 @@ class Gi_Toolkit_Uptime_Kuma_API {
 	public function get_monitors() {
 		return $this->with_client(
 			function ( Gi_Toolkit_Uptime_Kuma_Socket_Client $client ) {
-				if ( empty( $this->login_client( $client )['ok'] ) ) {
+				$login = $this->login_client( $client );
+				if ( empty( $login['ok'] ) ) {
 					return null;
 				}
 				$client->emit( 'getMonitorList' );
@@ -371,10 +372,11 @@ class Gi_Toolkit_Uptime_Kuma_API {
 
 		return $this->with_client(
 			function ( Gi_Toolkit_Uptime_Kuma_Socket_Client $client ) use ( $name, $url ) {
-				if ( empty( $this->login_client( $client )['ok'] ) ) {
+				$login = $this->login_client( $client );
+				if ( empty( $login['ok'] ) ) {
 					return array(
 						'success' => false,
-						'message' => $this->last_error ?: __( 'Connexion impossible.', 'gi-toolkit' ),
+						'message' => $this->last_error ?: ( $login['message'] ?? __( 'Connexion impossible.', 'gi-toolkit' ) ),
 					);
 				}
 
@@ -383,11 +385,13 @@ class Gi_Toolkit_Uptime_Kuma_API {
 
 				$response = $client->emit( 'add', $monitor );
 				if ( ! is_array( $response ) || empty( $response['ok'] ) ) {
+					$msg = is_array( $response ) && ! empty( $response['msg'] )
+						? (string) $response['msg']
+						: ( $client->get_last_error() ?: __( 'Création du monitor impossible.', 'gi-toolkit' ) );
+					$this->last_error = $msg;
 					return array(
 						'success' => false,
-						'message' => is_array( $response ) && ! empty( $response['msg'] )
-							? (string) $response['msg']
-							: __( 'Création du monitor impossible.', 'gi-toolkit' ),
+						'message' => $msg,
 					);
 				}
 
@@ -440,9 +444,11 @@ class Gi_Toolkit_Uptime_Kuma_API {
 		$password = (string) ( $this->settings['kuma_password'] ?? '' );
 
 		if ( '' === $username || '' === $password ) {
+			$msg = __( 'Renseignez l’utilisateur et le mot de passe admin Uptime Kuma.', 'gi-toolkit' );
+			$this->last_error = $msg;
 			return array(
 				'ok'      => false,
-				'message' => __( 'Renseignez l’utilisateur et le mot de passe admin Uptime Kuma.', 'gi-toolkit' ),
+				'message' => $msg,
 			);
 		}
 
@@ -457,28 +463,35 @@ class Gi_Toolkit_Uptime_Kuma_API {
 
 		if ( null === $response ) {
 			$detail = $client->get_last_error();
+			$msg    = $detail ?: __( 'Pas de réponse Socket.IO (vérifiez l’URL et l’accès réseau au serveur Kuma).', 'gi-toolkit' );
+			$this->last_error = $msg;
 			return array(
 				'ok'      => false,
-				'message' => $detail ?: __( 'Pas de réponse Socket.IO (vérifiez l’URL et l’accès réseau au serveur Kuma).', 'gi-toolkit' ),
+				'message' => $msg,
 			);
 		}
 
 		if ( is_array( $response ) && ! empty( $response['ok'] ) ) {
+			$this->last_error = null;
 			return array( 'ok' => true );
 		}
 
 		if ( is_array( $response ) && ! empty( $response['tokenRequired'] ) ) {
+			$msg = __( 'Ce compte exige la 2FA sur Uptime Kuma : désactivez-la temporairement ou utilisez un compte dédié sans 2FA.', 'gi-toolkit' );
+			$this->last_error = $msg;
 			return array(
 				'ok'      => false,
-				'message' => __( 'Ce compte exige la 2FA sur Uptime Kuma : désactivez-la temporairement ou utilisez un compte dédié sans 2FA.', 'gi-toolkit' ),
+				'message' => $msg,
 			);
 		}
 
 		$server_msg = is_array( $response ) && ! empty( $response['msg'] ) ? (string) $response['msg'] : '';
+		$msg        = $server_msg ?: __( 'Identifiants Uptime Kuma invalides.', 'gi-toolkit' );
+		$this->last_error = $msg;
 
 		return array(
 			'ok'      => false,
-			'message' => $server_msg ?: __( 'Identifiants Uptime Kuma invalides.', 'gi-toolkit' ),
+			'message' => $msg,
 		);
 	}
 }
