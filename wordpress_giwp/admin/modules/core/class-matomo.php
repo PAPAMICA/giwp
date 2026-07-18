@@ -609,6 +609,64 @@ class Gi_Toolkit_Matomo {
 	}
 
 	/**
+	 * Force la réassociation du site Matomo (après déploiement MainWP).
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function refresh_link_after_deploy() {
+		$options = get_option( GI_TOOLKIT_PLUGIN_SETTINGS, array() );
+		if ( ! is_array( $options ) || '1' !== (string) ( $options['Gi_Toolkit_Matomo'] ?? '0' ) ) {
+			return array(
+				'skipped' => true,
+				'success' => true,
+				'message' => __( 'Module Matomo inactif.', 'gi-toolkit' ),
+			);
+		}
+
+		self::load_deploy_dependencies();
+		$settings = self::get_settings_static();
+		$api      = new Gi_Toolkit_Matomo_API( $settings );
+		if ( ! $api->is_configured() ) {
+			return array(
+				'skipped' => true,
+				'success' => true,
+				'message' => __( 'Matomo non configuré.', 'gi-toolkit' ),
+			);
+		}
+
+		Gi_Toolkit_Matomo_API::set_request_timeout( 15 );
+		$sync = Gi_Toolkit_Matomo_Site::ensure_site_id( $settings, true );
+		Gi_Toolkit_Matomo_API::set_request_timeout( 30 );
+
+		if ( empty( $sync['success'] ) || empty( $sync['site_id'] ) ) {
+			return array(
+				'success' => false,
+				'site_id' => absint( $settings['site_id'] ?? 0 ),
+				'message' => $sync['message'] ?? __( 'Synchronisation Matomo impossible.', 'gi-toolkit' ),
+				'sync'    => $sync,
+			);
+		}
+
+		$settings['site_id'] = (int) $sync['site_id'];
+		self::persist_settings_static( $settings, false );
+		Gi_Toolkit_Matomo_Site::clear_tracking_cache( $settings );
+		$site_id = (int) $settings['site_id'];
+		delete_transient( 'gi_matomo_toolbar_' . $site_id );
+		delete_transient( 'gi_matomo_toolbar_v2_' . $site_id );
+		delete_transient( 'gi_matomo_toolbar_v3_' . $site_id );
+		delete_option( 'gi_matomo_toolbar_stale_' . $site_id );
+
+		return array(
+			'success' => true,
+			'site_id' => $site_id,
+			'message' => ! empty( $sync['created'] )
+				? __( 'Matomo : site créé et lié.', 'gi-toolkit' )
+				: __( 'Matomo : site re-lié.', 'gi-toolkit' ),
+			'sync'    => $sync,
+		);
+	}
+
+	/**
 	 * @param array<string, mixed> $settings Réglages.
 	 * @param bool                 $sync_site  Synchroniser le site Matomo.
 	 * @return array{success:bool, site_id?:int, sync?:array<string,mixed>}

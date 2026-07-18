@@ -1107,6 +1107,58 @@ class Gi_Toolkit_Uptime_Kuma {
 	}
 
 	/**
+	 * Force la réassociation du monitor Uptime Kuma (après déploiement MainWP).
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function refresh_link_after_deploy() {
+		$options = get_option( GI_TOOLKIT_PLUGIN_SETTINGS, array() );
+		if ( ! is_array( $options ) || '1' !== (string) ( $options['Gi_Toolkit_Uptime_Kuma'] ?? '0' ) ) {
+			return array(
+				'skipped' => true,
+				'success' => true,
+				'message' => __( 'Module Uptime Kuma inactif.', 'gi-toolkit' ),
+			);
+		}
+
+		self::load_deploy_dependencies();
+		$settings = self::get_settings_static();
+		$api      = new Gi_Toolkit_Uptime_Kuma_API( $settings );
+		if ( ! $api->is_configured() ) {
+			return array(
+				'skipped' => true,
+				'success' => true,
+				'message' => __( 'Uptime Kuma non configuré.', 'gi-toolkit' ),
+			);
+		}
+
+		Gi_Toolkit_Uptime_Kuma_API::set_request_timeout( 15 );
+		$sync = Gi_Toolkit_Uptime_Kuma_Monitor::ensure_monitor_id( $settings, true );
+		Gi_Toolkit_Uptime_Kuma_API::set_request_timeout( 30 );
+
+		if ( empty( $sync['success'] ) || empty( $sync['monitor_id'] ) ) {
+			return array(
+				'success'    => false,
+				'monitor_id' => absint( $settings['monitor_id'] ?? 0 ),
+				'message'    => $sync['message'] ?? __( 'Synchronisation monitor impossible.', 'gi-toolkit' ),
+				'sync'       => $sync,
+			);
+		}
+
+		$settings['monitor_id'] = (int) $sync['monitor_id'];
+		self::persist_settings_static( $settings, false );
+
+		return array(
+			'success'    => true,
+			'monitor_id' => (int) $settings['monitor_id'],
+			'message'    => ! empty( $sync['created'] )
+				? __( 'Uptime Kuma : monitor créé et lié.', 'gi-toolkit' )
+				: __( 'Uptime Kuma : monitor re-lié.', 'gi-toolkit' ),
+			'sync'       => $sync,
+		);
+	}
+
+	/**
 	 * @param array<string, mixed> $settings Réglages.
 	 * @param bool                 $sync_monitor Sync.
 	 * @return array{success:bool, monitor_id?:int}

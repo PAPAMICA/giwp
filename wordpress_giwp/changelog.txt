@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.29.6 =
+* Add: API MainWP `sync_integrations` — force la re-liaison Matomo (site_id) et Uptime Kuma (monitor_id) après déploiement de configuration.
+
 = 2.29.5 =
 * Update: Tableau de bord GI — disponibilité compacte (stats à droite des barres, sans badge En ligne) ; infos techniques enrichies (plugins, cache, SEO, builder…) avec bouton « Copier » pour un rapport support complet.
 

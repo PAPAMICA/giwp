@@ -3,7 +3,7 @@ Contributors: genevois-informatique
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.6.11
+Stable tag: 1.7.1
 License: GPLv2 or later
 
 Gérez et déployez GI-Toolkit sur tous vos sites WordPress via MainWP.
@@ -54,6 +54,9 @@ MainWP > Extensions > GI-Toolkit Manager
 - [ ] Modèle « Default » défini comme profil par défaut dans Réglages
 
 == Changelog ==
+
+= 1.7.1 =
+* Update: Après chaque déploiement de configuration, resynchronise Matomo et Uptime Kuma sur le site enfant (liaison site/monitor forcée).
 
 = 1.6.12 =
 * Update: Mail Catcher — agrégation et affichage du statut spam/RBL (hors alertes d’échec) ; payload API enrichi (`spam`, `chart_spam`, `recent_spam`).

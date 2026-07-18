@@ -878,9 +878,15 @@ class MainWP_GIWeb_Sync_Ajax {
 			$result = MainWP_GIWeb_API::import_site( $site_id, $bundle, $args );
 			$ok     = ! empty( $result['success'] );
 			$msg    = MainWP_GIWeb_API::format_deploy_result_message( $site_id, $label, $result, $ok );
+			if ( $ok ) {
+				$refresh = MainWP_GIWeb_API::refresh_integrations_after_deploy( $site_id, $result );
+				if ( '' !== (string) ( $refresh['message'] ?? '' ) ) {
+					$msg .= ' · ' . (string) $refresh['message'];
+				}
+			}
 			$ftp_note = MainWP_GIWeb_Ftp_Backup::maybe_ensure_on_deploy( $site_id, $ok );
 			if ( '' !== $ftp_note ) {
-				$msg .= ' — ' . $ftp_note;
+				$msg .= ' · ' . $ftp_note;
 			}
 
 			MainWP_GIWeb_History::log_site_result( $deployment_id, $site_id, $ok ? 'success' : 'error', $msg, $result );

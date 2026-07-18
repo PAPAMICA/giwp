@@ -405,4 +405,86 @@ class MainWP_GIWeb_API {
 			)
 		);
 	}
+
+	/**
+	 * Rafraîchit Matomo + Uptime Kuma sur le site enfant (post-déploiement).
+	 *
+	 * @param int $website_id Site ID MainWP.
+	 * @return array<string, mixed>
+	 */
+	public static function sync_integrations( $website_id ) {
+		return self::request( $website_id, 'sync_integrations' );
+	}
+
+	/**
+	 * Après un import réussi, force la re-liaison Matomo / Uptime Kuma.
+	 *
+	 * @param int                  $website_id Site ID.
+	 * @param array<string, mixed> $import     Résultat import.
+	 * @return array{message:string, result:array<string,mixed>|null}
+	 */
+	public static function refresh_integrations_after_deploy( $website_id, $import = array() ) {
+		if ( empty( $import['success'] ) ) {
+			return array(
+				'message' => '',
+				'result'  => null,
+			);
+		}
+
+		$result = self::sync_integrations( $website_id );
+		$data   = is_array( $result['data'] ?? null ) ? $result['data'] : array();
+		$parts  = array();
+
+		$matomo = is_array( $data['matomo'] ?? null ) ? $data['matomo'] : array();
+		if ( empty( $matomo['skipped'] ) ) {
+			if ( ! empty( $matomo['success'] ) && ! empty( $matomo['site_id'] ) ) {
+				$parts[] = sprintf(
+					/* translators: %d: Matomo site id */
+					__( 'Matomo re-lié (site #%d)', 'mainwp-giweb' ),
+					absint( $matomo['site_id'] )
+				);
+			} elseif ( ! empty( $matomo['message'] ) ) {
+				$parts[] = sprintf(
+					/* translators: %s: error */
+					__( 'Matomo : %s', 'mainwp-giweb' ),
+					(string) $matomo['message']
+				);
+			} elseif ( ! empty( $result['errors'][0] ) && self::message_looks_like_matomo( (string) $result['errors'][0] ) ) {
+				$parts[] = (string) $result['errors'][0];
+			}
+		}
+
+		$kuma = is_array( $data['uptime_kuma'] ?? null ) ? $data['uptime_kuma'] : array();
+		if ( empty( $kuma['skipped'] ) ) {
+			if ( ! empty( $kuma['success'] ) && ! empty( $kuma['monitor_id'] ) ) {
+				$parts[] = sprintf(
+					/* translators: %d: monitor id */
+					__( 'Uptime Kuma re-lié (monitor #%d)', 'mainwp-giweb' ),
+					absint( $kuma['monitor_id'] )
+				);
+			} elseif ( ! empty( $kuma['message'] ) ) {
+				$parts[] = sprintf(
+					/* translators: %s: error */
+					__( 'Uptime Kuma : %s', 'mainwp-giweb' ),
+					(string) $kuma['message']
+				);
+			}
+		}
+
+		// Ancien GI-Toolkit sans action sync_integrations : ignorer silencieusement.
+		if ( empty( $parts ) && ! empty( $result['errors'][0] ) ) {
+			$err = (string) $result['errors'][0];
+			if ( false !== stripos( $err, 'inconnue' ) || false !== stripos( $err, 'unknown' ) ) {
+				return array(
+					'message' => '',
+					'result'  => $result,
+				);
+			}
+		}
+
+		return array(
+			'message' => implode( ' · ', $parts ),
+			'result'  => $result,
+		);
+	}
 }

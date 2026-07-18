@@ -32,9 +32,15 @@ class MainWP_GIWeb_Deploy {
 			$result = MainWP_GIWeb_API::import_site( $site_id, $bundle, $args );
 			$status = ! empty( $result['success'] ) ? 'success' : 'error';
 			$msg    = MainWP_GIWeb_API::format_deploy_result_message( $site_id, '', $result, 'success' === $status );
+			if ( 'success' === $status ) {
+				$refresh = MainWP_GIWeb_API::refresh_integrations_after_deploy( $site_id, $result );
+				if ( '' !== (string) ( $refresh['message'] ?? '' ) ) {
+					$msg .= ' · ' . (string) $refresh['message'];
+				}
+			}
 			$ftp_note = MainWP_GIWeb_Ftp_Backup::maybe_ensure_on_deploy( $site_id, 'success' === $status );
 			if ( '' !== $ftp_note ) {
-				$msg .= ' — ' . $ftp_note;
+				$msg .= ' · ' . $ftp_note;
 			}
 			MainWP_GIWeb_History::log_site_result( $deployment_id, $site_id, $status, $msg, $result );
 			$results[ $site_id ] = $result;

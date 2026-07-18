@@ -42,6 +42,8 @@ class Gi_Toolkit_MainWP_API {
 					Gi_Toolkit_Security::log( 'mainwp_import', array( 'success' => ! empty( $result['success'] ) ) );
 				}
 				return $result;
+			case 'sync_integrations':
+				return self::handle_sync_integrations();
 			case 'set_modules':
 				$modules = isset( $data['modules'] ) && is_array( $data['modules'] ) ? $data['modules'] : array();
 				return Gi_Toolkit_Settings::set_modules_state( $modules );
@@ -92,6 +94,58 @@ class Gi_Toolkit_MainWP_API {
 				)
 			);
 		}
+	}
+
+	/**
+	 * Rafraîchit les liaisons Matomo / Uptime Kuma après un déploiement MainWP.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function handle_sync_integrations() {
+		if ( function_exists( 'set_time_limit' ) ) {
+			set_time_limit( 120 );
+		}
+
+		$result = array(
+			'matomo'      => array( 'skipped' => true ),
+			'uptime_kuma' => array( 'skipped' => true ),
+		);
+
+		if ( class_exists( 'Gi_Toolkit_Matomo' ) ) {
+			$result['matomo'] = Gi_Toolkit_Matomo::refresh_link_after_deploy();
+		}
+
+		if ( class_exists( 'Gi_Toolkit_Uptime_Kuma' ) ) {
+			$result['uptime_kuma'] = Gi_Toolkit_Uptime_Kuma::refresh_link_after_deploy();
+		}
+
+		$ok = true;
+		foreach ( array( 'matomo', 'uptime_kuma' ) as $key ) {
+			$row = $result[ $key ];
+			if ( ! empty( $row['skipped'] ) ) {
+				continue;
+			}
+			if ( empty( $row['success'] ) ) {
+				$ok = false;
+			}
+		}
+
+		return $ok ? self::success( $result ) : array(
+			'success' => false,
+			'data'    => $result,
+			'errors'  => array_values(
+				array_filter(
+					array(
+						empty( $result['matomo']['skipped'] ) && empty( $result['matomo']['success'] )
+							? (string) ( $result['matomo']['message'] ?? __( 'Échec sync Matomo.', 'gi-toolkit' ) )
+							: '',
+						empty( $result['uptime_kuma']['skipped'] ) && empty( $result['uptime_kuma']['success'] )
+							? (string) ( $result['uptime_kuma']['message'] ?? __( 'Échec sync Uptime Kuma.', 'gi-toolkit' ) )
+							: '',
+					)
+				)
+			),
+		);
 	}
 
 	/**
