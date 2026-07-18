@@ -384,6 +384,12 @@ class Gi_Toolkit_Modules_Data {
 				'pro'           => false,
 				'path'          => 'core/class-maintenance-mode.php',
 			),
+			'Gi_Toolkit_Managed_Dashboard' => array(
+				'original_name' => 'Managed Dashboard',
+				'group'         => 'administration',
+				'pro'           => false,
+				'path'          => 'core/class-managed-dashboard.php',
+			),
 			'Gi_Toolkit_Password_Protection' => array(
 				'original_name' => "Password Protection",
 				'group'         => 'administration',
@@ -1091,6 +1097,10 @@ class Gi_Toolkit_Modules_Data {
 			'Gi_Toolkit_Maintenance_Mode' => array(
 				'name' => esc_html_x( "Maintenance Mode", "Module name", 'gi-toolkit' ),
 				'desc' => esc_html_x( "Show a customizable maintenance page on the frontend while performing a brief maintenance to your site. Logged-in administrators can still view the site as usual.", "Module description", 'gi-toolkit' ),
+			),
+			'Gi_Toolkit_Managed_Dashboard' => array(
+				'name' => esc_html_x( 'Tableau de bord GI', 'Module name', 'gi-toolkit' ),
+				'desc' => esc_html_x( 'Remplace le tableau de bord WordPress par une page d’accueil Genevois Informatique (uptime, visites, mails, sauvegardes, mises à jour, espace client).', 'Module description', 'gi-toolkit' ),
 			),
 			'Gi_Toolkit_Password_Protection' => array(
 				'name' => esc_html_x( "Password Protection", "Module name", 'gi-toolkit' ),

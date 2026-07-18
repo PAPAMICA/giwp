@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.29.0 =
+* Add: module « Tableau de bord GI » — remplace le dashboard WordPress (accueil managé Genevois Informatique : uptime, visites Matomo, mails, sauvegardes, historique des mises à jour, CTA espace client).
+
 = 2.25.2 =
 * Fix: statut UpdraftPlus MainWP — ne plus considérer les options `updraft_jobdata_*` orphelines comme un backup en cours ; détection via cron `updraft_backup_resume` et `jobstatus` ; services distants lus aussi depuis le jobdata lié.
 
