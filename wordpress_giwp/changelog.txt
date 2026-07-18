@@ -1,5 +1,11 @@
 == Changelog ==
 
+= 2.29.2 =
+* Add: Tableau de bord GI — widget « Informations techniques » (HTTPS/SSL, versions WordPress/PHP/GI-Toolkit/DB/serveur, hébergeur via ASN + favicon + reverse DNS).
+
+= 2.29.1 =
+* Update: Tableau de bord GI — logo Genevois Informatique, aide WP masquée, uptime sans temps de réponse (carte masquée si non configuré), cartes sauvegarde / mises à jour redesignées.
+
 = 2.29.0 =
 * Add: module « Tableau de bord GI » — remplace le dashboard WordPress (accueil managé Genevois Informatique : uptime, visites Matomo, mails, sauvegardes, historique des mises à jour, CTA espace client).
 

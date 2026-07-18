@@ -21,6 +21,7 @@ class Gi_Toolkit_Managed_Dashboard {
 	public function __construct() {
 		add_action( 'wp_dashboard_setup', array( $this, 'clear_default_dashboard' ), 999 );
 		add_action( 'admin_head-index.php', array( $this, 'admin_head_styles' ) );
+		add_action( 'current_screen', array( $this, 'disable_help_tabs' ) );
 		add_action( 'all_admin_notices', array( $this, 'render_shell' ), 1 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'wp_ajax_' . self::AJAX_ACTION, array( $this, 'ajax_dashboard' ) );
@@ -55,6 +56,9 @@ class Gi_Toolkit_Managed_Dashboard {
 			body.index-php #dashboard-widgets-wrap,
 			body.index-php .welcome-panel,
 			body.index-php #screen-options-link-wrap,
+			body.index-php #contextual-help-link-wrap,
+			body.index-php #screen-meta,
+			body.index-php #screen-meta-links,
 			body.index-php .wrap > h1:first-child,
 			body.index-php .wrap > .wp-header-end {
 				display: none !important;
@@ -65,6 +69,20 @@ class Gi_Toolkit_Managed_Dashboard {
 			}
 		</style>
 		<?php
+	}
+
+	/**
+	 * Désactive les onglets d’aide WordPress sur le tableau de bord.
+	 *
+	 * @param WP_Screen $screen Écran courant.
+	 * @return void
+	 */
+	public function disable_help_tabs( $screen ) {
+		if ( ! $screen || 'dashboard' !== $screen->id ) {
+			return;
+		}
+		$screen->remove_help_tabs();
+		$screen->set_help_sidebar( '' );
 	}
 
 	/**
@@ -157,23 +175,33 @@ class Gi_Toolkit_Managed_Dashboard {
 
 		$user = wp_get_current_user();
 		$name = $user->display_name ? $user->display_name : $user->user_login;
+		$logo = GI_TOOLKIT_PLUGIN_URL . 'admin/assets/img/logo-genevois-informatique.png';
 		?>
 		<div class="gi-md-wrap" id="gi-toolkit-managed-dashboard" data-state="loading">
 			<header class="gi-md-hero gi-md-animate-in" style="--gi-animate-i: 0;">
-				<div class="gi-md-hero__brand">
-					<span class="gi-md-hero__eyebrow"><?php esc_html_e( 'Genevois Informatique', 'gi-toolkit' ); ?></span>
-					<h1 class="gi-md-hero__title">
-						<?php
-						printf(
-							/* translators: %s: user display name */
-							esc_html__( 'Bonjour %s', 'gi-toolkit' ),
-							esc_html( $name )
-						);
-						?>
-					</h1>
-					<p class="gi-md-hero__subtitle">
-						<?php esc_html_e( 'Votre site est managé par Genevois Informatique', 'gi-toolkit' ); ?>
-					</p>
+				<div class="gi-md-hero__left">
+					<img
+						class="gi-md-hero__logo"
+						src="<?php echo esc_url( $logo ); ?>"
+						alt="<?php esc_attr_e( 'Genevois Informatique', 'gi-toolkit' ); ?>"
+						width="220"
+						height="55"
+					/>
+					<div class="gi-md-hero__copy">
+						<p class="gi-md-hero__kicker"><?php esc_html_e( 'Espace managé', 'gi-toolkit' ); ?></p>
+						<h1 class="gi-md-hero__title">
+							<?php
+							printf(
+								/* translators: %s: user display name */
+								esc_html__( 'Bonjour %s', 'gi-toolkit' ),
+								esc_html( $name )
+							);
+							?>
+						</h1>
+						<p class="gi-md-hero__subtitle">
+							<?php esc_html_e( 'Votre site est managé par Genevois Informatique', 'gi-toolkit' ); ?>
+						</p>
+					</div>
 				</div>
 				<div class="gi-md-hero__actions">
 					<a
@@ -196,6 +224,7 @@ class Gi_Toolkit_Managed_Dashboard {
 					'mail'    => __( 'E-mails', 'gi-toolkit' ),
 					'backup'  => __( 'Sauvegardes', 'gi-toolkit' ),
 					'updates' => __( 'Mises à jour', 'gi-toolkit' ),
+					'tech'    => __( 'Informations techniques', 'gi-toolkit' ),
 				);
 				$i = 1;
 				foreach ( $cards as $key => $label ) :
@@ -237,41 +266,70 @@ class Gi_Toolkit_Managed_Dashboard {
 			wp_send_json_error( array( 'message' => __( 'Accès refusé.', 'gi-toolkit' ) ), 403 );
 		}
 
-		$uptime_html  = '';
+		$cards        = array();
+		$hidden_cards = array();
 		$uptime_chart = null;
+
 		if ( $this->is_module_enabled( 'Gi_Toolkit_Uptime_Kuma' ) && class_exists( 'Gi_Toolkit_Uptime_Kuma' ) ) {
 			Gi_Toolkit_Uptime_Kuma::load_deploy_dependencies();
 			$uptime_settings = Gi_Toolkit_Uptime_Kuma::get_settings_static();
 			$uptime_data     = Gi_Toolkit_Uptime_Kuma_Status_Data::fetch_dashboard( $uptime_settings, false );
-			if ( ! empty( $uptime_data['ready'] ) && ! empty( $uptime_data['chart'] ) ) {
-				$uptime_chart = $uptime_data['chart'];
+			if ( ! empty( $uptime_data['ready'] ) ) {
+				ob_start();
+				Gi_Toolkit_Uptime_Kuma::render_dashboard_markup(
+					$uptime_data,
+					$uptime_settings,
+					array(
+						'show_section_heading'  => false,
+						'chart_canvas_id'       => 'gi-md-uptime-ping-chart',
+						'settings_url'          => Gi_Toolkit_Uptime_Kuma::get_settings_admin_url(),
+						'animate_entrance'      => true,
+						'hide_response_metrics' => true,
+					)
+				);
+				$cards['uptime'] = (string) ob_get_clean();
+			} else {
+				$hidden_cards[] = 'uptime';
 			}
-			ob_start();
-			Gi_Toolkit_Uptime_Kuma::render_dashboard_markup(
-				$uptime_data,
-				$uptime_settings,
-				array(
-					'show_section_heading' => false,
-					'chart_canvas_id'      => 'gi-md-uptime-ping-chart',
-					'settings_url'         => Gi_Toolkit_Uptime_Kuma::get_settings_admin_url(),
-					'animate_entrance'     => true,
-				)
-			);
-			$uptime_html = (string) ob_get_clean();
 		} else {
-			$uptime_html = $this->render_uptime_card();
+			$hidden_cards[] = 'uptime';
 		}
+
+		$visits = $this->render_visits_card();
+		if ( null === $visits ) {
+			$hidden_cards[] = 'visits';
+		} else {
+			$cards['visits'] = $visits;
+		}
+
+		$mail = $this->render_mail_card();
+		if ( null === $mail ) {
+			$hidden_cards[] = 'mail';
+		} else {
+			$cards['mail'] = $mail;
+		}
+
+		$backup = $this->render_backup_card();
+		if ( null === $backup ) {
+			$hidden_cards[] = 'backup';
+		} else {
+			$cards['backup'] = $backup;
+		}
+
+		$updates = $this->render_updates_card();
+		if ( null === $updates ) {
+			$hidden_cards[] = 'updates';
+		} else {
+			$cards['updates'] = $updates;
+		}
+
+		$cards['tech'] = $this->render_tech_card();
 
 		wp_send_json_success(
 			array(
-				'cards' => array(
-					'uptime'  => $uptime_html,
-					'visits'  => $this->render_visits_card(),
-					'mail'    => $this->render_mail_card(),
-					'backup'  => $this->render_backup_card(),
-					'updates' => $this->render_updates_card(),
-				),
-				'uptime_chart'     => $uptime_chart,
+				'cards'            => $cards,
+				'hidden_cards'     => $hidden_cards,
+				'uptime_chart'     => null,
 				'uptime_canvas_id' => 'gi-md-uptime-ping-chart',
 			)
 		);
@@ -323,49 +381,11 @@ class Gi_Toolkit_Managed_Dashboard {
 	}
 
 	/**
-	 * @return string
-	 */
-	private function render_uptime_card() {
-		if ( ! $this->is_module_enabled( 'Gi_Toolkit_Uptime_Kuma' ) || ! class_exists( 'Gi_Toolkit_Uptime_Kuma' ) ) {
-			return $this->empty_state_html(
-				'dashicons-chart-line',
-				__( 'Uptime Kuma inactif', 'gi-toolkit' ),
-				__( 'Activez le module Uptime Kuma pour afficher la disponibilité du site.', 'gi-toolkit' ),
-				admin_url( 'admin.php?page=gi-toolkit-settings' ),
-				__( 'Ouvrir GI-Toolkit', 'gi-toolkit' )
-			);
-		}
-
-		Gi_Toolkit_Uptime_Kuma::load_deploy_dependencies();
-		$settings  = Gi_Toolkit_Uptime_Kuma::get_settings_static();
-		$dashboard = Gi_Toolkit_Uptime_Kuma_Status_Data::fetch_dashboard( $settings, false );
-
-		ob_start();
-		Gi_Toolkit_Uptime_Kuma::render_dashboard_markup(
-			$dashboard,
-			$settings,
-			array(
-				'show_section_heading' => false,
-				'chart_canvas_id'      => 'gi-md-uptime-ping-chart',
-				'settings_url'         => Gi_Toolkit_Uptime_Kuma::get_settings_admin_url(),
-				'animate_entrance'     => true,
-			)
-		);
-		return (string) ob_get_clean();
-	}
-
-	/**
-	 * @return string
+	 * @return string|null HTML ou null pour masquer la carte.
 	 */
 	private function render_visits_card() {
 		if ( ! $this->is_module_enabled( 'Gi_Toolkit_Matomo' ) || ! class_exists( 'Gi_Toolkit_Matomo' ) ) {
-			return $this->empty_state_html(
-				'dashicons-chart-area',
-				__( 'Matomo inactif', 'gi-toolkit' ),
-				__( 'Activez Connect Matomo pour afficher les statistiques de visites.', 'gi-toolkit' ),
-				admin_url( 'admin.php?page=gi-toolkit-settings' ),
-				__( 'Ouvrir GI-Toolkit', 'gi-toolkit' )
-			);
+			return null;
 		}
 
 		require_once GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/matomo/class-api.php';
@@ -374,13 +394,7 @@ class Gi_Toolkit_Managed_Dashboard {
 
 		$settings = Gi_Toolkit_Matomo::get_settings_static();
 		if ( ! Gi_Toolkit_Matomo::is_dashboard_ready( $settings ) ) {
-			return $this->empty_state_html(
-				'dashicons-chart-area',
-				__( 'Matomo non configuré', 'gi-toolkit' ),
-				__( 'Connectez votre instance Matomo pour voir les visites des 7 derniers jours.', 'gi-toolkit' ),
-				Gi_Toolkit_Matomo::get_settings_admin_url(),
-				__( 'Configurer Matomo', 'gi-toolkit' )
-			);
+			return null;
 		}
 
 		$data = Gi_Toolkit_Matomo_Dashboard_Data::fetch( $settings, 'last7' );
@@ -455,26 +469,16 @@ class Gi_Toolkit_Managed_Dashboard {
 	}
 
 	/**
-	 * @return string
+	 * @return string|null HTML ou null pour masquer la carte.
 	 */
 	private function render_mail_card() {
 		if ( ! $this->is_module_enabled( 'Gi_Toolkit_Mail_Catcher' ) || ! class_exists( 'Gi_Toolkit_Mail_Catcher' ) ) {
-			return $this->empty_state_html(
-				'dashicons-email-alt',
-				__( 'Mail Catcher inactif', 'gi-toolkit' ),
-				__( 'Activez Mail Catcher pour suivre les envois et les erreurs SMTP.', 'gi-toolkit' ),
-				admin_url( 'admin.php?page=gi-toolkit-settings' ),
-				__( 'Ouvrir GI-Toolkit', 'gi-toolkit' )
-			);
+			return null;
 		}
 
 		$mc = Gi_Toolkit_Mail_Catcher::instance();
 		if ( ! $mc ) {
-			return $this->empty_state_html(
-				'dashicons-email-alt',
-				__( 'Mail Catcher', 'gi-toolkit' ),
-				__( 'Le module est activé mais pas encore initialisé.', 'gi-toolkit' )
-			);
+			return null;
 		}
 
 		$stats = $mc->get_mail_statistics();
@@ -519,7 +523,7 @@ class Gi_Toolkit_Managed_Dashboard {
 	}
 
 	/**
-	 * @return string
+	 * @return string|null HTML ou null pour masquer la carte.
 	 */
 	private function render_backup_card() {
 		if ( ! class_exists( 'Gi_Toolkit_UpdraftPlus_Status' ) ) {
@@ -529,21 +533,17 @@ class Gi_Toolkit_Managed_Dashboard {
 		$payload = Gi_Toolkit_UpdraftPlus_Status::get_mainwp_status_payload();
 
 		if ( empty( $payload['plugin_active'] ) ) {
-			return $this->empty_state_html(
-				'dashicons-database',
-				__( 'UpdraftPlus absent', 'gi-toolkit' ),
-				__( 'Installez et activez UpdraftPlus pour suivre les sauvegardes.', 'gi-toolkit' )
-			);
+			return null;
 		}
 
 		$status = (string) ( $payload['status'] ?? 'none' );
 		$labels = array(
-			'success'     => __( 'À jour', 'gi-toolkit' ),
-			'ok'          => __( 'À jour', 'gi-toolkit' ),
-			'stale'       => __( 'Ancienne', 'gi-toolkit' ),
+			'success'     => __( 'Sauvegarde OK', 'gi-toolkit' ),
+			'ok'          => __( 'Sauvegarde OK', 'gi-toolkit' ),
+			'stale'       => __( 'À rafraîchir', 'gi-toolkit' ),
 			'partial'     => __( 'Partielle', 'gi-toolkit' ),
-			'in_progress' => __( 'En cours', 'gi-toolkit' ),
-			'none'        => __( 'Aucune', 'gi-toolkit' ),
+			'in_progress' => __( 'En cours…', 'gi-toolkit' ),
+			'none'        => __( 'Aucune sauvegarde', 'gi-toolkit' ),
 			'warning'     => __( 'Attention', 'gi-toolkit' ),
 			'error'       => __( 'Erreur', 'gi-toolkit' ),
 		);
@@ -553,47 +553,76 @@ class Gi_Toolkit_Managed_Dashboard {
 			$status_class = 'none';
 		}
 
-		$when = '';
+		$when_abs = '';
+		$when_rel = '—';
 		if ( ! empty( $payload['last_backup_time'] ) ) {
-			$when = sprintf(
+			$ts       = (int) $payload['last_backup_time'];
+			$when_abs = wp_date( 'd/m/Y H:i', $ts );
+			$when_rel = sprintf(
 				/* translators: %s: relative time */
-				__( 'Il y a %s', 'gi-toolkit' ),
-				human_time_diff( (int) $payload['last_backup_time'], time() )
+				__( 'il y a %s', 'gi-toolkit' ),
+				human_time_diff( $ts, time() )
 			);
 		}
 
+		$remote_ok = ! empty( $payload['remote_sent'] );
+		$remote_cfg = ! empty( $payload['remote_configured'] );
+		$age_days  = isset( $payload['last_backup_age_days'] ) ? (int) $payload['last_backup_age_days'] : null;
+
 		ob_start();
 		?>
-		<div class="gi-md-backup">
-			<div class="gi-md-backup__badge status-<?php echo esc_attr( $status_class ); ?>">
-				<?php echo esc_html( $status_label ); ?>
+		<div class="gi-md-backup gi-md-backup--hero status-<?php echo esc_attr( $status_class ); ?>">
+			<div class="gi-md-backup__glow" aria-hidden="true"></div>
+			<div class="gi-md-backup__top">
+				<div class="gi-md-backup__orb" aria-hidden="true">
+					<span class="dashicons dashicons-database"></span>
+				</div>
+				<div class="gi-md-backup__headline">
+					<span class="gi-md-backup__badge"><?php echo esc_html( $status_label ); ?></span>
+					<strong class="gi-md-backup__when"><?php echo esc_html( $when_rel ); ?></strong>
+					<?php if ( $when_abs ) : ?>
+						<span class="gi-md-backup__date"><?php echo esc_html( $when_abs ); ?></span>
+					<?php endif; ?>
+				</div>
 			</div>
-			<ul class="gi-md-backup__list">
-				<li>
-					<span><?php esc_html_e( 'Dernière sauvegarde', 'gi-toolkit' ); ?></span>
-					<strong><?php echo esc_html( $when ? $when : '—' ); ?></strong>
-				</li>
-				<li>
-					<span><?php esc_html_e( 'Taille', 'gi-toolkit' ); ?></span>
+			<div class="gi-md-backup__metrics">
+				<div class="gi-md-backup__metric">
+					<span class="gi-md-backup__metric-label"><?php esc_html_e( 'Taille', 'gi-toolkit' ); ?></span>
 					<strong><?php echo esc_html( (string) ( $payload['size_human'] ?? '—' ) ); ?></strong>
-				</li>
-				<li>
-					<span><?php esc_html_e( 'Stockage distant', 'gi-toolkit' ); ?></span>
+				</div>
+				<div class="gi-md-backup__metric">
+					<span class="gi-md-backup__metric-label"><?php esc_html_e( 'Âge', 'gi-toolkit' ); ?></span>
 					<strong>
 						<?php
-						if ( ! empty( $payload['remote_sent'] ) ) {
+						echo null !== $age_days
+							? esc_html(
+								sprintf(
+									/* translators: %d: days */
+									_n( '%d jour', '%d jours', $age_days, 'gi-toolkit' ),
+									$age_days
+								)
+							)
+							: '—';
+						?>
+					</strong>
+				</div>
+				<div class="gi-md-backup__metric">
+					<span class="gi-md-backup__metric-label"><?php esc_html_e( 'Distant', 'gi-toolkit' ); ?></span>
+					<strong class="<?php echo $remote_ok ? 'is-ok' : ( $remote_cfg ? 'is-warn' : 'is-off' ); ?>">
+						<?php
+						if ( $remote_ok ) {
 							esc_html_e( 'Envoyé', 'gi-toolkit' );
-						} elseif ( ! empty( $payload['remote_configured'] ) ) {
+						} elseif ( $remote_cfg ) {
 							esc_html_e( 'Configuré', 'gi-toolkit' );
 						} else {
-							esc_html_e( 'Non configuré', 'gi-toolkit' );
+							esc_html_e( 'Local', 'gi-toolkit' );
 						}
 						?>
 					</strong>
-				</li>
-			</ul>
+				</div>
+			</div>
 			<?php if ( ! empty( $payload['last_backup_label'] ) ) : ?>
-				<p class="description"><?php echo esc_html( (string) $payload['last_backup_label'] ); ?></p>
+				<p class="gi-md-backup__parts"><?php echo esc_html( (string) $payload['last_backup_label'] ); ?></p>
 			<?php endif; ?>
 		</div>
 		<?php
@@ -601,61 +630,316 @@ class Gi_Toolkit_Managed_Dashboard {
 	}
 
 	/**
-	 * @return string
+	 * @return string|null HTML ou null pour masquer la carte.
 	 */
 	private function render_updates_card() {
-		$logs_enabled = $this->is_module_enabled( 'Gi_Toolkit_Update_Logs' );
-		$logs_url     = admin_url( 'admin.php?page=gi-toolkit-settings-update-logs' );
-
-		if ( ! $logs_enabled ) {
-			return $this->empty_state_html(
-				'dashicons-update',
-				__( 'Journal des mises à jour inactif', 'gi-toolkit' ),
-				__( 'Activez le module Pro « Updates Logs » pour conserver l’historique des mises à jour.', 'gi-toolkit' ),
-				admin_url( 'admin.php?page=gi-toolkit-settings' ),
-				__( 'Ouvrir GI-Toolkit', 'gi-toolkit' )
-			);
+		if ( ! $this->is_module_enabled( 'Gi_Toolkit_Update_Logs' ) ) {
+			return null;
 		}
 
 		$logs = get_option( 'gi_toolkit_update_logs', array() );
 		if ( ! is_array( $logs ) || empty( $logs ) ) {
-			return $this->empty_state_html(
-				'dashicons-update',
-				__( 'Aucun historique', 'gi-toolkit' ),
-				__( 'Aucune mise à jour enregistrée pour le moment.', 'gi-toolkit' ),
-				$logs_url,
-				__( 'Voir le journal', 'gi-toolkit' )
-			);
+			return null;
 		}
 
-		$rows = array_slice( $logs, 0, 8 );
+		$logs_url = admin_url( 'admin.php?page=gi-toolkit-settings-update-logs' );
+		$rows     = array_slice( $logs, 0, 6 );
 		ob_start();
 		?>
 		<div class="gi-md-updates">
-			<ul class="gi-md-updates__list">
-				<?php foreach ( $rows as $row ) : ?>
+			<ol class="gi-md-timeline">
+				<?php foreach ( $rows as $index => $row ) : ?>
 					<?php
-					$items = isset( $row['items'] ) && is_array( $row['items'] ) ? implode( ', ', $row['items'] ) : '';
-					$type  = (string) ( $row['type'] ?? '' );
+					$items  = isset( $row['items'] ) && is_array( $row['items'] ) ? implode( ', ', $row['items'] ) : '';
+					$type   = (string) ( $row['type'] ?? '' );
 					$action = (string) ( $row['action'] ?? '' );
+					$icon   = 'plugin' === $type ? 'dashicons-admin-plugins' : ( 'theme' === $type ? 'dashicons-admin-appearance' : 'dashicons-wordpress' );
 					?>
-					<li class="gi-md-updates__item">
-						<span class="gi-md-updates__time"><?php echo esc_html( (string) ( $row['time'] ?? '' ) ); ?></span>
-						<span class="gi-md-updates__meta">
-							<span class="gi-md-updates__badge"><?php echo esc_html( $type ); ?></span>
-							<span class="gi-md-updates__action"><?php echo esc_html( $action ); ?></span>
+					<li class="gi-md-timeline__item" style="--gi-animate-i: <?php echo (int) $index; ?>;">
+						<span class="gi-md-timeline__dot">
+							<span class="dashicons <?php echo esc_attr( $icon ); ?>" aria-hidden="true"></span>
 						</span>
-						<?php if ( $items ) : ?>
-							<code class="gi-md-updates__items"><?php echo esc_html( $items ); ?></code>
-						<?php endif; ?>
+						<div class="gi-md-timeline__body">
+							<div class="gi-md-timeline__head">
+								<span class="gi-md-timeline__badge"><?php echo esc_html( $type ? $type : 'core' ); ?></span>
+								<span class="gi-md-timeline__action"><?php echo esc_html( $action ); ?></span>
+								<span class="gi-md-timeline__time"><?php echo esc_html( (string) ( $row['time'] ?? '' ) ); ?></span>
+							</div>
+							<?php if ( $items ) : ?>
+								<p class="gi-md-timeline__items"><?php echo esc_html( $items ); ?></p>
+							<?php endif; ?>
+						</div>
 					</li>
 				<?php endforeach; ?>
-			</ul>
+			</ol>
 			<p class="gi-md-card__footer">
 				<a href="<?php echo esc_url( $logs_url ); ?>"><?php esc_html_e( 'Voir tout l’historique →', 'gi-toolkit' ); ?></a>
 			</p>
 		</div>
 		<?php
 		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Carte SSL / versions / hébergeur.
+	 *
+	 * @return string
+	 */
+	private function render_tech_card() {
+		$ssl      = $this->get_ssl_status();
+		$versions = $this->get_tech_versions();
+		$hosting  = $this->get_hosting_info();
+
+		ob_start();
+		?>
+		<div class="gi-md-tech">
+			<div class="gi-md-tech__security">
+				<div class="gi-md-tech__pill <?php echo ! empty( $ssl['https'] ) ? 'is-ok' : 'is-bad'; ?>">
+					<span class="dashicons <?php echo ! empty( $ssl['https'] ) ? 'dashicons-lock' : 'dashicons-unlock'; ?>" aria-hidden="true"></span>
+					<span><?php echo ! empty( $ssl['https'] ) ? esc_html__( 'HTTPS actif', 'gi-toolkit' ) : esc_html__( 'HTTPS inactif', 'gi-toolkit' ); ?></span>
+				</div>
+				<div class="gi-md-tech__pill <?php echo ! empty( $ssl['valid'] ) ? 'is-ok' : ( ! empty( $ssl['https'] ) ? 'is-warn' : 'is-bad' ); ?>">
+					<span class="dashicons dashicons-shield" aria-hidden="true"></span>
+					<span>
+						<?php
+						if ( ! empty( $ssl['valid'] ) ) {
+							esc_html_e( 'SSL valide', 'gi-toolkit' );
+						} elseif ( ! empty( $ssl['https'] ) ) {
+							esc_html_e( 'SSL à vérifier', 'gi-toolkit' );
+						} else {
+							esc_html_e( 'Pas de SSL', 'gi-toolkit' );
+						}
+						?>
+					</span>
+				</div>
+				<?php if ( ! empty( $ssl['expires'] ) ) : ?>
+					<div class="gi-md-tech__pill is-neutral">
+						<span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
+						<span>
+							<?php
+							printf(
+								/* translators: %s: certificate expiry date */
+								esc_html__( 'Expire le %s', 'gi-toolkit' ),
+								esc_html( (string) $ssl['expires'] )
+							);
+							?>
+						</span>
+					</div>
+				<?php endif; ?>
+				<?php if ( ! empty( $ssl['issuer'] ) ) : ?>
+					<div class="gi-md-tech__pill is-neutral">
+						<span class="dashicons dashicons-id" aria-hidden="true"></span>
+						<span><?php echo esc_html( (string) $ssl['issuer'] ); ?></span>
+					</div>
+				<?php endif; ?>
+			</div>
+
+			<?php if ( ! empty( $hosting['public_ip'] ) || ! empty( $hosting['asn'] ) ) : ?>
+				<div class="gi-md-tech__host">
+					<?php if ( ! empty( $hosting['logo_url'] ) ) : ?>
+						<img
+							class="gi-md-tech__host-logo"
+							src="<?php echo esc_url( (string) $hosting['logo_url'] ); ?>"
+							alt=""
+							width="28"
+							height="28"
+							loading="lazy"
+						/>
+					<?php else : ?>
+						<span class="gi-md-tech__host-fallback dashicons dashicons-cloud" aria-hidden="true"></span>
+					<?php endif; ?>
+					<div class="gi-md-tech__host-body">
+						<strong class="gi-md-tech__host-name">
+							<?php echo esc_html( (string) ( $hosting['asn'] ?: ( $hosting['isp'] ?: __( 'Hébergeur inconnu', 'gi-toolkit' ) ) ) ); ?>
+						</strong>
+						<span class="gi-md-tech__host-meta">
+							<?php
+							$bits = array();
+							if ( ! empty( $hosting['public_ip'] ) ) {
+								$bits[] = (string) $hosting['public_ip'];
+							}
+							if ( ! empty( $hosting['ptr_subdomain'] ) ) {
+								$bits[] = (string) $hosting['ptr_subdomain'];
+							}
+							echo esc_html( implode( ' · ', $bits ) );
+							?>
+						</span>
+						<?php if ( ! empty( $hosting['reverse_dns'] ) ) : ?>
+							<code class="gi-md-tech__ptr"><?php echo esc_html( (string) $hosting['reverse_dns'] ); ?></code>
+						<?php endif; ?>
+					</div>
+				</div>
+			<?php endif; ?>
+
+			<ul class="gi-md-tech__versions">
+				<?php foreach ( $versions as $row ) : ?>
+					<li>
+						<span><?php echo esc_html( (string) $row['label'] ); ?></span>
+						<strong><?php echo esc_html( (string) $row['value'] ); ?></strong>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+		</div>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * @return array{https:bool, valid:bool, expires:string, issuer:string, error:string}
+	 */
+	private function get_ssl_status() {
+		$host   = (string) ( wp_parse_url( home_url(), PHP_URL_HOST ) ?: '' );
+		$scheme = (string) ( wp_parse_url( home_url(), PHP_URL_SCHEME ) ?: '' );
+		$https  = ( 'https' === strtolower( $scheme ) ) || is_ssl();
+
+		$result = array(
+			'https'  => $https,
+			'valid'  => false,
+			'expires'=> '',
+			'issuer' => '',
+			'error'  => '',
+		);
+
+		if ( '' === $host || ! $https ) {
+			return $result;
+		}
+
+		if ( ! function_exists( 'stream_socket_client' ) || ! function_exists( 'openssl_x509_parse' ) ) {
+			$result['error'] = 'openssl';
+			return $result;
+		}
+
+		$context = stream_context_create(
+			array(
+				'ssl' => array(
+					'capture_peer_cert' => true,
+					'verify_peer'       => true,
+					'verify_peer_name'  => true,
+					'peer_name'         => $host,
+				),
+			)
+		);
+
+		$errno  = 0;
+		$errstr = '';
+		$client = @stream_socket_client( // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			'ssl://' . $host . ':443',
+			$errno,
+			$errstr,
+			6,
+			STREAM_CLIENT_CONNECT,
+			$context
+		);
+
+		if ( ! $client ) {
+			$result['error'] = $errstr ? (string) $errstr : 'connect';
+			return $result;
+		}
+
+		$params = stream_context_get_params( $client );
+		fclose( $client );
+
+		$cert = $params['options']['ssl']['peer_certificate'] ?? null;
+		if ( ! $cert ) {
+			return $result;
+		}
+
+		$parsed = openssl_x509_parse( $cert );
+		if ( ! is_array( $parsed ) ) {
+			return $result;
+		}
+
+		$result['valid'] = true;
+		if ( ! empty( $parsed['validTo_time_t'] ) ) {
+			$result['expires'] = wp_date( 'd/m/Y', (int) $parsed['validTo_time_t'] );
+			if ( (int) $parsed['validTo_time_t'] < time() ) {
+				$result['valid'] = false;
+			}
+		}
+		if ( ! empty( $parsed['issuer']['O'] ) ) {
+			$result['issuer'] = sanitize_text_field( (string) $parsed['issuer']['O'] );
+		} elseif ( ! empty( $parsed['issuer']['CN'] ) ) {
+			$result['issuer'] = sanitize_text_field( (string) $parsed['issuer']['CN'] );
+		}
+
+		return $result;
+	}
+
+	/**
+	 * @return array<int, array{label:string, value:string}>
+	 */
+	private function get_tech_versions() {
+		global $wpdb, $wp_version;
+
+		$db_version = '';
+		if ( isset( $wpdb ) && is_object( $wpdb ) ) {
+			if ( method_exists( $wpdb, 'db_server_info' ) ) {
+				$db_version = (string) $wpdb->db_server_info();
+			} elseif ( method_exists( $wpdb, 'db_version' ) ) {
+				$db_version = (string) $wpdb->db_version();
+			}
+		}
+
+		$server = isset( $_SERVER['SERVER_SOFTWARE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['SERVER_SOFTWARE'] ) ) : '';
+
+		$rows = array(
+			array(
+				'label' => 'WordPress',
+				'value' => (string) ( $wp_version ?? get_bloginfo( 'version' ) ),
+			),
+			array(
+				'label' => 'PHP',
+				'value' => PHP_VERSION,
+			),
+			array(
+				'label' => 'GI-Toolkit',
+				'value' => defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '—',
+			),
+		);
+
+		if ( '' !== $db_version ) {
+			$rows[] = array(
+				'label' => __( 'Base de données', 'gi-toolkit' ),
+				'value' => $db_version,
+			);
+		}
+
+		if ( '' !== $server ) {
+			$rows[] = array(
+				'label' => __( 'Serveur web', 'gi-toolkit' ),
+				'value' => $server,
+			);
+		}
+
+		return $rows;
+	}
+
+	/**
+	 * @return array<string, string>
+	 */
+	private function get_hosting_info() {
+		$resolver = GI_TOOLKIT_PLUGIN_PATH . 'admin/helpers/core/migration-helper/class-ip-resolver.php';
+		if ( ! class_exists( 'Gi_Toolkit_Migration_Helper_IP_Resolver', false ) && is_readable( $resolver ) ) {
+			require_once $resolver;
+		}
+
+		if ( ! class_exists( 'Gi_Toolkit_Migration_Helper_IP_Resolver' ) ) {
+			return array();
+		}
+
+		$payload = Gi_Toolkit_Migration_Helper_IP_Resolver::get_toolbar_payload();
+		$info    = is_array( $payload['ip_info'] ?? null ) ? $payload['ip_info'] : array();
+
+		return array(
+			'public_ip'     => (string) ( $payload['public_ip'] ?? '' ),
+			'server_ip'     => (string) ( $payload['server_ip'] ?? '' ),
+			'reverse_dns'   => (string) ( $info['reverse_dns'] ?? '' ),
+			'ptr_subdomain' => (string) ( $info['ptr_subdomain'] ?? '' ),
+			'asn'           => (string) ( $info['asn'] ?? '' ),
+			'isp'           => (string) ( $info['isp'] ?? ( $info['org'] ?? '' ) ),
+			'isp_domain'    => (string) ( $info['isp_domain'] ?? '' ),
+			'logo_url'      => (string) ( $info['logo_url'] ?? ( $payload['header_logo'] ?? '' ) ),
+			'country'       => (string) ( $info['country'] ?? '' ),
+		);
 	}
 }

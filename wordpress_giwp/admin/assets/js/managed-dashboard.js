@@ -166,6 +166,14 @@
 	}
 
 	function fillCards( root, cards, meta ) {
+		var hidden = ( meta && meta.hidden_cards ) || [];
+		hidden.forEach( function ( key ) {
+			var card = root.querySelector( '.gi-md-card[data-card="' + key + '"]' );
+			if ( card ) {
+				card.remove();
+			}
+		} );
+
 		Object.keys( cards || {} ).forEach( function ( key ) {
 			var card = root.querySelector( '.gi-md-card[data-card="' + key + '"]' );
 			if ( ! card ) {
@@ -179,15 +187,6 @@
 		destroyCharts();
 		initVisitsChart( root );
 		initMailChart( root );
-		if ( typeof window.giToolkitInitUptimeKumaChart === 'function' && meta && meta.uptime_chart ) {
-			window.giToolkitInitUptimeKumaChart( {
-				chart: meta.uptime_chart,
-				canvasId: meta.uptime_canvas_id || 'gi-md-uptime-ping-chart',
-				i18n: {
-					pingLabel: 'Temps de réponse (ms)',
-				},
-			} );
-		}
 		animateCards( root );
 		root.setAttribute( 'data-state', 'ready' );
 	}

@@ -398,7 +398,7 @@ class Gi_Toolkit_Uptime_Kuma {
 				'show_section_heading' => false,
 				'chart_canvas_id'      => 'gi-uptime-kuma-ping-chart',
 				'settings_url'         => self::get_settings_admin_url(),
-				'animate_entrance'     => false,
+				'hide_response_metrics' => false,
 			)
 		);
 
@@ -427,6 +427,7 @@ class Gi_Toolkit_Uptime_Kuma {
 
 		$status_level = (string) ( $dashboard['status_level'] ?? 'unknown' );
 		$interval     = absint( $dashboard['interval'] ?? 60 );
+		$hide_ping    = ! empty( $args['hide_response_metrics'] );
 		$fetched_label = ! empty( $dashboard['fetched_at'] )
 			? sprintf(
 				/* translators: %s: relative time */
@@ -435,7 +436,7 @@ class Gi_Toolkit_Uptime_Kuma {
 			)
 			: '';
 		?>
-		<div class="gi-uptime-kuma-dashboard<?php echo ! empty( $args['animate_entrance'] ) ? ' gi-uptime-kuma-dashboard--animate' : ''; ?>">
+		<div class="gi-uptime-kuma-dashboard<?php echo ! empty( $args['animate_entrance'] ) ? ' gi-uptime-kuma-dashboard--animate' : ''; ?><?php echo $hide_ping ? ' gi-uptime-kuma-dashboard--no-ping' : ''; ?>">
 			<?php if ( '' !== $fetched_label ) : ?>
 				<p class="gi-uptime-kuma-dashboard__meta description">
 					<?php echo esc_html( $fetched_label ); ?>
@@ -495,6 +496,7 @@ class Gi_Toolkit_Uptime_Kuma {
 			</div>
 
 			<div class="gi-uptime-kuma-kpis">
+				<?php if ( ! $hide_ping ) : ?>
 				<div class="gi-uptime-kuma-kpi">
 					<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( 'Temps de réponse (actuel)', 'gi-toolkit' ); ?></span>
 					<strong class="gi-uptime-kuma-kpi__value">
@@ -513,6 +515,7 @@ class Gi_Toolkit_Uptime_Kuma {
 						?>
 					</strong>
 				</div>
+				<?php endif; ?>
 				<div class="gi-uptime-kuma-kpi gi-uptime-kuma-kpi--uptime">
 					<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( 'Disponibilité (24 h)', 'gi-toolkit' ); ?></span>
 					<strong class="gi-uptime-kuma-kpi__value"><?php echo esc_html( (string) ( $dashboard['uptime_percent'] ?? 0 ) ); ?>%</strong>
@@ -555,7 +558,7 @@ class Gi_Toolkit_Uptime_Kuma {
 				</div>
 			</div>
 
-			<?php if ( ! empty( $dashboard['chart']['data'] ) ) : ?>
+			<?php if ( ! $hide_ping && ! empty( $dashboard['chart']['data'] ) ) : ?>
 				<div class="gi-uptime-kuma-chart-panel">
 					<h3><?php esc_html_e( 'Temps de réponse (24 h)', 'gi-toolkit' ); ?></h3>
 					<div class="gi-uptime-kuma-chart-panel__canvas-wrap">
