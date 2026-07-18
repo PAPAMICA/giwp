@@ -4,7 +4,7 @@ Tags: all in one plugin, admin, security, disable features, easy to use
 Requires at least: 6.0.0
 Tested up to: 6.9.3
 Requires PHP: 7.4
-Stable tag: 2.29.4
+Stable tag: 2.29.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -194,6 +194,9 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 4. Code snippets
 
 == Changelog ==
+
+= 2.29.5 =
+* Update: Tableau de bord GI — disponibilité compacte (stats à droite des barres, sans badge En ligne) ; infos techniques enrichies (plugins, cache, SEO, builder…) avec bouton « Copier » pour un rapport support complet.
 
 = 2.29.4 =
 * Update: Tableau de bord GI — remplacement du logo Genevois Informatique (header).

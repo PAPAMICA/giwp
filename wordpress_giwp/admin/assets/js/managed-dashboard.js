@@ -184,11 +184,86 @@
 				body.innerHTML = cards[ key ];
 			}
 		} );
+
+		bindSupportCopy( root, ( meta && meta.support_report ) || '' );
+
 		destroyCharts();
 		initVisitsChart( root );
 		initMailChart( root );
 		animateCards( root );
 		root.setAttribute( 'data-state', 'ready' );
+	}
+
+	function bindSupportCopy( root, report ) {
+		var btn = root.querySelector( '[data-gi-md-copy]' );
+		if ( ! btn ) {
+			return;
+		}
+
+		btn.disabled = ! report;
+		btn.dataset.report = report || '';
+
+		if ( btn.dataset.bound === '1' ) {
+			return;
+		}
+		btn.dataset.bound = '1';
+
+		btn.addEventListener( 'click', function () {
+			var text = btn.dataset.report || '';
+			var label = btn.querySelector( '.gi-md-tech-copy__label' );
+			var idle = 'Copier';
+			var ok = ( cfg.i18n && cfg.i18n.copied ) || 'Copié !';
+			var fail = ( cfg.i18n && cfg.i18n.copyFailed ) || 'Copie impossible';
+
+			function setLabel( value ) {
+				if ( label ) {
+					label.textContent = value;
+				}
+			}
+
+			function flash( value ) {
+				setLabel( value );
+				window.setTimeout( function () {
+					setLabel( idle );
+				}, 1800 );
+			}
+
+			if ( ! text ) {
+				flash( fail );
+				return;
+			}
+
+			if ( navigator.clipboard && navigator.clipboard.writeText ) {
+				navigator.clipboard.writeText( text ).then(
+					function () {
+						flash( ok );
+					},
+					function () {
+						fallbackCopy( text, flash, ok, fail );
+					}
+				);
+				return;
+			}
+
+			fallbackCopy( text, flash, ok, fail );
+		} );
+	}
+
+	function fallbackCopy( text, flash, ok, fail ) {
+		var ta = document.createElement( 'textarea' );
+		ta.value = text;
+		ta.setAttribute( 'readonly', '' );
+		ta.style.position = 'fixed';
+		ta.style.left = '-9999px';
+		document.body.appendChild( ta );
+		ta.select();
+		try {
+			var success = document.execCommand( 'copy' );
+			flash( success ? ok : fail );
+		} catch ( e ) {
+			flash( fail );
+		}
+		document.body.removeChild( ta );
 	}
 
 	function showError( root, message ) {

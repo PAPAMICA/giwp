@@ -5,8 +5,7 @@ body.index-php #wpcontent {
 }
 
 .gi-md-wrap {
-	margin: 12px 0 32px;
-	max-width: 1440px;
+	margin: 15px;
 }
 
 .gi-md-hero {
@@ -282,8 +281,64 @@ body.index-php #wpcontent {
 	align-items: center;
 	border-bottom: 1px solid #f0f0f1;
 	display: flex;
+	gap: 12px;
 	justify-content: space-between;
 	padding: 14px 18px 12px;
+}
+
+.gi-md-tech-copy {
+	align-items: center;
+	display: inline-flex !important;
+	gap: 4px;
+	margin: 0;
+	white-space: nowrap;
+}
+
+.gi-md-tech-copy .dashicons {
+	font-size: 16px;
+	height: 16px;
+	line-height: 1;
+	margin: 0;
+	width: 16px;
+}
+
+.gi-md-tech__stack {
+	border-top: 1px solid #f0f0f1;
+	display: grid;
+	gap: 0;
+	grid-template-columns: 1fr;
+	list-style: none;
+	margin: 14px 0 0;
+	padding: 4px 0 0;
+}
+
+.gi-md-tech__stack li {
+	align-items: baseline;
+	display: flex;
+	gap: 12px;
+	justify-content: space-between;
+	padding: 8px 0;
+}
+
+.gi-md-tech__stack li + li {
+	border-top: 1px solid #f6f7f7;
+}
+
+.gi-md-tech__stack span {
+	color: #646970;
+	flex: 0 0 auto;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+}
+
+.gi-md-tech__stack strong {
+	color: #1d2327;
+	font-size: 13px;
+	font-weight: 600;
+	overflow-wrap: anywhere;
+	text-align: right;
 }
 
 .gi-md-card__title {
@@ -697,6 +752,13 @@ body.index-php #wpcontent {
 
 .gi-md-card .gi-uptime-kuma-dashboard {
 	margin: 0;
+}
+
+.gi-md-card .gi-uptime-kuma-dashboard--compact .gi-uptime-kuma-status-panel {
+	background: transparent;
+	border: 0;
+	box-shadow: none;
+	padding: 0;
 }
 
 .gi-md-card .gi-uptime-kuma-setup-panel {

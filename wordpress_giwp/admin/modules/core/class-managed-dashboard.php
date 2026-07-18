@@ -153,11 +153,14 @@ class Gi_Toolkit_Managed_Dashboard {
 				'nonce'   => wp_create_nonce( self::NONCE_ACTION ),
 				'action'  => self::AJAX_ACTION,
 				'i18n'    => array(
-					'loading' => __( 'Chargement…', 'gi-toolkit' ),
-					'error'   => __( 'Impossible de charger le tableau de bord.', 'gi-toolkit' ),
+					'loading'     => __( 'Chargement…', 'gi-toolkit' ),
+					'error'       => __( 'Impossible de charger le tableau de bord.', 'gi-toolkit' ),
 					'chartSent'   => __( 'Envoyés', 'gi-toolkit' ),
 					'chartFailed' => __( 'Échoués', 'gi-toolkit' ),
 					'chartSpam'   => __( 'Spam / RBL', 'gi-toolkit' ),
+					'copy'        => __( 'Copier pour le support', 'gi-toolkit' ),
+					'copied'      => __( 'Copié !', 'gi-toolkit' ),
+					'copyFailed'  => __( 'Copie impossible', 'gi-toolkit' ),
 				),
 			)
 		);
@@ -236,6 +239,18 @@ class Gi_Toolkit_Managed_Dashboard {
 					>
 						<header class="gi-md-card__head">
 							<h2 class="gi-md-card__title"><?php echo esc_html( $label ); ?></h2>
+							<?php if ( 'tech' === $key ) : ?>
+								<button
+									type="button"
+									class="button button-small gi-md-tech-copy"
+									data-gi-md-copy
+									disabled
+									aria-label="<?php esc_attr_e( 'Copier pour le support', 'gi-toolkit' ); ?>"
+								>
+									<span class="dashicons dashicons-clipboard" aria-hidden="true"></span>
+									<span class="gi-md-tech-copy__label"><?php esc_html_e( 'Copier', 'gi-toolkit' ); ?></span>
+								</button>
+							<?php endif; ?>
 						</header>
 						<div class="gi-md-card__body">
 							<div class="gi-md-skeleton" aria-hidden="true">
@@ -285,6 +300,7 @@ class Gi_Toolkit_Managed_Dashboard {
 						'settings_url'          => Gi_Toolkit_Uptime_Kuma::get_settings_admin_url(),
 						'animate_entrance'      => true,
 						'hide_response_metrics' => true,
+						'compact_layout'        => true,
 					)
 				);
 				$cards['uptime'] = (string) ob_get_clean();
@@ -331,6 +347,7 @@ class Gi_Toolkit_Managed_Dashboard {
 				'hidden_cards'     => $hidden_cards,
 				'uptime_chart'     => null,
 				'uptime_canvas_id' => 'gi-md-uptime-ping-chart',
+				'support_report'   => $this->build_support_report(),
 			)
 		);
 	}
@@ -734,7 +751,7 @@ class Gi_Toolkit_Managed_Dashboard {
 	}
 
 	/**
-	 * Carte SSL / versions / hébergeur.
+	 * Carte SSL / versions / hébergeur / stack.
 	 *
 	 * @return string
 	 */
@@ -742,6 +759,7 @@ class Gi_Toolkit_Managed_Dashboard {
 		$ssl      = $this->get_ssl_status();
 		$versions = $this->get_tech_versions();
 		$hosting  = $this->get_hosting_info();
+		$stack    = $this->get_tech_stack_summary();
 
 		ob_start();
 		?>
@@ -829,6 +847,15 @@ class Gi_Toolkit_Managed_Dashboard {
 					</li>
 				<?php endforeach; ?>
 			</ul>
+
+			<ul class="gi-md-tech__stack">
+				<?php foreach ( $stack as $row ) : ?>
+					<li>
+						<span><?php echo esc_html( (string) $row['label'] ); ?></span>
+						<strong><?php echo esc_html( (string) $row['value'] ); ?></strong>
+					</li>
+				<?php endforeach; ?>
+			</ul>
 		</div>
 		<?php
 		return (string) ob_get_clean();
@@ -843,11 +870,11 @@ class Gi_Toolkit_Managed_Dashboard {
 		$https  = ( 'https' === strtolower( $scheme ) ) || is_ssl();
 
 		$result = array(
-			'https'  => $https,
-			'valid'  => false,
-			'expires'=> '',
-			'issuer' => '',
-			'error'  => '',
+			'https'   => $https,
+			'valid'   => false,
+			'expires' => '',
+			'issuer'  => '',
+			'error'   => '',
 		);
 
 		if ( '' === $host || ! $https ) {
@@ -991,5 +1018,323 @@ class Gi_Toolkit_Managed_Dashboard {
 			'logo_url'      => (string) ( $info['logo_url'] ?? ( $payload['header_logo'] ?? '' ) ),
 			'country'       => (string) ( $info['country'] ?? '' ),
 		);
+	}
+
+	/**
+	 * Résumé stack pour l’affichage carte.
+	 *
+	 * @return array<int, array{label:string, value:string}>
+	 */
+	private function get_tech_stack_summary() {
+		$detected = $this->detect_site_stack();
+		$theme    = wp_get_theme();
+		$theme_label = $theme->exists() ? (string) $theme->get( 'Name' ) : '-';
+		if ( $theme->parent() ) {
+			$theme_label .= ' (' . (string) $theme->parent()->get( 'Name' ) . ')';
+		}
+
+		$none = __( 'Aucun détecté', 'gi-toolkit' );
+
+		return array(
+			array(
+				'label' => __( 'Extensions actives', 'gi-toolkit' ),
+				'value' => (string) (int) $detected['plugins_active'] . ' / ' . (string) (int) $detected['plugins_total'],
+			),
+			array(
+				'label' => __( 'Thème', 'gi-toolkit' ),
+				'value' => $theme_label,
+			),
+			array(
+				'label' => __( 'Cache', 'gi-toolkit' ),
+				'value' => ! empty( $detected['cache'] ) ? implode( ', ', $detected['cache'] ) : $none,
+			),
+			array(
+				'label' => __( 'SEO', 'gi-toolkit' ),
+				'value' => ! empty( $detected['seo'] ) ? implode( ', ', $detected['seo'] ) : $none,
+			),
+			array(
+				'label' => __( 'Builder', 'gi-toolkit' ),
+				'value' => ! empty( $detected['builder'] ) ? implode( ', ', $detected['builder'] ) : __( 'Éditeur de blocs', 'gi-toolkit' ),
+			),
+			array(
+				'label' => __( 'Sécurité', 'gi-toolkit' ),
+				'value' => ! empty( $detected['security'] ) ? implode( ', ', $detected['security'] ) : $none,
+			),
+			array(
+				'label' => __( 'Sauvegarde', 'gi-toolkit' ),
+				'value' => ! empty( $detected['backup'] ) ? implode( ', ', $detected['backup'] ) : $none,
+			),
+			array(
+				'label' => __( 'E-commerce', 'gi-toolkit' ),
+				'value' => ! empty( $detected['ecommerce'] ) ? implode( ', ', $detected['ecommerce'] ) : $none,
+			),
+		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function detect_site_stack() {
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		$all     = get_plugins();
+		$active  = (array) get_option( 'active_plugins', array() );
+		$network = is_multisite() ? array_keys( (array) get_site_option( 'active_sitewide_plugins', array() ) ) : array();
+
+		$is_active = static function ( $file ) use ( $active, $network ) {
+			return in_array( $file, $active, true ) || in_array( $file, $network, true );
+		};
+
+		$catalog = array(
+			'cache'     => array(
+				'wp-rocket/wp-rocket.php'                   => 'WP Rocket',
+				'litespeed-cache/litespeed-cache.php'       => 'LiteSpeed Cache',
+				'w3-total-cache/w3-total-cache.php'         => 'W3 Total Cache',
+				'wp-super-cache/wp-cache.php'               => 'WP Super Cache',
+				'wp-fastest-cache/wpFastestCache.php'        => 'WP Fastest Cache',
+				'autoptimize/autoptimize.php'               => 'Autoptimize',
+				'cloudflare/cloudflare.php'                 => 'Cloudflare',
+				'sg-cachepress/sg-cachepress.php'           => 'SiteGround Optimizer',
+				'hummingbird-performance/wp-hummingbird.php'=> 'Hummingbird',
+				'nitropack/main.php'                        => 'NitroPack',
+				'cache-enabler/cache-enabler.php'           => 'Cache Enabler',
+			),
+			'seo'       => array(
+				'wordpress-seo/wp-seo.php'                  => 'Yoast SEO',
+				'wordpress-seo-premium/wp-seo-premium.php'  => 'Yoast SEO Premium',
+				'seo-by-rank-math/rank-math.php'            => 'Rank Math',
+				'seo-by-rank-math-pro/rank-math-pro.php'    => 'Rank Math Pro',
+				'wp-seopress/seopress.php'                  => 'SEOPress',
+				'wp-seopress-pro/seopress-pro.php'          => 'SEOPress Pro',
+				'all-in-one-seo-pack/all_in_one_seo_pack.php' => 'AIOSEO',
+				'all-in-one-seo-pack-pro/all_in_one_seo_pack.php' => 'AIOSEO Pro',
+				'squirrly-seo/squirrly.php'                 => 'Squirrly SEO',
+				'the-seo-framework/the-seo-framework.php'   => 'The SEO Framework',
+			),
+			'builder'   => array(
+				'elementor/elementor.php'                   => 'Elementor',
+				'elementor-pro/elementor-pro.php'           => 'Elementor Pro',
+				'beaver-builder-lite-version/fl-builder.php'=> 'Beaver Builder',
+				'bb-plugin/fl-builder.php'                  => 'Beaver Builder',
+				'divi-builder/divi-builder.php'             => 'Divi Builder',
+				'js_composer/js_composer.php'               => 'WPBakery',
+				'bricks/bricks.php'                         => 'Bricks',
+				'oxygen/functions.php'                      => 'Oxygen',
+				'thrive-visual-editor/thrive-visual-editor.php' => 'Thrive Architect',
+				'breakdance/plugin.php'                     => 'Breakdance',
+				'oxygen-vsb/oxygen-vsb.php'                  => 'Oxygen',
+			),
+			'security'  => array(
+				'wordfence/wordfence.php'                   => 'Wordfence',
+				'sucuri-scanner/sucuri.php'                 => 'Sucuri',
+				'ithemes-security-pro/ithemes-security-pro.php' => 'Solid Security Pro',
+				'better-wp-security/better-wp-security.php' => 'Solid Security',
+				'all-in-one-wp-security-and-firewall/wp-security.php' => 'AIOWPS',
+				'defender-security/wp-defender.php'         => 'Defender',
+				'jetpack/jetpack.php'                       => 'Jetpack',
+			),
+			'backup'    => array(
+				'updraftplus/updraftplus.php'               => 'UpdraftPlus',
+				'backwpup/backwpup.php'                     => 'BackWPup',
+				'blogvault-real-time-backup/blogvault.php'  => 'BlogVault',
+				'duplicator/duplicator.php'                 => 'Duplicator',
+				'all-in-one-wp-migration/all-in-one-wp-migration.php' => 'All-in-One WP Migration',
+				'backupbuddy/backupbuddy.php'               => 'BackupBuddy',
+			),
+			'ecommerce' => array(
+				'woocommerce/woocommerce.php'               => 'WooCommerce',
+				'easy-digital-downloads/easy-digital-downloads.php' => 'EDD',
+				'memberpress/memberpress.php'               => 'MemberPress',
+			),
+			'forms'     => array(
+				'contact-form-7/wp-contact-form-7.php'      => 'Contact Form 7',
+				'gravityforms/gravityforms.php'             => 'Gravity Forms',
+				'wpforms-lite/wpforms.php'                  => 'WPForms',
+				'wpforms/wpforms.php'                       => 'WPForms',
+				'fluentform/fluentform.php'                 => 'Fluent Forms',
+				'formidable/formidable.php'                 => 'Formidable',
+			),
+			'multilang' => array(
+				'sitepress-multilingual-cms/sitepress.php'  => 'WPML',
+				'polylang/polylang.php'                     => 'Polylang',
+				'polylang-pro/polylang.php'                 => 'Polylang Pro',
+				'translatepress-multilingual/index.php'     => 'TranslatePress',
+				'weglot/weglot.php'                         => 'Weglot',
+			),
+		);
+
+		$out = array(
+			'plugins_total'  => count( $all ),
+			'plugins_active' => 0,
+			'cache'          => array(),
+			'seo'            => array(),
+			'builder'        => array(),
+			'security'       => array(),
+			'backup'         => array(),
+			'ecommerce'      => array(),
+			'forms'          => array(),
+			'multilang'      => array(),
+		);
+
+		foreach ( $all as $file => $data ) {
+			if ( $is_active( $file ) ) {
+				++$out['plugins_active'];
+			}
+		}
+
+		foreach ( $catalog as $group => $plugins ) {
+			foreach ( $plugins as $file => $label ) {
+				if ( $is_active( $file ) && ! in_array( $label, $out[ $group ], true ) ) {
+					$out[ $group ][] = $label;
+				}
+			}
+		}
+
+		// Détections complémentaires (constantes / classes).
+		if ( function_exists( 'rocket_clean_domain' ) && ! in_array( 'WP Rocket', $out['cache'], true ) ) {
+			$out['cache'][] = 'WP Rocket';
+		}
+		if ( defined( 'LSCWP_V' ) && ! in_array( 'LiteSpeed Cache', $out['cache'], true ) ) {
+			$out['cache'][] = 'LiteSpeed Cache';
+		}
+		if ( wp_using_ext_object_cache() ) {
+			$out['cache'][] = __( 'Object cache', 'gi-toolkit' );
+		}
+		if ( ( did_action( 'elementor/loaded' ) || class_exists( '\Elementor\Plugin', false ) ) && ! in_array( 'Elementor', $out['builder'], true ) ) {
+			$out['builder'][] = 'Elementor';
+		}
+		if ( function_exists( 'et_setup_theme' ) || 'Divi' === wp_get_theme()->get( 'Name' ) || ( wp_get_theme()->parent() && 'Divi' === wp_get_theme()->parent()->get( 'Name' ) ) ) {
+			if ( ! in_array( 'Divi', $out['builder'], true ) ) {
+				$out['builder'][] = 'Divi';
+			}
+		}
+		if ( class_exists( 'UpdraftPlus', false ) && ! in_array( 'UpdraftPlus', $out['backup'], true ) ) {
+			$out['backup'][] = 'UpdraftPlus';
+		}
+		if ( ( class_exists( 'wfConfig', false ) || defined( 'WORDFENCE_VERSION' ) ) && ! in_array( 'Wordfence', $out['security'], true ) ) {
+			$out['security'][] = 'Wordfence';
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Rapport texte complet pour le support.
+	 *
+	 * @return string
+	 */
+	private function build_support_report() {
+		global $wp_version, $wpdb;
+
+		$ssl     = $this->get_ssl_status();
+		$hosting = $this->get_hosting_info();
+		$stack   = $this->detect_site_stack();
+		$theme   = wp_get_theme();
+
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		$lines   = array();
+		$lines[] = '=== Rapport technique GI-Toolkit ===';
+		$lines[] = 'Date: ' . wp_date( 'Y-m-d H:i:s' );
+		$lines[] = 'Site: ' . home_url( '/' );
+		$lines[] = 'Admin: ' . admin_url();
+		$lines[] = '';
+
+		$lines[] = '--- Versions ---';
+		$lines[] = 'WordPress: ' . (string) ( $wp_version ?? get_bloginfo( 'version' ) );
+		$lines[] = 'PHP: ' . PHP_VERSION;
+		$lines[] = 'GI-Toolkit: ' . ( defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '-' );
+		if ( isset( $wpdb ) && is_object( $wpdb ) ) {
+			$db = method_exists( $wpdb, 'db_server_info' ) ? $wpdb->db_server_info() : $wpdb->db_version();
+			$lines[] = 'Base de données: ' . (string) $db;
+		}
+		$server = isset( $_SERVER['SERVER_SOFTWARE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['SERVER_SOFTWARE'] ) ) : '';
+		if ( '' !== $server ) {
+			$lines[] = 'Serveur web: ' . $server;
+		}
+		$lines[] = 'Multisite: ' . ( is_multisite() ? 'oui' : 'non' );
+		$lines[] = 'Locale: ' . get_locale();
+		$lines[] = 'Fuseau: ' . wp_timezone_string();
+		$lines[] = 'Mémoire WP: ' . ( defined( 'WP_MEMORY_LIMIT' ) ? WP_MEMORY_LIMIT : '-' );
+		$lines[] = 'Debug: WP_DEBUG=' . ( defined( 'WP_DEBUG' ) && WP_DEBUG ? 'true' : 'false' )
+			. ' DISPLAY=' . ( defined( 'WP_DEBUG_DISPLAY' ) && WP_DEBUG_DISPLAY ? 'true' : 'false' )
+			. ' LOG=' . ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ? 'true' : 'false' );
+		$lines[] = '';
+
+		$lines[] = '--- SSL / HTTPS ---';
+		$lines[] = 'HTTPS: ' . ( ! empty( $ssl['https'] ) ? 'oui' : 'non' );
+		$lines[] = 'SSL valide: ' . ( ! empty( $ssl['valid'] ) ? 'oui' : 'non' );
+		$lines[] = 'Expiration: ' . ( $ssl['expires'] ?: '-' );
+		$lines[] = 'Émetteur: ' . ( $ssl['issuer'] ?: '-' );
+		$lines[] = '';
+
+		$lines[] = '--- Hébergeur ---';
+		$lines[] = 'ASN: ' . ( $hosting['asn'] ?: '-' );
+		$lines[] = 'ISP: ' . ( $hosting['isp'] ?: '-' );
+		$lines[] = 'IP publique: ' . ( $hosting['public_ip'] ?: '-' );
+		$lines[] = 'IP serveur: ' . ( $hosting['server_ip'] ?: '-' );
+		$lines[] = 'Nœud PTR: ' . ( $hosting['ptr_subdomain'] ?: '-' );
+		$lines[] = 'Reverse DNS: ' . ( $hosting['reverse_dns'] ?: '-' );
+		$lines[] = 'Pays: ' . ( $hosting['country'] ?: '-' );
+		$lines[] = '';
+
+		$lines[] = '--- Stack détectée ---';
+		$lines[] = 'Extensions actives: ' . (int) $stack['plugins_active'] . ' / ' . (int) $stack['plugins_total'];
+		$lines[] = 'Cache: ' . ( ! empty( $stack['cache'] ) ? implode( ', ', $stack['cache'] ) : 'aucun' );
+		$lines[] = 'SEO: ' . ( ! empty( $stack['seo'] ) ? implode( ', ', $stack['seo'] ) : 'aucun' );
+		$lines[] = 'Builder: ' . ( ! empty( $stack['builder'] ) ? implode( ', ', $stack['builder'] ) : 'Éditeur de blocs' );
+		$lines[] = 'Sécurité: ' . ( ! empty( $stack['security'] ) ? implode( ', ', $stack['security'] ) : 'aucun' );
+		$lines[] = 'Sauvegarde: ' . ( ! empty( $stack['backup'] ) ? implode( ', ', $stack['backup'] ) : 'aucun' );
+		$lines[] = 'E-commerce: ' . ( ! empty( $stack['ecommerce'] ) ? implode( ', ', $stack['ecommerce'] ) : 'aucun' );
+		$lines[] = 'Formulaires: ' . ( ! empty( $stack['forms'] ) ? implode( ', ', $stack['forms'] ) : 'aucun' );
+		$lines[] = 'Multilingue: ' . ( ! empty( $stack['multilang'] ) ? implode( ', ', $stack['multilang'] ) : 'aucun' );
+		$lines[] = '';
+
+		$lines[] = '--- Thèmes ---';
+		$lines[] = 'Actif: ' . ( $theme->exists() ? $theme->get( 'Name' ) . ' ' . $theme->get( 'Version' ) . ' [' . $theme->get_stylesheet() . ']' : '-' );
+		if ( $theme->parent() ) {
+			$lines[] = 'Parent: ' . $theme->parent()->get( 'Name' ) . ' ' . $theme->parent()->get( 'Version' );
+		}
+		$all_themes = wp_get_themes();
+		foreach ( $all_themes as $slug => $t ) {
+			$status = ( $theme->get_stylesheet() === $slug ) ? 'ACTIF' : 'inactif';
+			$lines[] = sprintf(
+				'- [%s] %s %s (%s)',
+				$status,
+				$t->get( 'Name' ),
+				$t->get( 'Version' ),
+				$slug
+			);
+		}
+		$lines[] = '';
+
+		$lines[] = '--- Extensions ---';
+		$all_plugins = get_plugins();
+		$active      = (array) get_option( 'active_plugins', array() );
+		$network     = is_multisite() ? array_keys( (array) get_site_option( 'active_sitewide_plugins', array() ) ) : array();
+		foreach ( $all_plugins as $file => $data ) {
+			$is_on = in_array( $file, $active, true ) || in_array( $file, $network, true );
+			$lines[] = sprintf(
+				'- [%s] %s %s (%s)',
+				$is_on ? 'ACTIF' : 'inactif',
+				(string) ( $data['Name'] ?? $file ),
+				(string) ( $data['Version'] ?? '' ),
+				$file
+			);
+		}
+		$lines[] = '';
+		$lines[] = '=== Fin du rapport ===';
+
+		return implode( "\n", $lines );
 	}
 }

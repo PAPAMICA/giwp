@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.29.5 =
+* Update: Tableau de bord GI — disponibilité compacte (stats à droite des barres, sans badge En ligne) ; infos techniques enrichies (plugins, cache, SEO, builder…) avec bouton « Copier » pour un rapport support complet.
+
 = 2.29.4 =
 * Update: Tableau de bord GI — remplacement du logo Genevois Informatique (header).
 

@@ -395,10 +395,11 @@ class Gi_Toolkit_Uptime_Kuma {
 		$args = wp_parse_args(
 			$args,
 			array(
-				'show_section_heading' => false,
-				'chart_canvas_id'      => 'gi-uptime-kuma-ping-chart',
-				'settings_url'         => self::get_settings_admin_url(),
+				'show_section_heading'  => false,
+				'chart_canvas_id'       => 'gi-uptime-kuma-ping-chart',
+				'settings_url'          => self::get_settings_admin_url(),
 				'hide_response_metrics' => false,
+				'compact_layout'        => false,
 			)
 		);
 
@@ -428,6 +429,7 @@ class Gi_Toolkit_Uptime_Kuma {
 		$status_level = (string) ( $dashboard['status_level'] ?? 'unknown' );
 		$interval     = absint( $dashboard['interval'] ?? 60 );
 		$hide_ping    = ! empty( $args['hide_response_metrics'] );
+		$compact      = ! empty( $args['compact_layout'] );
 		$fetched_label = ! empty( $dashboard['fetched_at'] )
 			? sprintf(
 				/* translators: %s: relative time */
@@ -435,18 +437,29 @@ class Gi_Toolkit_Uptime_Kuma {
 				human_time_diff( (int) $dashboard['fetched_at'], time() )
 			)
 			: '';
+
+		$classes = 'gi-uptime-kuma-dashboard';
+		if ( ! empty( $args['animate_entrance'] ) ) {
+			$classes .= ' gi-uptime-kuma-dashboard--animate';
+		}
+		if ( $hide_ping ) {
+			$classes .= ' gi-uptime-kuma-dashboard--no-ping';
+		}
+		if ( $compact ) {
+			$classes .= ' gi-uptime-kuma-dashboard--compact';
+		}
 		?>
-		<div class="gi-uptime-kuma-dashboard<?php echo ! empty( $args['animate_entrance'] ) ? ' gi-uptime-kuma-dashboard--animate' : ''; ?><?php echo $hide_ping ? ' gi-uptime-kuma-dashboard--no-ping' : ''; ?>">
-			<?php if ( '' !== $fetched_label ) : ?>
+		<div class="<?php echo esc_attr( $classes ); ?>">
+			<?php if ( '' !== $fetched_label && ! $compact ) : ?>
 				<p class="gi-uptime-kuma-dashboard__meta description">
 					<?php echo esc_html( $fetched_label ); ?>
 					<?php if ( ! empty( $dashboard['stale'] ) ) : ?>
-						<span class="gi-uptime-kuma-dashboard__stale"><?php esc_html_e( '(cache — actualisation en cours)', 'gi-toolkit' ); ?></span>
+						<span class="gi-uptime-kuma-dashboard__stale"><?php esc_html_e( '(cache, actualisation en cours)', 'gi-toolkit' ); ?></span>
 					<?php endif; ?>
 				</p>
 			<?php endif; ?>
 
-			<div class="gi-uptime-kuma-status-panel">
+			<div class="gi-uptime-kuma-status-panel<?php echo $compact ? ' gi-uptime-kuma-status-panel--compact' : ''; ?>">
 				<div class="gi-uptime-kuma-status-panel__main">
 					<div class="gi-uptime-kuma-status-strip" aria-hidden="true">
 						<?php
@@ -467,34 +480,72 @@ class Gi_Toolkit_Uptime_Kuma {
 							<?php
 							echo esc_html( (string) ( $dashboard['strip_from'] ?? '' ) );
 							if ( ! empty( $dashboard['strip_from'] ) ) {
-								echo ' — ';
+								echo ' · ';
 							}
 							echo esc_html( (string) ( $dashboard['strip_to'] ?? __( 'Maintenant', 'gi-toolkit' ) ) );
 							?>
 						</span>
-						<span class="gi-uptime-kuma-status-panel__interval">
-							<?php
-							echo esc_html(
-								sprintf(
-									/* translators: %d: seconds */
-									_n(
-										'Vérification toutes les %d seconde',
-										'Vérification toutes les %d secondes',
-										$interval,
-										'gi-toolkit'
-									),
-									$interval
-								)
-							);
-							?>
-						</span>
+						<?php if ( ! $compact ) : ?>
+							<span class="gi-uptime-kuma-status-panel__interval">
+								<?php
+								echo esc_html(
+									sprintf(
+										/* translators: %d: seconds */
+										_n(
+											'Vérification toutes les %d seconde',
+											'Vérification toutes les %d secondes',
+											$interval,
+											'gi-toolkit'
+										),
+										$interval
+									)
+								);
+								?>
+							</span>
+						<?php endif; ?>
 					</div>
 				</div>
-				<div class="gi-uptime-kuma-status-badge status-<?php echo esc_attr( $status_level ); ?>">
-					<?php echo esc_html( (string) ( $dashboard['status_label'] ?? '' ) ); ?>
-				</div>
+				<?php if ( ! $compact ) : ?>
+					<div class="gi-uptime-kuma-status-badge status-<?php echo esc_attr( $status_level ); ?>">
+						<?php echo esc_html( (string) ( $dashboard['status_label'] ?? '' ) ); ?>
+					</div>
+				<?php endif; ?>
+
+				<?php if ( $compact ) : ?>
+					<div class="gi-uptime-kuma-kpis gi-uptime-kuma-kpis--inline">
+						<div class="gi-uptime-kuma-kpi gi-uptime-kuma-kpi--uptime">
+							<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( '24 h', 'gi-toolkit' ); ?></span>
+							<strong class="gi-uptime-kuma-kpi__value"><?php echo esc_html( (string) ( $dashboard['uptime_percent'] ?? 0 ) ); ?>%</strong>
+						</div>
+						<div class="gi-uptime-kuma-kpi gi-uptime-kuma-kpi--uptime">
+							<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( '30 j', 'gi-toolkit' ); ?></span>
+							<strong class="gi-uptime-kuma-kpi__value">
+								<?php
+								echo esc_html(
+									null !== ( $dashboard['uptime_30d'] ?? null )
+										? (string) $dashboard['uptime_30d'] . '%'
+										: '-'
+								);
+								?>
+							</strong>
+						</div>
+						<div class="gi-uptime-kuma-kpi gi-uptime-kuma-kpi--uptime">
+							<span class="gi-uptime-kuma-kpi__label"><?php esc_html_e( '1 an', 'gi-toolkit' ); ?></span>
+							<strong class="gi-uptime-kuma-kpi__value">
+								<?php
+								echo esc_html(
+									null !== ( $dashboard['uptime_1y'] ?? null )
+										? (string) $dashboard['uptime_1y'] . '%'
+										: '-'
+								);
+								?>
+							</strong>
+						</div>
+					</div>
+				<?php endif; ?>
 			</div>
 
+			<?php if ( ! $compact ) : ?>
 			<div class="gi-uptime-kuma-kpis">
 				<?php if ( ! $hide_ping ) : ?>
 				<div class="gi-uptime-kuma-kpi">
@@ -502,7 +553,7 @@ class Gi_Toolkit_Uptime_Kuma {
 					<strong class="gi-uptime-kuma-kpi__value">
 						<?php
 						$ping = (int) ( $dashboard['current_ping'] ?? 0 );
-						echo esc_html( $ping > 0 ? $ping . ' ms' : '—' );
+						echo esc_html( $ping > 0 ? $ping . ' ms' : '-' );
 						?>
 					</strong>
 				</div>
@@ -511,7 +562,7 @@ class Gi_Toolkit_Uptime_Kuma {
 					<strong class="gi-uptime-kuma-kpi__value">
 						<?php
 						$avg = (int) ( $dashboard['avg_ping'] ?? 0 );
-						echo esc_html( $avg > 0 ? $avg . ' ms' : '—' );
+						echo esc_html( $avg > 0 ? $avg . ' ms' : '-' );
 						?>
 					</strong>
 				</div>
@@ -527,7 +578,7 @@ class Gi_Toolkit_Uptime_Kuma {
 						echo esc_html(
 							null !== ( $dashboard['uptime_30d'] ?? null )
 								? (string) $dashboard['uptime_30d'] . '%'
-								: '—'
+								: '-'
 						);
 						?>
 					</strong>
@@ -539,7 +590,7 @@ class Gi_Toolkit_Uptime_Kuma {
 						echo esc_html(
 							null !== ( $dashboard['uptime_1y'] ?? null )
 								? (string) $dashboard['uptime_1y'] . '%'
-								: '—'
+								: '-'
 						);
 						?>
 					</strong>
@@ -551,14 +602,15 @@ class Gi_Toolkit_Uptime_Kuma {
 						echo esc_html(
 							! empty( $dashboard['last_check_ago'] )
 								? (string) $dashboard['last_check_ago']
-								: '—'
+								: '-'
 						);
 						?>
 					</strong>
 				</div>
 			</div>
+			<?php endif; ?>
 
-			<?php if ( ! $hide_ping && ! empty( $dashboard['chart']['data'] ) ) : ?>
+			<?php if ( ! $hide_ping && ! $compact && ! empty( $dashboard['chart']['data'] ) ) : ?>
 				<div class="gi-uptime-kuma-chart-panel">
 					<h3><?php esc_html_e( 'Temps de réponse (24 h)', 'gi-toolkit' ); ?></h3>
 					<div class="gi-uptime-kuma-chart-panel__canvas-wrap">

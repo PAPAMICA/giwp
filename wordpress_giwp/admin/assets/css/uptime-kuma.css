@@ -202,7 +202,60 @@
 
 .gi-uptime-kuma-kpi__sub {
 	color: #646970;
+	font-size: 12px;
+}
+
+.gi-uptime-kuma-status-panel--compact {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 14px 18px;
+}
+
+.gi-uptime-kuma-status-panel--compact .gi-uptime-kuma-status-panel__main {
+	flex: 1 1 280px;
+	min-width: 0;
+}
+
+.gi-uptime-kuma-kpis--inline {
+	display: flex;
+	flex: 0 0 auto;
+	gap: 8px;
+	margin: 0;
+}
+
+.gi-uptime-kuma-kpis--inline .gi-uptime-kuma-kpi {
+	align-items: center;
+	min-width: 68px;
+	padding: 8px 10px;
+	text-align: center;
+}
+
+.gi-uptime-kuma-kpis--inline .gi-uptime-kuma-kpi__label {
 	font-size: 11px;
+}
+
+.gi-uptime-kuma-kpis--inline .gi-uptime-kuma-kpi__value {
+	font-size: 18px;
+}
+
+.gi-uptime-kuma-dashboard--compact .gi-uptime-kuma-status-panel {
+	margin-bottom: 0;
+}
+
+.gi-uptime-kuma-dashboard--compact .gi-uptime-kuma-status-strip {
+	min-height: 28px;
+}
+
+@media (max-width: 782px) {
+	.gi-uptime-kuma-kpis--inline {
+		flex: 1 1 100%;
+		justify-content: stretch;
+	}
+
+	.gi-uptime-kuma-kpis--inline .gi-uptime-kuma-kpi {
+		flex: 1 1 0;
+	}
 }
 
 .gi-uptime-kuma-kpi__links {
