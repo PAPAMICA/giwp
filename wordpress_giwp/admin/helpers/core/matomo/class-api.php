@@ -75,6 +75,22 @@ class Gi_Toolkit_Matomo_API {
 	}
 
 	/**
+	 * Détecte un refus type rate-limit (Matomo / proxy).
+	 *
+	 * @param string $message Message d’erreur.
+	 * @return bool
+	 */
+	public static function is_rate_limit_message( $message ) {
+		$m = strtolower( (string) $message );
+		if ( '' === $m ) {
+			return false;
+		}
+		return false !== strpos( $m, 'too frequently' )
+			|| false !== strpos( $m, 'rate limit' )
+			|| false !== strpos( $m, 'try again later' );
+	}
+
+	/**
 	 * @param string               $method   Méthode API Matomo.
 	 * @param array<string, mixed> $params   Paramètres.
 	 * @return mixed|null
@@ -106,42 +122,65 @@ class Gi_Toolkit_Matomo_API {
 			),
 		);
 
-		$response = wp_remote_get( $url, $args );
+		$max_attempts = 4;
+		for ( $attempt = 1; $attempt <= $max_attempts; $attempt++ ) {
+			$this->last_error = null;
+			$response          = wp_remote_get( $url, $args );
 
-		if ( is_wp_error( $response ) ) {
-			$this->last_error = $response->get_error_message();
-			return null;
+			if ( is_wp_error( $response ) ) {
+				$this->last_error = $response->get_error_message();
+				return null;
+			}
+
+			$code = (int) wp_remote_retrieve_response_code( $response );
+			$body = wp_remote_retrieve_body( $response );
+
+			if ( 429 === $code || ( $code >= 500 && $code < 600 && $attempt < $max_attempts ) ) {
+				$this->last_error = sprintf(
+					/* translators: %d: HTTP status code */
+					__( 'Matomo a répondu avec le code HTTP %d.', 'gi-toolkit' ),
+					$code
+				);
+				if ( $attempt < $max_attempts ) {
+					sleep( min( 8, $attempt * 2 ) );
+					continue;
+				}
+				return null;
+			}
+
+			if ( $code < 200 || $code >= 300 ) {
+				$this->last_error = sprintf(
+					/* translators: %d: HTTP status code */
+					__( 'Matomo a répondu avec le code HTTP %d.', 'gi-toolkit' ),
+					$code
+				);
+				return null;
+			}
+
+			if ( '' === $body ) {
+				$this->last_error = __( 'Réponse Matomo vide.', 'gi-toolkit' );
+				return null;
+			}
+
+			$data = json_decode( $body, true );
+			if ( null === $data && JSON_ERROR_NONE !== json_last_error() ) {
+				$this->last_error = __( 'Réponse Matomo JSON invalide.', 'gi-toolkit' );
+				return null;
+			}
+
+			if ( is_array( $data ) && isset( $data['result'] ) && 'error' === $data['result'] ) {
+				$this->last_error = isset( $data['message'] ) ? (string) $data['message'] : __( 'Erreur API Matomo.', 'gi-toolkit' );
+				if ( self::is_rate_limit_message( $this->last_error ) && $attempt < $max_attempts ) {
+					sleep( min( 8, $attempt * 2 ) );
+					continue;
+				}
+				return null;
+			}
+
+			return $data;
 		}
 
-		$code = (int) wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
-
-		if ( $code < 200 || $code >= 300 ) {
-			$this->last_error = sprintf(
-				/* translators: %d: HTTP status code */
-				__( 'Matomo a répondu avec le code HTTP %d.', 'gi-toolkit' ),
-				$code
-			);
-			return null;
-		}
-
-		if ( '' === $body ) {
-			$this->last_error = __( 'Réponse Matomo vide.', 'gi-toolkit' );
-			return null;
-		}
-
-		$data = json_decode( $body, true );
-		if ( null === $data && JSON_ERROR_NONE !== json_last_error() ) {
-			$this->last_error = __( 'Réponse Matomo JSON invalide.', 'gi-toolkit' );
-			return null;
-		}
-
-		if ( is_array( $data ) && isset( $data['result'] ) && 'error' === $data['result'] ) {
-			$this->last_error = isset( $data['message'] ) ? (string) $data['message'] : __( 'Erreur API Matomo.', 'gi-toolkit' );
-			return null;
-		}
-
-		return $data;
+		return null;
 	}
 
 	/**

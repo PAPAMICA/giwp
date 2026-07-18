@@ -436,6 +436,24 @@ class Gi_Toolkit_Uptime_Kuma_API {
 	}
 
 	/**
+	 * @param string $message Message serveur / client.
+	 * @return bool
+	 */
+	private static function is_rate_limit_message( $message ) {
+		if ( class_exists( 'Gi_Toolkit_Matomo_API', false ) ) {
+			return Gi_Toolkit_Matomo_API::is_rate_limit_message( $message );
+		}
+		$m = strtolower( (string) $message );
+		return '' !== $m && (
+			false !== strpos( $m, 'too frequently' )
+			|| false !== strpos( $m, 'rate limit' )
+			|| false !== strpos( $m, 'try again later' )
+		);
+	}
+
+	/**
+	 * Connexion admin Socket.IO (avec retry si rate-limit).
+	 *
 	 * @param Gi_Toolkit_Uptime_Kuma_Socket_Client $client Client.
 	 * @return array{ok:bool, message?:string}
 	 */
@@ -452,18 +470,52 @@ class Gi_Toolkit_Uptime_Kuma_API {
 			);
 		}
 
-		$response = $client->emit(
-			'login',
-			array(
-				'username' => $username,
-				'password' => $password,
-				'token'    => '',
-			)
-		);
+		$max_attempts = 4;
+		for ( $attempt = 1; $attempt <= $max_attempts; $attempt++ ) {
+			$response = $client->emit(
+				'login',
+				array(
+					'username' => $username,
+					'password' => $password,
+					'token'    => '',
+				)
+			);
 
-		if ( null === $response ) {
-			$detail = $client->get_last_error();
-			$msg    = $detail ?: __( 'Pas de réponse Socket.IO (vérifiez l’URL et l’accès réseau au serveur Kuma).', 'gi-toolkit' );
+			if ( null === $response ) {
+				$detail = $client->get_last_error();
+				$msg    = $detail ?: __( 'Pas de réponse Socket.IO (vérifiez l’URL et l’accès réseau au serveur Kuma).', 'gi-toolkit' );
+				if ( self::is_rate_limit_message( $msg ) && $attempt < $max_attempts ) {
+					sleep( min( 8, $attempt * 2 ) );
+					continue;
+				}
+				$this->last_error = $msg;
+				return array(
+					'ok'      => false,
+					'message' => $msg,
+				);
+			}
+
+			if ( is_array( $response ) && ! empty( $response['ok'] ) ) {
+				$this->last_error = null;
+				return array( 'ok' => true );
+			}
+
+			if ( is_array( $response ) && ! empty( $response['tokenRequired'] ) ) {
+				$msg = __( 'Ce compte exige la 2FA sur Uptime Kuma : désactivez-la temporairement ou utilisez un compte dédié sans 2FA.', 'gi-toolkit' );
+				$this->last_error = $msg;
+				return array(
+					'ok'      => false,
+					'message' => $msg,
+				);
+			}
+
+			$server_msg = is_array( $response ) && ! empty( $response['msg'] ) ? (string) $response['msg'] : '';
+			$msg        = $server_msg ?: __( 'Identifiants Uptime Kuma invalides.', 'gi-toolkit' );
+			if ( self::is_rate_limit_message( $msg ) && $attempt < $max_attempts ) {
+				sleep( min( 8, $attempt * 2 ) );
+				continue;
+			}
+
 			$this->last_error = $msg;
 			return array(
 				'ok'      => false,
@@ -471,24 +523,7 @@ class Gi_Toolkit_Uptime_Kuma_API {
 			);
 		}
 
-		if ( is_array( $response ) && ! empty( $response['ok'] ) ) {
-			$this->last_error = null;
-			return array( 'ok' => true );
-		}
-
-		if ( is_array( $response ) && ! empty( $response['tokenRequired'] ) ) {
-			$msg = __( 'Ce compte exige la 2FA sur Uptime Kuma : désactivez-la temporairement ou utilisez un compte dédié sans 2FA.', 'gi-toolkit' );
-			$this->last_error = $msg;
-			return array(
-				'ok'      => false,
-				'message' => $msg,
-			);
-		}
-
-		$server_msg = is_array( $response ) && ! empty( $response['msg'] ) ? (string) $response['msg'] : '';
-		$msg        = $server_msg ?: __( 'Identifiants Uptime Kuma invalides.', 'gi-toolkit' );
-		$this->last_error = $msg;
-
+		$msg = $this->last_error ?: __( 'Identifiants Uptime Kuma invalides.', 'gi-toolkit' );
 		return array(
 			'ok'      => false,
 			'message' => $msg,

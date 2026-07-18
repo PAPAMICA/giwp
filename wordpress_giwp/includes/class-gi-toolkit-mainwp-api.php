@@ -43,7 +43,7 @@ class Gi_Toolkit_MainWP_API {
 				}
 				return $result;
 			case 'sync_integrations':
-				return self::handle_sync_integrations();
+				return self::handle_sync_integrations( $data );
 			case 'set_modules':
 				$modules = isset( $data['modules'] ) && is_array( $data['modules'] ) ? $data['modules'] : array();
 				return Gi_Toolkit_Settings::set_modules_state( $modules );
@@ -99,23 +99,30 @@ class Gi_Toolkit_MainWP_API {
 	/**
 	 * Rafraîchit les liaisons Matomo / Uptime Kuma après un déploiement MainWP.
 	 *
+	 * Flags optionnels : refresh_matomo / refresh_kuma (1|0). Sans flags → les deux.
+	 *
+	 * @param array<string, mixed> $data Payload POST.
 	 * @return array<string, mixed>
 	 */
-	private static function handle_sync_integrations() {
+	private static function handle_sync_integrations( $data = array() ) {
 		if ( function_exists( 'set_time_limit' ) ) {
 			set_time_limit( 120 );
 		}
+
+		$has_flags  = isset( $data['refresh_matomo'] ) || isset( $data['refresh_kuma'] );
+		$do_matomo  = ! $has_flags || ! empty( $data['refresh_matomo'] );
+		$do_kuma    = ! $has_flags || ! empty( $data['refresh_kuma'] );
 
 		$result = array(
 			'matomo'      => array( 'skipped' => true ),
 			'uptime_kuma' => array( 'skipped' => true ),
 		);
 
-		if ( class_exists( 'Gi_Toolkit_Matomo' ) ) {
+		if ( $do_matomo && class_exists( 'Gi_Toolkit_Matomo' ) ) {
 			$result['matomo'] = Gi_Toolkit_Matomo::refresh_link_after_deploy();
 		}
 
-		if ( class_exists( 'Gi_Toolkit_Uptime_Kuma' ) ) {
+		if ( $do_kuma && class_exists( 'Gi_Toolkit_Uptime_Kuma' ) ) {
 			$result['uptime_kuma'] = Gi_Toolkit_Uptime_Kuma::refresh_link_after_deploy();
 		}
 

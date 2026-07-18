@@ -115,15 +115,18 @@ class MainWP_GIWeb_API {
 			}
 		}
 
-		if ( ! empty( $result['data']['matomo']['message'] ) ) {
-			$messages[] = trim( wp_strip_all_tags( (string) $result['data']['matomo']['message'] ) );
+		$matomo = is_array( $result['data']['matomo'] ?? null ) ? $result['data']['matomo'] : array();
+		if ( ! empty( $matomo['warning'] ) ) {
+			$messages[] = trim( wp_strip_all_tags( (string) $matomo['warning'] ) );
+		} elseif ( empty( $matomo['site_id'] ) && ! empty( $matomo['message'] ) ) {
+			$messages[] = trim( wp_strip_all_tags( (string) $matomo['message'] ) );
 		}
 
-		if ( ! empty( $result['data']['uptime_kuma']['message'] ) ) {
-			$messages[] = trim( wp_strip_all_tags( (string) $result['data']['uptime_kuma']['message'] ) );
-		}
-		if ( ! empty( $result['data']['uptime_kuma']['warning'] ) ) {
-			$messages[] = trim( wp_strip_all_tags( (string) $result['data']['uptime_kuma']['warning'] ) );
+		$kuma = is_array( $result['data']['uptime_kuma'] ?? null ) ? $result['data']['uptime_kuma'] : array();
+		if ( ! empty( $kuma['warning'] ) ) {
+			$messages[] = trim( wp_strip_all_tags( (string) $kuma['warning'] ) );
+		} elseif ( empty( $kuma['monitor_id'] ) && ! empty( $kuma['message'] ) ) {
+			$messages[] = trim( wp_strip_all_tags( (string) $kuma['message'] ) );
 		}
 
 		return array_values( array_unique( array_filter( $messages ) ) );
@@ -409,15 +412,16 @@ class MainWP_GIWeb_API {
 	/**
 	 * Rafraîchit Matomo + Uptime Kuma sur le site enfant (post-déploiement).
 	 *
-	 * @param int $website_id Site ID MainWP.
+	 * @param int                  $website_id Site ID MainWP.
+	 * @param array<string, mixed> $payload    Flags optionnels refresh_matomo / refresh_kuma.
 	 * @return array<string, mixed>
 	 */
-	public static function sync_integrations( $website_id ) {
-		return self::request( $website_id, 'sync_integrations' );
+	public static function sync_integrations( $website_id, $payload = array() ) {
+		return self::request( $website_id, 'sync_integrations', is_array( $payload ) ? $payload : array() );
 	}
 
 	/**
-	 * Après un import réussi, force la re-liaison Matomo / Uptime Kuma.
+	 * Après un import réussi, re-lie uniquement les intégrations manquantes / en warning.
 	 *
 	 * @param int                  $website_id Site ID.
 	 * @param array<string, mixed> $import     Résultat import.
@@ -431,7 +435,34 @@ class MainWP_GIWeb_API {
 			);
 		}
 
-		$result = self::sync_integrations( $website_id );
+		$matomo_import = is_array( $import['data']['matomo'] ?? null ) ? $import['data']['matomo'] : array();
+		$kuma_import   = is_array( $import['data']['uptime_kuma'] ?? null ) ? $import['data']['uptime_kuma'] : array();
+
+		$needs_matomo = empty( $matomo_import['site_id'] ) || ! empty( $matomo_import['warning'] );
+		$needs_kuma   = empty( $kuma_import['monitor_id'] ) || ! empty( $kuma_import['warning'] );
+
+		// Import sans bloc Matomo/Kuma : comportement historique (tout resynchroniser).
+		if ( ! isset( $import['data']['matomo'] ) && ! isset( $import['data']['uptime_kuma'] ) ) {
+			$needs_matomo = true;
+			$needs_kuma   = true;
+		}
+
+		if ( ! $needs_matomo && ! $needs_kuma ) {
+			return array(
+				'message' => '',
+				'result'  => null,
+			);
+		}
+
+		$payload = array();
+		if ( $needs_matomo ) {
+			$payload['refresh_matomo'] = '1';
+		}
+		if ( $needs_kuma ) {
+			$payload['refresh_kuma'] = '1';
+		}
+
+		$result = self::sync_integrations( $website_id, $payload );
 		$data   = is_array( $result['data'] ?? null ) ? $result['data'] : array();
 		$parts  = array();
 
