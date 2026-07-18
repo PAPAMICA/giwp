@@ -82,15 +82,23 @@
 		this.$close = $modal.find( '.mainwp-giweb-modal__close' );
 	}
 
-	SyncModal.prototype.open = function () {
+	SyncModal.prototype.open = function ( preserveLog ) {
 		this.$modal.addClass( 'mainwp-giweb-modal--open' ).attr( 'aria-hidden', 'false' );
-		this.$log.empty();
+		if ( ! preserveLog ) {
+			this.$log.empty();
+		}
 		this.$close.prop( 'disabled', true );
-		this.setProgress( 0, 0 );
+		if ( ! preserveLog ) {
+			this.setProgress( 0, 0 );
+		}
 	};
 
 	SyncModal.prototype.close = function () {
 		this.$modal.removeClass( 'mainwp-giweb-modal--open' ).attr( 'aria-hidden', 'true' );
+	};
+
+	SyncModal.prototype.isOpen = function () {
+		return this.$modal.hasClass( 'mainwp-giweb-modal--open' );
 	};
 
 	SyncModal.prototype.setProgress = function ( current, total ) {
@@ -306,25 +314,68 @@
 		return ids;
 	}
 
-	function runPluginDeploy( modal ) {
-		var $btn = $( '#mainwp-giweb-plugin-deploy-start' );
-		if ( ! window.confirm( i18n( 'pluginDeployConfirm', 'Déployer sur tous les sites ?' ) ) ) {
-			return;
+	function setDeployButtonsDisabled( disabled ) {
+		var $btns = $(
+			'#mainwp-giweb-plugin-deploy-start, #mainwp-giweb-deploy-start, #mainwp-giweb-full-deploy-start'
+		);
+		$btns.each( function () {
+			var $btn = $( this );
+			if ( disabled ) {
+				if ( typeof $btn.data( 'giwebLocked' ) === 'undefined' ) {
+					$btn.data( 'giwebLocked', !! $btn.prop( 'disabled' ) );
+				}
+				$btn.prop( 'disabled', true );
+			} else {
+				$btn.prop( 'disabled', !! $btn.data( 'giwebLocked' ) );
+			}
+		} );
+	}
+
+	/**
+	 * @param {object} modal SyncModal
+	 * @param {object} opts  confirm, siteIds, manageButtons
+	 * @return {jQuery.Promise}
+	 */
+	function runPluginDeploy( modal, opts ) {
+		opts = opts || {};
+		var manageButtons = opts.manageButtons !== false;
+		var deferred = $.Deferred();
+
+		if ( opts.confirm !== false ) {
+			if ( ! window.confirm( i18n( 'pluginDeployConfirm', 'Déployer sur tous les sites ?' ) ) ) {
+				deferred.reject( { cancelled: true } );
+				return deferred.promise();
+			}
 		}
-		$btn.prop( 'disabled', true );
-		modal.open();
+
+		if ( manageButtons ) {
+			setDeployButtonsDisabled( true );
+		}
+		if ( modal.isOpen() ) {
+			modal.open( true );
+		} else {
+			modal.open();
+		}
 		modal.appendLog( i18n( 'pluginDeployStarting', 'Préparation…' ) );
 		modal.$modal.find( '.mainwp-giweb-plugin-deploy-url-hint' ).prop( 'hidden', true );
 
-		postAjax( 'mainwp_giweb_plugin_deploy_init', {} )
+		var initPayload = {};
+		if ( opts.siteIds && opts.siteIds.length ) {
+			initPayload.selected_sites = opts.siteIds;
+		}
+
+		postAjax( 'mainwp_giweb_plugin_deploy_init', initPayload )
 			.done( function ( response ) {
 				if ( ! response || ! response.success ) {
 					modal.appendLog(
 						( response && response.data && response.data.message ) || i18n( 'syncError', 'Erreur' ),
 						false
 					);
-					modal.enableClose();
-					$btn.prop( 'disabled', false );
+					if ( manageButtons ) {
+						modal.enableClose();
+						setDeployButtonsDisabled( false );
+					}
+					deferred.reject( { message: ( response && response.data && response.data.message ) || '' } );
 					return;
 				}
 
@@ -352,8 +403,11 @@
 
 				if ( ! total || ! jobId ) {
 					modal.appendLog( i18n( 'pluginDeployNoSites', 'Aucun site' ), false );
-					modal.enableClose();
-					$btn.prop( 'disabled', false );
+					if ( manageButtons ) {
+						modal.enableClose();
+						setDeployButtonsDisabled( false );
+					}
+					deferred.reject( { message: 'no_sites' } );
 					return;
 				}
 
@@ -425,31 +479,53 @@
 							modal.appendLog( summary, false );
 						}
 						postAjax( 'mainwp_giweb_plugin_deploy_cleanup', { job_id: jobId } );
-						showInlineNotice( summary, errCount === 0 ? 'success' : 'warning' );
-						modal.enableClose();
-						$btn.prop( 'disabled', false );
+						if ( manageButtons ) {
+							showInlineNotice( summary, errCount === 0 ? 'success' : 'warning' );
+							modal.enableClose();
+							setDeployButtonsDisabled( false );
+						}
+						deferred.resolve( { okCount: okCount, errCount: errCount, summary: summary } );
 					}
 				);
 			} )
 			.fail( function () {
 				modal.appendLog( i18n( 'syncError', 'Erreur réseau' ), false );
-				modal.enableClose();
-				$btn.prop( 'disabled', false );
+				if ( manageButtons ) {
+					modal.enableClose();
+					setDeployButtonsDisabled( false );
+				}
+				deferred.reject( { network: true } );
 			} );
+
+		return deferred.promise();
 	}
 
-	function runDeploy( modal ) {
-		var $btn = $( '#mainwp-giweb-deploy-start' );
-		var siteIds = collectDeploySiteIds();
+	/**
+	 * @param {object} modal SyncModal
+	 * @param {object} opts  siteIds, manageButtons, confirm
+	 * @return {jQuery.Promise}
+	 */
+	function runDeploy( modal, opts ) {
+		opts = opts || {};
+		var manageButtons = opts.manageButtons !== false;
+		var deferred = $.Deferred();
+		var siteIds = opts.siteIds || collectDeploySiteIds();
 		var tplId = $( '#deploy_template_id' ).val() || '';
 
 		if ( ! siteIds.length ) {
 			showInlineNotice( i18n( 'deployNoSites', 'Sélectionnez au moins un site.' ), 'warning' );
-			return;
+			deferred.reject( { noSites: true } );
+			return deferred.promise();
 		}
 
-		$btn.prop( 'disabled', true );
-		modal.open();
+		if ( manageButtons ) {
+			setDeployButtonsDisabled( true );
+		}
+		if ( modal.isOpen() ) {
+			modal.open( true );
+		} else {
+			modal.open();
+		}
 		modal.appendLog( i18n( 'deployStarting', 'Préparation…' ) );
 
 		postAjax( 'mainwp_giweb_deploy_init', {
@@ -462,8 +538,11 @@
 						( response && response.data && response.data.message ) || i18n( 'syncError', 'Erreur' ),
 						false
 					);
-					modal.enableClose();
-					$btn.prop( 'disabled', false );
+					if ( manageButtons ) {
+						modal.enableClose();
+						setDeployButtonsDisabled( false );
+					}
+					deferred.reject( { message: ( response && response.data && response.data.message ) || '' } );
 					return;
 				}
 
@@ -473,8 +552,11 @@
 
 				if ( ! total ) {
 					modal.appendLog( i18n( 'deployNoSites', 'Aucun site' ), false );
-					modal.enableClose();
-					$btn.prop( 'disabled', false );
+					if ( manageButtons ) {
+						modal.enableClose();
+						setDeployButtonsDisabled( false );
+					}
+					deferred.reject( { noSites: true } );
 					return;
 				}
 
@@ -548,16 +630,115 @@
 							modal.appendLog( summary, false );
 						}
 						postAjax( 'mainwp_giweb_deploy_cleanup', { deployment_id: deploymentId } );
-						showInlineNotice( summary, noticeType );
-						modal.enableClose();
-						$btn.prop( 'disabled', false );
+						if ( manageButtons ) {
+							showInlineNotice( summary, noticeType );
+							modal.enableClose();
+							setDeployButtonsDisabled( false );
+						}
+						deferred.resolve( { okCount: okCount, errCount: errCount, summary: summary } );
 					}
 				);
 			} )
 			.fail( function () {
 				modal.appendLog( i18n( 'syncError', 'Erreur réseau' ), false );
+				if ( manageButtons ) {
+					modal.enableClose();
+					setDeployButtonsDisabled( false );
+				}
+				deferred.reject( { network: true } );
+			} );
+
+		return deferred.promise();
+	}
+
+	/**
+	 * Mise à jour plugin (sites sélectionnés) puis configuration.
+	 *
+	 * @param {object} modal Modal unique pour les deux phases.
+	 * @return {void}
+	 */
+	function runFullDeploy( modal ) {
+		var siteIds = collectDeploySiteIds();
+		if ( ! siteIds.length ) {
+			showInlineNotice( i18n( 'deployNoSites', 'Sélectionnez au moins un site.' ), 'warning' );
+			return;
+		}
+
+		if (
+			! window.confirm(
+				i18n(
+					'fullDeployConfirm',
+					'Mettez à jour GI-Toolkit puis déployer la configuration sur les sites sélectionnés ?'
+				)
+			)
+		) {
+			return;
+		}
+
+		setDeployButtonsDisabled( true );
+		modal.open();
+		modal.appendLog( i18n( 'fullDeployPhasePlugin', '=== Phase 1 : mise à jour GI-Toolkit ===' ), true );
+
+		runPluginDeploy( modal, {
+			confirm: false,
+			siteIds: siteIds,
+			manageButtons: false,
+		} )
+			.done( function ( pluginResult ) {
+				if ( ! pluginResult || ! pluginResult.okCount ) {
+					modal.appendLog(
+						i18n( 'fullDeployPluginFailed', 'Mise à jour plugin interrompue — configuration non lancée.' ),
+						false
+					);
+					showInlineNotice(
+						i18n( 'fullDeployPluginFailed', 'Mise à jour plugin interrompue — configuration non lancée.' ),
+						'error'
+					);
+					modal.enableClose();
+					setDeployButtonsDisabled( false );
+					return;
+				}
+
+				modal.appendLog( i18n( 'fullDeployPhaseConfig', '=== Phase 2 : déploiement de la configuration ===' ), true );
+				runDeploy( modal, {
+					siteIds: siteIds,
+					manageButtons: false,
+				} )
+					.done( function ( configResult ) {
+						var pluginErr = pluginResult.errCount || 0;
+						var configErr = ( configResult && configResult.errCount ) || 0;
+						var summary = i18n( 'fullDeployDone', 'Terminé (plugin + configuration).' );
+						if ( pluginErr || configErr ) {
+							summary = i18n(
+								'fullDeployDonePartial',
+								'Terminé avec des erreurs (plugin et/ou configuration).'
+							);
+						}
+						modal.appendLog( summary, ! pluginErr && ! configErr );
+						showInlineNotice( summary, pluginErr || configErr ? 'warning' : 'success' );
+						modal.enableClose();
+						setDeployButtonsDisabled( false );
+					} )
+					.fail( function () {
+						modal.enableClose();
+						setDeployButtonsDisabled( false );
+					} );
+			} )
+			.fail( function ( err ) {
+				if ( err && err.cancelled ) {
+					setDeployButtonsDisabled( false );
+					return;
+				}
+				modal.appendLog(
+					i18n( 'fullDeployPluginFailed', 'Mise à jour plugin interrompue — configuration non lancée.' ),
+					false
+				);
+				showInlineNotice(
+					i18n( 'fullDeployPluginFailed', 'Mise à jour plugin interrompue — configuration non lancée.' ),
+					'error'
+				);
 				modal.enableClose();
-				$btn.prop( 'disabled', false );
+				setDeployButtonsDisabled( false );
 			} );
 	}
 
@@ -842,6 +1023,10 @@
 			$( '#mainwp-giweb-deploy-start' ).on( 'click', function () {
 				log( 'deploy click' );
 				runDeploy( deployModal );
+			} );
+			$( '#mainwp-giweb-full-deploy-start' ).on( 'click', function () {
+				log( 'full deploy click' );
+				runFullDeploy( deployModal );
 			} );
 			deployModal.$close.on( 'click', function () {
 				if ( ! $( this ).prop( 'disabled' ) ) {

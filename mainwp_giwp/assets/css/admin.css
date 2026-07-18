@@ -698,6 +698,23 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-wrap .button:not(.button-primar
 	margin-top: 12px;
 }
 
+.mainwp-giweb-deploy-section {
+	margin-bottom: 8px;
+}
+
+.mainwp-giweb-deploy-sep {
+	border: 0;
+	border-top: 1px solid #dcdcde;
+	margin: 28px 0;
+}
+
+.mainwp-giweb-deploy-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	align-items: center;
+}
+
 .mainwp-giweb-settings-accordion {
 	border: 1px solid var(--giweb-border);
 	border-radius: 10px;

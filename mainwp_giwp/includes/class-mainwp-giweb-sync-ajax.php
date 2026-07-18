@@ -1043,9 +1043,22 @@ class MainWP_GIWeb_Sync_Ajax {
 			}
 
 			$sites_out = array();
+			$filter_ids = array();
+			if ( ! empty( $_POST['selected_sites'] ) && is_array( $_POST['selected_sites'] ) ) {
+				foreach ( wp_unslash( $_POST['selected_sites'] ) as $raw_id ) {
+					$id = absint( $raw_id );
+					if ( $id > 0 ) {
+						$filter_ids[ $id ] = true;
+					}
+				}
+			}
+
 			foreach ( MainWP_GIWeb_Sites::fetch_all( $act ) as $site ) {
 				$row = MainWP_GIWeb_Sites::normalize_one( $site );
 				if ( $row['id'] <= 0 ) {
+					continue;
+				}
+				if ( ! empty( $filter_ids ) && empty( $filter_ids[ $row['id'] ] ) ) {
 					continue;
 				}
 				$sites_out[] = array(
@@ -1056,7 +1069,13 @@ class MainWP_GIWeb_Sync_Ajax {
 			}
 
 			if ( empty( $sites_out ) ) {
-				wp_send_json_error( array( 'message' => __( 'Aucun site enfant MainWP trouvé.', 'mainwp-giweb' ) ) );
+				wp_send_json_error(
+					array(
+						'message' => ! empty( $filter_ids )
+							? __( 'Aucun des sites sélectionnés n’est disponible.', 'mainwp-giweb' )
+							: __( 'Aucun site enfant MainWP trouvé.', 'mainwp-giweb' ),
+					)
+				);
 			}
 
 			$package_version = isset( $zip['package_version'] ) ? (string) $zip['package_version'] : MainWP_GIWeb_Zip::get_package_version();

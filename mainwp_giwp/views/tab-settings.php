@@ -94,15 +94,11 @@ $logs            = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 									<code><?php echo esc_html( $install_zip_url ); ?></code>
 								</p>
 							<?php endif; ?>
+							<p class="description"><?php esc_html_e( 'Le déploiement du plugin se fait depuis l’onglet Déploiement.', 'mainwp-giweb' ); ?></p>
 						</div>
 					<?php else : ?>
 						<p class="description mainwp-giweb-settings-warn"><?php esc_html_e( 'Aucune URL ZIP — vérifiez ZipArchive et wordpress_giwp.', 'mainwp-giweb' ); ?></p>
 					<?php endif; ?>
-					<div class="mainwp-giweb-settings-actions">
-						<button type="button" class="button button-secondary" id="mainwp-giweb-plugin-deploy-start" <?php disabled( ! $install_zip_url ); ?>>
-							<?php esc_html_e( 'Déployer la dernière version sur tous les sites', 'mainwp-giweb' ); ?>
-						</button>
-					</div>
 				</div>
 			</div>
 		</section>
