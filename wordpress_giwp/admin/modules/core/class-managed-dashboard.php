@@ -175,7 +175,7 @@ class Gi_Toolkit_Managed_Dashboard {
 
 		$user = wp_get_current_user();
 		$name = $user->display_name ? $user->display_name : $user->user_login;
-		$logo = GI_TOOLKIT_PLUGIN_URL . 'admin/assets/img/logo-genevois-informatique.png';
+		$logo = GI_TOOLKIT_PLUGIN_URL . 'admin/assets/img/logo-genevois-informatique-white.png';
 		?>
 		<div class="gi-md-wrap" id="gi-toolkit-managed-dashboard" data-state="loading">
 			<header class="gi-md-hero gi-md-animate-in" style="--gi-animate-i: 0;">
@@ -554,7 +554,7 @@ class Gi_Toolkit_Managed_Dashboard {
 		}
 
 		$when_abs = '';
-		$when_rel = '—';
+		$when_rel = '-';
 		if ( ! empty( $payload['last_backup_time'] ) ) {
 			$ts       = (int) $payload['last_backup_time'];
 			$when_abs = wp_date( 'd/m/Y H:i', $ts );
@@ -565,19 +565,23 @@ class Gi_Toolkit_Managed_Dashboard {
 			);
 		}
 
-		$remote_ok = ! empty( $payload['remote_sent'] );
+		$remote_ok  = ! empty( $payload['remote_sent'] );
 		$remote_cfg = ! empty( $payload['remote_configured'] );
-		$age_days  = isset( $payload['last_backup_age_days'] ) ? (int) $payload['last_backup_age_days'] : null;
+		$age_days   = isset( $payload['last_backup_age_days'] ) ? (int) $payload['last_backup_age_days'] : null;
+		$size       = (string) ( $payload['size_human'] ?? '' );
+		$parts_raw  = (string) ( $payload['last_backup_label'] ?? '' );
+		$parts      = array_filter( array_map( 'trim', preg_split( '/\s*[+|,]\s*|\s+et\s+/u', str_replace( '—', ',', $parts_raw ) ) ) );
+
+		$updraft_url = admin_url( 'options-general.php?page=updraftplus' );
 
 		ob_start();
 		?>
-		<div class="gi-md-backup gi-md-backup--hero status-<?php echo esc_attr( $status_class ); ?>">
-			<div class="gi-md-backup__glow" aria-hidden="true"></div>
-			<div class="gi-md-backup__top">
-				<div class="gi-md-backup__orb" aria-hidden="true">
-					<span class="dashicons dashicons-database"></span>
-				</div>
-				<div class="gi-md-backup__headline">
+		<div class="gi-md-backup status-<?php echo esc_attr( $status_class ); ?>">
+			<div class="gi-md-backup__status">
+				<span class="gi-md-backup__icon" aria-hidden="true">
+					<span class="dashicons dashicons-backup"></span>
+				</span>
+				<div class="gi-md-backup__status-text">
 					<span class="gi-md-backup__badge"><?php echo esc_html( $status_label ); ?></span>
 					<strong class="gi-md-backup__when"><?php echo esc_html( $when_rel ); ?></strong>
 					<?php if ( $when_abs ) : ?>
@@ -585,13 +589,14 @@ class Gi_Toolkit_Managed_Dashboard {
 					<?php endif; ?>
 				</div>
 			</div>
-			<div class="gi-md-backup__metrics">
-				<div class="gi-md-backup__metric">
-					<span class="gi-md-backup__metric-label"><?php esc_html_e( 'Taille', 'gi-toolkit' ); ?></span>
-					<strong><?php echo esc_html( (string) ( $payload['size_human'] ?? '—' ) ); ?></strong>
-				</div>
-				<div class="gi-md-backup__metric">
-					<span class="gi-md-backup__metric-label"><?php esc_html_e( 'Âge', 'gi-toolkit' ); ?></span>
+
+			<ul class="gi-md-backup__stats">
+				<li>
+					<span><?php esc_html_e( 'Taille', 'gi-toolkit' ); ?></span>
+					<strong><?php echo esc_html( '' !== $size ? $size : '-' ); ?></strong>
+				</li>
+				<li>
+					<span><?php esc_html_e( 'Âge', 'gi-toolkit' ); ?></span>
 					<strong>
 						<?php
 						echo null !== $age_days
@@ -602,12 +607,12 @@ class Gi_Toolkit_Managed_Dashboard {
 									$age_days
 								)
 							)
-							: '—';
+							: '-';
 						?>
 					</strong>
-				</div>
-				<div class="gi-md-backup__metric">
-					<span class="gi-md-backup__metric-label"><?php esc_html_e( 'Distant', 'gi-toolkit' ); ?></span>
+				</li>
+				<li>
+					<span><?php esc_html_e( 'Distant', 'gi-toolkit' ); ?></span>
 					<strong class="<?php echo $remote_ok ? 'is-ok' : ( $remote_cfg ? 'is-warn' : 'is-off' ); ?>">
 						<?php
 						if ( $remote_ok ) {
@@ -619,11 +624,20 @@ class Gi_Toolkit_Managed_Dashboard {
 						}
 						?>
 					</strong>
-				</div>
-			</div>
-			<?php if ( ! empty( $payload['last_backup_label'] ) ) : ?>
-				<p class="gi-md-backup__parts"><?php echo esc_html( (string) $payload['last_backup_label'] ); ?></p>
+				</li>
+			</ul>
+
+			<?php if ( ! empty( $parts ) ) : ?>
+				<ul class="gi-md-backup__chips">
+					<?php foreach ( $parts as $part ) : ?>
+						<li><?php echo esc_html( (string) $part ); ?></li>
+					<?php endforeach; ?>
+				</ul>
 			<?php endif; ?>
+
+			<p class="gi-md-card__footer">
+				<a href="<?php echo esc_url( $updraft_url ); ?>"><?php esc_html_e( 'Ouvrir UpdraftPlus →', 'gi-toolkit' ); ?></a>
+			</p>
 		</div>
 		<?php
 		return (string) ob_get_clean();
@@ -637,6 +651,13 @@ class Gi_Toolkit_Managed_Dashboard {
 			return null;
 		}
 
+		if ( ! class_exists( 'Gi_Toolkit_Update_Logs', false ) ) {
+			$update_logs = GI_TOOLKIT_PLUGIN_PATH . 'admin/modules/pro/class-update-logs.php';
+			if ( is_readable( $update_logs ) ) {
+				require_once $update_logs;
+			}
+		}
+
 		$logs = get_option( 'gi_toolkit_update_logs', array() );
 		if ( ! is_array( $logs ) || empty( $logs ) ) {
 			return null;
@@ -644,16 +665,42 @@ class Gi_Toolkit_Managed_Dashboard {
 
 		$logs_url = admin_url( 'admin.php?page=gi-toolkit-settings-update-logs' );
 		$rows     = array_slice( $logs, 0, 6 );
+
+		$type_labels = array(
+			'plugin'      => __( 'Extension', 'gi-toolkit' ),
+			'theme'       => __( 'Thème', 'gi-toolkit' ),
+			'core'        => __( 'WordPress', 'gi-toolkit' ),
+			'translation' => __( 'Traduction', 'gi-toolkit' ),
+		);
+		$action_labels = array(
+			'update'  => __( 'Mise à jour', 'gi-toolkit' ),
+			'install' => __( 'Installation', 'gi-toolkit' ),
+		);
+
 		ob_start();
 		?>
 		<div class="gi-md-updates">
 			<ol class="gi-md-timeline">
 				<?php foreach ( $rows as $index => $row ) : ?>
 					<?php
-					$items  = isset( $row['items'] ) && is_array( $row['items'] ) ? implode( ', ', $row['items'] ) : '';
-					$type   = (string) ( $row['type'] ?? '' );
-					$action = (string) ( $row['action'] ?? '' );
-					$icon   = 'plugin' === $type ? 'dashicons-admin-plugins' : ( 'theme' === $type ? 'dashicons-admin-appearance' : 'dashicons-wordpress' );
+					$type        = (string) ( $row['type'] ?? 'core' );
+					$action      = (string) ( $row['action'] ?? '' );
+					$type_label  = $type_labels[ $type ] ?? ucfirst( $type ? $type : 'core' );
+					$action_label = $action_labels[ $action ] ?? ( $action ? ucfirst( $action ) : '' );
+					$labels      = class_exists( 'Gi_Toolkit_Update_Logs' )
+						? Gi_Toolkit_Update_Logs::resolve_entry_labels( $row )
+						: ( isset( $row['items'] ) && is_array( $row['items'] ) ? $row['items'] : array() );
+					$icon        = 'plugin' === $type
+						? 'dashicons-admin-plugins'
+						: ( 'theme' === $type
+							? 'dashicons-admin-appearance'
+							: ( 'translation' === $type ? 'dashicons-translation' : 'dashicons-wordpress' ) );
+					$time_raw    = (string) ( $row['time'] ?? '' );
+					$time_display = $time_raw;
+					$ts           = $time_raw ? strtotime( $time_raw ) : false;
+					if ( $ts ) {
+						$time_display = wp_date( 'd/m/Y H:i', $ts );
+					}
 					?>
 					<li class="gi-md-timeline__item" style="--gi-animate-i: <?php echo (int) $index; ?>;">
 						<span class="gi-md-timeline__dot">
@@ -661,12 +708,18 @@ class Gi_Toolkit_Managed_Dashboard {
 						</span>
 						<div class="gi-md-timeline__body">
 							<div class="gi-md-timeline__head">
-								<span class="gi-md-timeline__badge"><?php echo esc_html( $type ? $type : 'core' ); ?></span>
-								<span class="gi-md-timeline__action"><?php echo esc_html( $action ); ?></span>
-								<span class="gi-md-timeline__time"><?php echo esc_html( (string) ( $row['time'] ?? '' ) ); ?></span>
+								<span class="gi-md-timeline__badge"><?php echo esc_html( $type_label ); ?></span>
+								<?php if ( $action_label ) : ?>
+									<span class="gi-md-timeline__action"><?php echo esc_html( $action_label ); ?></span>
+								<?php endif; ?>
+								<span class="gi-md-timeline__time"><?php echo esc_html( $time_display ); ?></span>
 							</div>
-							<?php if ( $items ) : ?>
-								<p class="gi-md-timeline__items"><?php echo esc_html( $items ); ?></p>
+							<?php if ( ! empty( $labels ) ) : ?>
+								<ul class="gi-md-timeline__names">
+									<?php foreach ( $labels as $label ) : ?>
+										<li><?php echo esc_html( (string) $label ); ?></li>
+									<?php endforeach; ?>
+								</ul>
 							<?php endif; ?>
 						</div>
 					</li>
@@ -764,9 +817,6 @@ class Gi_Toolkit_Managed_Dashboard {
 							echo esc_html( implode( ' · ', $bits ) );
 							?>
 						</span>
-						<?php if ( ! empty( $hosting['reverse_dns'] ) ) : ?>
-							<code class="gi-md-tech__ptr"><?php echo esc_html( (string) $hosting['reverse_dns'] ); ?></code>
-						<?php endif; ?>
 					</div>
 				</div>
 			<?php endif; ?>
@@ -893,7 +943,7 @@ class Gi_Toolkit_Managed_Dashboard {
 			),
 			array(
 				'label' => 'GI-Toolkit',
-				'value' => defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '—',
+				'value' => defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '-',
 			),
 		);
 
@@ -935,7 +985,7 @@ class Gi_Toolkit_Managed_Dashboard {
 			'server_ip'     => (string) ( $payload['server_ip'] ?? '' ),
 			'reverse_dns'   => (string) ( $info['reverse_dns'] ?? '' ),
 			'ptr_subdomain' => (string) ( $info['ptr_subdomain'] ?? '' ),
-			'asn'           => (string) ( $info['asn'] ?? '' ),
+			'asn'           => str_replace( ' — ', ' · ', (string) ( $info['asn'] ?? '' ) ),
 			'isp'           => (string) ( $info['isp'] ?? ( $info['org'] ?? '' ) ),
 			'isp_domain'    => (string) ( $info['isp_domain'] ?? '' ),
 			'logo_url'      => (string) ( $info['logo_url'] ?? ( $payload['header_logo'] ?? '' ) ),

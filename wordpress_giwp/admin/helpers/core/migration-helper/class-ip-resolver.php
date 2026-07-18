@@ -388,7 +388,7 @@ class Gi_Toolkit_Migration_Helper_IP_Resolver {
 		}
 
 		if ( '' !== $asn && '' !== $org ) {
-			return $asn . ' — ' . $org;
+			return $asn . ' · ' . $org;
 		}
 
 		return '' !== $asn ? $asn : $org;
