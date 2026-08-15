@@ -4,7 +4,7 @@ Tags: all in one plugin, admin, security, disable features, easy to use
 Requires at least: 6.0.0
 Tested up to: 6.9.3
 Requires PHP: 7.4
-Stable tag: 2.29.16
+Stable tag: 2.29.17
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -195,6 +195,9 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 4. Code snippets
 
 == Changelog ==
+
+= 2.29.17 =
+* Update: Détection de compromission — widget barre d’admin redessiné (badge, cartes d’alertes, boutons maintenance et pause).
 
 = 2.29.16 =
 * Update: Détection de compromission — le résumé des alertes de requêtes sortantes affiche le domaine concerné.

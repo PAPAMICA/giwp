@@ -1251,6 +1251,26 @@ class Gi_Toolkit_Compromise_Detection {
 			)
 		);
 
+		$wp_admin_bar->add_node(
+			array(
+				'id'     => 'gi-cd-ab-flyout',
+				'parent' => 'gi-compromise-toolbar',
+				'title'  => $this->render_admin_bar_flyout_html( $open, $count, $page ),
+				'href'   => false,
+				'meta'   => array(
+					'class' => 'gi-cd-ab-flyout-node',
+				),
+			)
+		);
+	}
+
+	/**
+	 * @param array<int, array<string, mixed>> $open  Alertes ouvertes.
+	 * @param int                              $count Nombre.
+	 * @param string                           $page  URL journal.
+	 * @return string
+	 */
+	private function render_admin_bar_flyout_html( $open, $count, $page ) {
 		$groups = array();
 		foreach ( $open as $row ) {
 			$label = isset( $row['summary'] ) ? (string) $row['summary'] : __( 'Alerte', 'gi-toolkit' );
@@ -1259,73 +1279,73 @@ class Gi_Toolkit_Compromise_Detection {
 			}
 			++$groups[ $label ];
 		}
-		$bits = array();
-		foreach ( array_slice( $groups, 0, 8, true ) as $label => $n ) {
-			$bits[] = esc_html( $label ) . ( $n > 1 ? ' ×' . (int) $n : '' );
-		}
-		$summary_html  = '<span class="gi-cd-ab-flyout__title">' . esc_html(
-			sprintf(
-				/* translators: %d: count */
-				_n( '%d alerte à traiter', '%d alertes à traiter', $count, 'gi-toolkit' ),
-				$count
-			)
-		) . '</span>';
-		$summary_html .= '<ul class="gi-cd-ab-flyout__types"><li>' . implode( '</li><li>', $bits ) . '</li></ul>';
-
-		$wp_admin_bar->add_node(
-			array(
-				'id'     => 'gi-cd-ab-summary',
-				'parent' => 'gi-compromise-toolbar',
-				'title'  => $summary_html,
-				'href'   => false,
-				'meta'   => array(
-					'class' => 'gi-cd-ab-summary',
-				),
-			)
-		);
 
 		$maint_on = self::is_maintenance_enabled();
-		$wp_admin_bar->add_node(
-			array(
-				'id'     => 'gi-cd-ab-maintenance',
-				'parent' => 'gi-compromise-toolbar',
-				'title'  => $maint_on
-					? esc_html__( 'Désactiver le mode maintenance', 'gi-toolkit' )
-					: esc_html__( 'Activer le mode maintenance', 'gi-toolkit' ),
-				'href'   => self::toolbar_action_url( $maint_on ? 'maintenance_off' : 'maintenance_on' ),
-			)
-		);
+		$paused   = self::is_paused();
+		$until    = self::pause_until();
 
-		foreach ( array( 1 => __( 'Pause alertes 1 h', 'gi-toolkit' ), 2 => __( 'Pause alertes 2 h', 'gi-toolkit' ), 24 => __( 'Pause alertes 24 h', 'gi-toolkit' ) ) as $hours => $label ) {
-			$wp_admin_bar->add_node(
-				array(
-					'id'     => 'gi-cd-ab-pause-' . $hours,
-					'parent' => 'gi-compromise-toolbar',
-					'title'  => esc_html( $label ),
-					'href'   => self::toolbar_action_url( 'pause', $hours ),
-				)
-			);
-		}
-
-		if ( self::is_paused() ) {
-			$wp_admin_bar->add_node(
-				array(
-					'id'     => 'gi-cd-ab-resume',
-					'parent' => 'gi-compromise-toolbar',
-					'title'  => esc_html__( 'Reprendre la surveillance', 'gi-toolkit' ),
-					'href'   => self::toolbar_action_url( 'resume' ),
-				)
-			);
-		}
-
-		$wp_admin_bar->add_node(
-			array(
-				'id'     => 'gi-cd-ab-journal',
-				'parent' => 'gi-compromise-toolbar',
-				'title'  => esc_html__( 'Voir le journal', 'gi-toolkit' ),
-				'href'   => $page,
-			)
-		);
+		ob_start();
+		?>
+		<div class="gi-cd-ab-flyout">
+			<div class="gi-cd-ab-flyout__head">
+				<span class="gi-cd-ab-flyout__badge" aria-hidden="true"><?php echo esc_html( number_format_i18n( $count ) ); ?></span>
+				<div class="gi-cd-ab-flyout__head-text">
+					<span class="gi-cd-ab-flyout__title"><?php
+					echo esc_html(
+						sprintf(
+							/* translators: %d: count */
+							_n( '%d alerte à traiter', '%d alertes à traiter', $count, 'gi-toolkit' ),
+							$count
+						)
+					);
+					?></span>
+					<span class="gi-cd-ab-flyout__subtitle"><?php esc_html_e( 'Détection de compromission', 'gi-toolkit' ); ?></span>
+				</div>
+			</div>
+			<ul class="gi-cd-ab-flyout__types">
+				<?php foreach ( array_slice( $groups, 0, 6, true ) as $label => $n ) : ?>
+					<li>
+						<span class="gi-cd-ab-flyout__type-label"><?php echo esc_html( $label ); ?></span>
+						<?php if ( $n > 1 ) : ?>
+							<span class="gi-cd-ab-flyout__type-count"><?php echo esc_html( (string) (int) $n ); ?></span>
+						<?php endif; ?>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+			<div class="gi-cd-ab-flyout__section">
+				<span class="gi-cd-ab-flyout__label"><?php esc_html_e( 'Maintenance du site', 'gi-toolkit' ); ?></span>
+				<a class="gi-cd-ab-btn <?php echo $maint_on ? 'gi-cd-ab-btn--warn' : 'gi-cd-ab-btn--primary'; ?>" href="<?php echo esc_url( self::toolbar_action_url( $maint_on ? 'maintenance_off' : 'maintenance_on' ) ); ?>">
+					<?php echo $maint_on ? esc_html__( 'Désactiver le mode maintenance', 'gi-toolkit' ) : esc_html__( 'Activer le mode maintenance', 'gi-toolkit' ); ?>
+				</a>
+			</div>
+			<div class="gi-cd-ab-flyout__section">
+				<span class="gi-cd-ab-flyout__label"><?php esc_html_e( 'Pause des alertes', 'gi-toolkit' ); ?></span>
+				<?php if ( $paused && $until ) : ?>
+					<span class="gi-cd-ab-flyout__hint"><?php
+					echo esc_html(
+						sprintf(
+							/* translators: %s: datetime */
+							__( 'En pause jusqu’au %s', 'gi-toolkit' ),
+							wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $until )
+						)
+					);
+					?></span>
+				<?php endif; ?>
+				<div class="gi-cd-ab-flyout__pills">
+					<?php foreach ( array( 1 => __( '1 h', 'gi-toolkit' ), 2 => __( '2 h', 'gi-toolkit' ), 24 => __( '24 h', 'gi-toolkit' ) ) as $hours => $label ) : ?>
+						<a class="gi-cd-ab-pill" href="<?php echo esc_url( self::toolbar_action_url( 'pause', $hours ) ); ?>"><?php echo esc_html( $label ); ?></a>
+					<?php endforeach; ?>
+					<?php if ( $paused ) : ?>
+						<a class="gi-cd-ab-pill gi-cd-ab-pill--ok" href="<?php echo esc_url( self::toolbar_action_url( 'resume' ) ); ?>"><?php esc_html_e( 'Reprendre', 'gi-toolkit' ); ?></a>
+					<?php endif; ?>
+				</div>
+			</div>
+			<p class="gi-cd-ab-flyout__journal">
+				<a href="<?php echo esc_url( $page ); ?>"><?php esc_html_e( 'Voir le journal →', 'gi-toolkit' ); ?></a>
+			</p>
+		</div>
+		<?php
+		return (string) ob_get_clean();
 	}
 
 	/**

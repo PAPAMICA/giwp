@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.29.17 =
+* Update: Détection de compromission — widget barre d’admin redessiné (badge, cartes d’alertes, boutons maintenance et pause).
+
 = 2.29.16 =
 * Update: Détection de compromission — le résumé des alertes de requêtes sortantes affiche le domaine concerné.
 
