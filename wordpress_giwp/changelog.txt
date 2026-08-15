@@ -1,5 +1,11 @@
 == Changelog ==
 
+= 2.29.12 =
+* Add: Détection de compromission — panneau de détails pour toutes les alertes (utilisateur, IP, contexte, aperçu de fichiers).
+
+= 2.29.11 =
+* Add: Détection de compromission — détail des modifications (diff) dans le journal et marquage des alertes comme traitées.
+
 = 2.29.10 =
 * Add: Détection de compromission — modèles de notification Pushover avec variables ($website_name, $alert_summary, …) ; jetons et modèles déployés via MainWP.
 

@@ -104,6 +104,7 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 			'wp_config_hash'     => self::file_hash( self::wp_config_path() ),
 			'htaccess_hash'      => self::file_hash( ABSPATH . '.htaccess' ),
 			'index_hash'         => self::file_hash( ABSPATH . 'index.php' ),
+			'file_contents'      => self::snapshot_file_contents(),
 		);
 	}
 
@@ -140,14 +141,17 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 		$new_admins = isset( $new['admins'] ) && is_array( $new['admins'] ) ? $new['admins'] : array();
 		$added_adm  = array_diff_key( $new_admins, $old_admins );
 		if ( ! empty( $added_adm ) ) {
-			$names = array();
+			$names   = array();
+			$context = array();
 			foreach ( $added_adm as $id => $login ) {
 				$names[] = $login . ' (#' . (int) $id . ')';
+				$context = array_merge( $context, self::user_fact_rows( (int) $id, (string) $login ) );
 			}
 			$alerts[] = array(
 				'type'    => 'watch_admin_user',
 				'summary' => __( 'Nouvel utilisateur administrateur détecté', 'gi-toolkit' ),
 				'details' => implode( ', ', $names ),
+				'context' => $context,
 			);
 		}
 
@@ -162,6 +166,10 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 						'type'    => 'watch_role_elevation',
 						'summary' => __( 'Nouvel utilisateur privilégié', 'gi-toolkit' ),
 						'details' => $login . ' — ' . implode( ', ', $new_roles ),
+						'context' => array_merge(
+							self::user_fact_rows( (int) $uid, $login ),
+							array( self::fact_row( __( 'Rôles', 'gi-toolkit' ), implode( ', ', $new_roles ) ) )
+						),
 					);
 				}
 				continue;
@@ -173,20 +181,30 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 					'type'    => 'watch_role_elevation',
 					'summary' => __( 'Élévation de privilèges', 'gi-toolkit' ),
 					'details' => $login . ' : +' . implode( ', ', $gained ),
+					'context' => array_merge(
+						self::user_fact_rows( (int) $uid, $login ),
+						array(
+							self::fact_row( __( 'Anciens rôles', 'gi-toolkit' ), implode( ', ', $old_roles ) ),
+							self::fact_row( __( 'Rôles ajoutés', 'gi-toolkit' ), implode( ', ', $gained ) ),
+						)
+					),
 				);
 			}
 		}
 
 		$removed_adm = array_diff_key( $old_admins, $new_admins );
 		if ( ! empty( $removed_adm ) ) {
-			$names = array();
+			$names   = array();
+			$context = array();
 			foreach ( $removed_adm as $id => $login ) {
 				$names[] = $login . ' (#' . (int) $id . ')';
+				$context = array_merge( $context, self::user_fact_rows( (int) $id, (string) $login ) );
 			}
 			$alerts[] = array(
 				'type'    => 'watch_user_deleted',
 				'summary' => __( 'Administrateur supprimé ou rétrogradé', 'gi-toolkit' ),
 				'details' => implode( ', ', $names ),
+				'context' => $context,
 			);
 		}
 
@@ -200,10 +218,19 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 			}
 		}
 		if ( ! empty( $changed ) ) {
+			$context = array();
+			foreach ( $new_pass as $uid => $hash ) {
+				if ( ! isset( $old_pass[ $uid ] ) || $old_pass[ $uid ] === $hash ) {
+					continue;
+				}
+				$login    = isset( $new_priv[ $uid ]['login'] ) ? (string) $new_priv[ $uid ]['login'] : '#' . $uid;
+				$context  = array_merge( $context, self::user_fact_rows( (int) $uid, $login ) );
+			}
 			$alerts[] = array(
 				'type'    => 'watch_password',
 				'summary' => __( 'Mot de passe modifié (compte privilégié)', 'gi-toolkit' ),
 				'details' => implode( ', ', $changed ),
+				'context' => $context,
 			);
 		}
 
@@ -212,10 +239,15 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 		$added_p   = array_diff( $new_pages, $old_pages );
 		$del_p     = array_diff( $old_pages, $new_pages );
 		if ( ! empty( $added_p ) ) {
+			$context = array();
+			foreach ( array_slice( array_values( $added_p ), 0, 10 ) as $pid ) {
+				$context = array_merge( $context, self::page_fact_rows( $pid ) );
+			}
 			$alerts[] = array(
 				'type'    => 'watch_pages',
 				'summary' => __( 'Page(s) ajoutée(s)', 'gi-toolkit' ),
 				'details' => self::page_titles( $added_p ),
+				'context' => $context,
 			);
 		}
 		if ( ! empty( $del_p ) ) {
@@ -223,6 +255,9 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 				'type'    => 'watch_pages',
 				'summary' => __( 'Page(s) supprimée(s)', 'gi-toolkit' ),
 				'details' => __( 'IDs : ', 'gi-toolkit' ) . implode( ', ', array_map( 'intval', $del_p ) ),
+				'context' => array(
+					self::fact_row( __( 'IDs supprimés', 'gi-toolkit' ), implode( ', ', array_map( 'intval', $del_p ) ) ),
+				),
 			);
 		}
 
@@ -235,6 +270,7 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 				'type'    => 'watch_plugins_themes',
 				'summary' => __( 'Extension(s) ajoutée(s)', 'gi-toolkit' ),
 				'details' => implode( ', ', $added_pl ),
+				'context' => self::plugin_fact_rows( $added_pl ),
 			);
 		}
 		if ( ! empty( $removed_pl ) ) {
@@ -242,6 +278,7 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 				'type'    => 'watch_plugins_themes',
 				'summary' => __( 'Extension(s) supprimée(s)', 'gi-toolkit' ),
 				'details' => implode( ', ', $removed_pl ),
+				'context' => self::plugin_fact_rows( $removed_pl ),
 			);
 		}
 
@@ -254,6 +291,7 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 				'type'    => 'watch_plugins_themes',
 				'summary' => __( 'Thème(s) ajouté(s)', 'gi-toolkit' ),
 				'details' => implode( ', ', $added_th ),
+				'context' => self::theme_fact_rows( $added_th ),
 			);
 		}
 		if ( ! empty( $removed_th ) ) {
@@ -261,6 +299,7 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 				'type'    => 'watch_plugins_themes',
 				'summary' => __( 'Thème(s) supprimé(s)', 'gi-toolkit' ),
 				'details' => implode( ', ', $removed_th ),
+				'context' => self::theme_fact_rows( $removed_th ),
 			);
 		}
 
@@ -269,10 +308,16 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 		$mu_add = array_diff( $new_mu, $old_mu );
 		$mu_del = array_diff( $old_mu, $new_mu );
 		if ( ! empty( $mu_add ) ) {
+			$abs = array();
+			foreach ( $mu_add as $file ) {
+				$abs[] = WPMU_PLUGIN_DIR . '/' . $file;
+			}
 			$alerts[] = array(
 				'type'    => 'watch_mu_dropins',
 				'summary' => __( 'Must-use plugin ajouté', 'gi-toolkit' ),
 				'details' => implode( ', ', $mu_add ),
+				'context' => self::path_fact_rows( $mu_add, __( 'Fichier MU', 'gi-toolkit' ) ),
+				'preview' => self::files_preview( $abs ),
 			);
 		}
 		if ( ! empty( $mu_del ) ) {
@@ -280,6 +325,7 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 				'type'    => 'watch_mu_dropins',
 				'summary' => __( 'Must-use plugin supprimé', 'gi-toolkit' ),
 				'details' => implode( ', ', $mu_del ),
+				'context' => self::path_fact_rows( $mu_del, __( 'Fichier MU', 'gi-toolkit' ) ),
 			);
 		}
 
@@ -288,10 +334,16 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 		$drop_add = array_diff( $new_drop, $old_drop );
 		$drop_del = array_diff( $old_drop, $new_drop );
 		if ( ! empty( $drop_add ) ) {
+			$abs = array();
+			foreach ( $drop_add as $file ) {
+				$abs[] = WP_CONTENT_DIR . '/' . $file;
+			}
 			$alerts[] = array(
 				'type'    => 'watch_mu_dropins',
 				'summary' => __( 'Drop-in WordPress ajouté', 'gi-toolkit' ),
 				'details' => implode( ', ', $drop_add ),
+				'context' => self::path_fact_rows( $drop_add, __( 'Drop-in', 'gi-toolkit' ) ),
+				'preview' => self::files_preview( $abs ),
 			);
 		}
 		if ( ! empty( $drop_del ) ) {
@@ -299,6 +351,7 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 				'type'    => 'watch_mu_dropins',
 				'summary' => __( 'Drop-in WordPress supprimé', 'gi-toolkit' ),
 				'details' => implode( ', ', $drop_del ),
+				'context' => self::path_fact_rows( $drop_del, __( 'Drop-in', 'gi-toolkit' ) ),
 			);
 		}
 
@@ -306,10 +359,18 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 		$new_php = isset( $new['php_uploads'] ) && is_array( $new['php_uploads'] ) ? $new['php_uploads'] : array();
 		$php_add = array_diff( $new_php, $old_php );
 		if ( ! empty( $php_add ) ) {
+			$uploads = wp_upload_dir( null, false );
+			$base    = isset( $uploads['basedir'] ) ? (string) $uploads['basedir'] : '';
+			$abs     = array();
+			foreach ( $php_add as $rel ) {
+				$abs[] = $base . '/' . ltrim( (string) $rel, '/\\' );
+			}
 			$alerts[] = array(
 				'type'    => 'watch_php_uploads',
 				'summary' => __( 'Fichier(s) PHP détecté(s) dans les uploads', 'gi-toolkit' ),
 				'details' => implode( ', ', array_slice( $php_add, 0, 20 ) ),
+				'context' => self::path_fact_rows( $php_add, __( 'Fichier', 'gi-toolkit' ) ),
+				'preview' => self::files_preview( $abs ),
 			);
 		}
 
@@ -326,31 +387,186 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 					'type'    => 'watch_site_options',
 					'summary' => $label,
 					'details' => $ov . ' → ' . $nv,
+					'context' => array(
+						self::fact_row( __( 'Ancienne valeur', 'gi-toolkit' ), $ov ),
+						self::fact_row( __( 'Nouvelle valeur', 'gi-toolkit' ), $nv ),
+					),
 				);
 			}
 		}
 
-		foreach ( array(
-			'wp_config_hash' => 'wp-config.php',
-			'htaccess_hash'  => '.htaccess',
-			'index_hash'     => 'index.php (racine)',
-		) as $key => $file ) {
+		foreach ( self::sensitive_files() as $key => $meta ) {
 			$ov = isset( $old[ $key ] ) ? (string) $old[ $key ] : '';
 			$nv = isset( $new[ $key ] ) ? (string) $new[ $key ] : '';
-			if ( '' !== $ov && $ov !== $nv ) {
-				$alerts[] = array(
-					'type'    => 'watch_core_files',
-					'summary' => sprintf(
-						/* translators: %s: filename */
-						__( 'Fichier sensible modifié : %s', 'gi-toolkit' ),
-						$file
-					),
-					'details' => $file,
-				);
+			if ( '' === $ov || $ov === $nv ) {
+				continue;
 			}
+			$old_body = isset( $old['file_contents'][ $key ] ) ? (string) $old['file_contents'][ $key ] : '';
+			$new_body = isset( $new['file_contents'][ $key ] ) ? (string) $new['file_contents'][ $key ] : '';
+			$diff     = self::unified_diff( $old_body, $new_body, $meta['label'] );
+			if ( '' === $diff ) {
+				$diff = __( 'Le fichier a changé, mais le contenu précédent n’était pas encore enregistré. Les prochaines modifications afficheront un diff ligne à ligne.', 'gi-toolkit' );
+			}
+			$alerts[] = array(
+				'type'    => 'watch_core_files',
+				'summary' => sprintf(
+					/* translators: %s: filename */
+					__( 'Fichier sensible modifié : %s', 'gi-toolkit' ),
+					$meta['label']
+				),
+				'details' => $meta['label'] . self::diff_stats_suffix( $diff ),
+				'diff'    => $diff,
+				'context' => array(
+					self::fact_row( __( 'Fichier', 'gi-toolkit' ), $meta['label'] ),
+					self::fact_row( __( 'Chemin', 'gi-toolkit' ), $meta['path'] ),
+				),
+			);
 		}
 
 		return $alerts;
+	}
+
+	/**
+	 * Fichiers sensibles suivis (clé de hash => meta).
+	 *
+	 * @return array<string, array{label:string, path:string, redact:bool}>
+	 */
+	public static function sensitive_files() {
+		return array(
+			'wp_config_hash' => array(
+				'label'  => 'wp-config.php',
+				'path'   => self::wp_config_path(),
+				'redact' => true,
+			),
+			'htaccess_hash'  => array(
+				'label'  => '.htaccess',
+				'path'   => ABSPATH . '.htaccess',
+				'redact' => false,
+			),
+			'index_hash'     => array(
+				'label'  => 'index.php (racine)',
+				'path'   => ABSPATH . 'index.php',
+				'redact' => false,
+			),
+		);
+	}
+
+	/**
+	 * @return array<string, string>
+	 */
+	public static function snapshot_file_contents() {
+		$out = array();
+		foreach ( self::sensitive_files() as $key => $meta ) {
+			$out[ $key ] = self::read_file_for_snapshot( $meta['path'], ! empty( $meta['redact'] ) );
+		}
+		return $out;
+	}
+
+	/**
+	 * Diff unifié ligne à ligne.
+	 *
+	 * @param string $old      Ancien contenu.
+	 * @param string $new      Nouveau contenu.
+	 * @param string $filename Nom affiché.
+	 * @return string
+	 */
+	public static function unified_diff( $old, $new, $filename = '' ) {
+		$old = str_replace( array( "\r\n", "\r" ), "\n", (string) $old );
+		$new = str_replace( array( "\r\n", "\r" ), "\n", (string) $new );
+		if ( $old === $new ) {
+			return '';
+		}
+
+		$a = explode( "\n", $old );
+		$b = explode( "\n", $new );
+		$n = count( $a );
+		$m = count( $b );
+
+		$lines = array();
+		if ( '' !== $filename ) {
+			$lines[] = '--- a/' . $filename;
+			$lines[] = '+++ b/' . $filename;
+		}
+
+		if ( $n > 400 || $m > 400 || ( $n * $m ) > 80000 ) {
+			$removed = array_values( array_diff( $a, $b ) );
+			$added   = array_values( array_diff( $b, $a ) );
+			foreach ( array_slice( $removed, 0, 80 ) as $line ) {
+				$lines[] = '- ' . $line;
+			}
+			foreach ( array_slice( $added, 0, 80 ) as $line ) {
+				$lines[] = '+ ' . $line;
+			}
+			if ( count( $removed ) > 80 || count( $added ) > 80 ) {
+				$lines[] = '… (diff tronqué)';
+			}
+			return implode( "\n", $lines );
+		}
+
+		$lcs = array();
+		for ( $i = 0; $i <= $n; $i++ ) {
+			$lcs[ $i ] = array_fill( 0, $m + 1, 0 );
+		}
+		for ( $i = $n - 1; $i >= 0; $i-- ) {
+			for ( $j = $m - 1; $j >= 0; $j-- ) {
+				if ( $a[ $i ] === $b[ $j ] ) {
+					$lcs[ $i ][ $j ] = $lcs[ $i + 1 ][ $j + 1 ] + 1;
+				} else {
+					$lcs[ $i ][ $j ] = max( $lcs[ $i + 1 ][ $j ], $lcs[ $i ][ $j + 1 ] );
+				}
+			}
+		}
+
+		$i = 0;
+		$j = 0;
+		while ( $i < $n && $j < $m ) {
+			if ( $a[ $i ] === $b[ $j ] ) {
+				$lines[] = '  ' . $a[ $i ];
+				++$i;
+				++$j;
+			} elseif ( $lcs[ $i + 1 ][ $j ] >= $lcs[ $i ][ $j + 1 ] ) {
+				$lines[] = '- ' . $a[ $i ];
+				++$i;
+			} else {
+				$lines[] = '+ ' . $b[ $j ];
+				++$j;
+			}
+		}
+		while ( $i < $n ) {
+			$lines[] = '- ' . $a[ $i ];
+			++$i;
+		}
+		while ( $j < $m ) {
+			$lines[] = '+ ' . $b[ $j ];
+			++$j;
+		}
+
+		if ( count( $lines ) > 450 ) {
+			$lines   = array_slice( $lines, 0, 450 );
+			$lines[] = '… (diff tronqué)';
+		}
+
+		return implode( "\n", $lines );
+	}
+
+	/**
+	 * @param string $diff Diff.
+	 * @return string
+	 */
+	public static function diff_stats_suffix( $diff ) {
+		$add = 0;
+		$del = 0;
+		foreach ( explode( "\n", (string) $diff ) as $line ) {
+			if ( isset( $line[0] ) && '+' === $line[0] && 0 !== strpos( $line, '+++' ) ) {
+				++$add;
+			} elseif ( isset( $line[0] ) && '-' === $line[0] && 0 !== strpos( $line, '---' ) ) {
+				++$del;
+			}
+		}
+		if ( ! $add && ! $del ) {
+			return '';
+		}
+		return sprintf( ' (+%d / −%d)', $add, $del );
 	}
 
 	/**
@@ -469,10 +685,24 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 					count( $bucket['hosts'] )
 				);
 			}
+			$context = array(
+				self::fact_row( __( 'Hôte', 'gi-toolkit' ), $host ),
+				self::fact_row( __( 'URL', 'gi-toolkit' ), $url ),
+				self::fact_row( __( 'Motif', 'gi-toolkit' ), $reason ),
+			);
+			$method = isset( $args['method'] ) ? strtoupper( (string) $args['method'] ) : 'GET';
+			$context[] = self::fact_row( __( 'Méthode', 'gi-toolkit' ), $method );
+			if ( $burst ) {
+				$context[] = self::fact_row(
+					__( 'Hôtes suspects (5 min)', 'gi-toolkit' ),
+					implode( ', ', array_keys( $bucket['hosts'] ) )
+				);
+			}
 			Gi_Toolkit_Compromise_Detection::raise_alert(
 				'watch_outbound',
 				__( 'Requêtes sortantes suspectes (scan d’autres sites)', 'gi-toolkit' ),
-				$details
+				$details,
+				array( 'context' => $context )
 			);
 		}
 
@@ -496,6 +726,13 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 		if ( '' !== $user ) {
 			$bucket['users'][ $user ] = isset( $bucket['users'][ $user ] ) ? $bucket['users'][ $user ] + 1 : 1;
 		}
+		$ip = self::client_ip();
+		if ( '' !== $ip ) {
+			if ( ! isset( $bucket['ips'] ) || ! is_array( $bucket['ips'] ) ) {
+				$bucket['ips'] = array();
+			}
+			$bucket['ips'][ $ip ] = isset( $bucket['ips'][ $ip ] ) ? $bucket['ips'][ $ip ] + 1 : 1;
+		}
 		set_transient( self::TRANSIENT_LOGINS, $bucket, MINUTE_IN_SECONDS );
 
 		if ( $bucket['count'] >= self::LOGIN_SPIKE_THRESHOLD ) {
@@ -506,6 +743,21 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 			foreach ( $top as $login => $n ) {
 				$bits[] = $login . '×' . (int) $n;
 			}
+			$ip_bits = array();
+			if ( ! empty( $bucket['ips'] ) && is_array( $bucket['ips'] ) ) {
+				$top_ips = $bucket['ips'];
+				arsort( $top_ips );
+				foreach ( array_slice( $top_ips, 0, 8, true ) as $addr => $n ) {
+					$ip_bits[] = $addr . '×' . (int) $n;
+				}
+			}
+			$context = array(
+				self::fact_row( __( 'Échecs (1 min)', 'gi-toolkit' ), (string) (int) $bucket['count'] ),
+				self::fact_row( __( 'Logins visés', 'gi-toolkit' ), implode( ', ', $bits ) ),
+			);
+			if ( ! empty( $ip_bits ) ) {
+				$context[] = self::fact_row( __( 'Adresses IP', 'gi-toolkit' ), implode( ', ', $ip_bits ) );
+			}
 			Gi_Toolkit_Compromise_Detection::raise_alert(
 				'watch_login_spike',
 				__( 'Pic de connexions échouées', 'gi-toolkit' ),
@@ -514,7 +766,8 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 					__( '%1$d échecs en 1 minute (%2$s)', 'gi-toolkit' ),
 					(int) $bucket['count'],
 					implode( ', ', $bits )
-				)
+				),
+				array( 'context' => $context )
 			);
 			delete_transient( self::TRANSIENT_LOGINS );
 		}
@@ -713,6 +966,181 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 	}
 
 	/**
+	 * @param string $label Label.
+	 * @param string $value Valeur.
+	 * @param string $url   Lien optionnel.
+	 * @return array{label:string,value:string,url?:string}
+	 */
+	public static function fact_row( $label, $value, $url = '' ) {
+		$row = array(
+			'label' => (string) $label,
+			'value' => (string) $value,
+		);
+		if ( '' !== $url ) {
+			$row['url'] = (string) $url;
+		}
+		return $row;
+	}
+
+	/**
+	 * @param int    $user_id        ID.
+	 * @param string $login_fallback Login si l’utilisateur n’existe plus.
+	 * @return array<int, array{label:string,value:string,url?:string}>
+	 */
+	public static function user_fact_rows( $user_id, $login_fallback = '' ) {
+		$user_id = (int) $user_id;
+		$user    = get_userdata( $user_id );
+		if ( ! $user ) {
+			return array(
+				self::fact_row( __( 'Identifiant', 'gi-toolkit' ), $login_fallback ? $login_fallback : '#' . $user_id ),
+				self::fact_row( __( 'ID utilisateur', 'gi-toolkit' ), (string) $user_id ),
+			);
+		}
+		$edit = admin_url( 'user-edit.php?user_id=' . $user_id );
+		return array(
+			self::fact_row( __( 'Identifiant', 'gi-toolkit' ), (string) $user->user_login ),
+			self::fact_row( __( 'ID utilisateur', 'gi-toolkit' ), (string) $user_id, $edit ),
+			self::fact_row( __( 'E-mail', 'gi-toolkit' ), (string) $user->user_email ),
+			self::fact_row( __( 'Rôles', 'gi-toolkit' ), implode( ', ', is_array( $user->roles ) ? $user->roles : array() ) ),
+		);
+	}
+
+	/**
+	 * @param int|WP_Post $post_or_id Page.
+	 * @return array<int, array{label:string,value:string,url?:string}>
+	 */
+	public static function page_fact_rows( $post_or_id ) {
+		$post = $post_or_id instanceof WP_Post ? $post_or_id : get_post( (int) $post_or_id );
+		if ( ! $post instanceof WP_Post ) {
+			return array( self::fact_row( __( 'ID page', 'gi-toolkit' ), (string) (int) $post_or_id ) );
+		}
+		$edit = get_edit_post_link( $post->ID, 'raw' );
+		$rows = array(
+			self::fact_row( __( 'Titre', 'gi-toolkit' ), (string) $post->post_title ),
+			self::fact_row( __( 'ID', 'gi-toolkit' ), (string) $post->ID, is_string( $edit ) ? $edit : '' ),
+			self::fact_row( __( 'Statut', 'gi-toolkit' ), (string) $post->post_status ),
+			self::fact_row( __( 'Slug', 'gi-toolkit' ), (string) $post->post_name ),
+		);
+		$link = get_permalink( $post );
+		if ( is_string( $link ) && '' !== $link ) {
+			$rows[] = self::fact_row( __( 'URL', 'gi-toolkit' ), $link, $link );
+		}
+		$author = get_userdata( (int) $post->post_author );
+		if ( $author ) {
+			$rows[] = self::fact_row( __( 'Auteur', 'gi-toolkit' ), $author->user_login . ' (#' . (int) $author->ID . ')' );
+		}
+		return $rows;
+	}
+
+	/**
+	 * @param string[] $files Fichiers plugin.
+	 * @return array<int, array{label:string,value:string,url?:string}>
+	 */
+	public static function plugin_fact_rows( $files ) {
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		$all  = function_exists( 'get_plugins' ) ? get_plugins() : array();
+		$rows = array();
+		foreach ( (array) $files as $file ) {
+			$file = (string) $file;
+			if ( isset( $all[ $file ] ) ) {
+				$name   = isset( $all[ $file ]['Name'] ) ? (string) $all[ $file ]['Name'] : $file;
+				$ver    = isset( $all[ $file ]['Version'] ) ? (string) $all[ $file ]['Version'] : '';
+				$rows[] = self::fact_row( __( 'Extension', 'gi-toolkit' ), $name . ( '' !== $ver ? ' ' . $ver : '' ) );
+				$rows[] = self::fact_row( __( 'Fichier', 'gi-toolkit' ), $file );
+			} else {
+				$rows[] = self::fact_row( __( 'Extension', 'gi-toolkit' ), $file );
+			}
+		}
+		return $rows;
+	}
+
+	/**
+	 * @param string[] $slugs Slugs de thèmes.
+	 * @return array<int, array{label:string,value:string,url?:string}>
+	 */
+	public static function theme_fact_rows( $slugs ) {
+		$rows = array();
+		foreach ( (array) $slugs as $slug ) {
+			$slug  = (string) $slug;
+			$theme = wp_get_theme( $slug );
+			if ( $theme->exists() ) {
+				$rows[] = self::fact_row( __( 'Thème', 'gi-toolkit' ), (string) $theme->get( 'Name' ) . ' ' . (string) $theme->get( 'Version' ) );
+				$rows[] = self::fact_row( __( 'Dossier', 'gi-toolkit' ), $slug );
+			} else {
+				$rows[] = self::fact_row( __( 'Thème', 'gi-toolkit' ), $slug );
+			}
+		}
+		return $rows;
+	}
+
+	/**
+	 * @param string[] $paths Chemins.
+	 * @param string   $label Label.
+	 * @return array<int, array{label:string,value:string,url?:string}>
+	 */
+	public static function path_fact_rows( $paths, $label ) {
+		$rows = array();
+		foreach ( array_slice( (array) $paths, 0, 20 ) as $path ) {
+			$rows[] = self::fact_row( $label, (string) $path );
+		}
+		return $rows;
+	}
+
+	/**
+	 * @param string[] $abs_paths Chemins absolus.
+	 * @return string
+	 */
+	public static function files_preview( $abs_paths ) {
+		$chunks = array();
+		foreach ( array_slice( (array) $abs_paths, 0, 3 ) as $path ) {
+			$path = (string) $path;
+			$body = self::read_file_preview( $path );
+			if ( '' === $body ) {
+				continue;
+			}
+			$chunks[] = '----- ' . $path . " -----\n" . $body;
+		}
+		return implode( "\n\n", $chunks );
+	}
+
+	/**
+	 * @param string $path      Chemin.
+	 * @param int    $max_lines Lignes max.
+	 * @return string
+	 */
+	public static function read_file_preview( $path, $max_lines = 50 ) {
+		if ( '' === $path || ! is_readable( $path ) ) {
+			return '';
+		}
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$content = file_get_contents( $path );
+		if ( ! is_string( $content ) ) {
+			return '';
+		}
+		if ( strlen( $content ) > 20000 ) {
+			$content = substr( $content, 0, 20000 );
+		}
+		$lines = explode( "\n", str_replace( array( "\r\n", "\r" ), "\n", $content ) );
+		$out   = implode( "\n", array_slice( $lines, 0, $max_lines ) );
+		if ( count( $lines ) > $max_lines ) {
+			$out .= "\n…";
+		}
+		return $out;
+	}
+
+	/**
+	 * @return string
+	 */
+	public static function client_ip() {
+		if ( empty( $_SERVER['REMOTE_ADDR'] ) ) {
+			return '';
+		}
+		return sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
+	}
+
+	/**
 	 * @param int[] $ids IDs de pages.
 	 * @return string
 	 */
@@ -750,5 +1178,41 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 		}
 		$hash = md5_file( $path );
 		return is_string( $hash ) ? $hash : '';
+	}
+
+	/**
+	 * @param string $path   Chemin.
+	 * @param bool   $redact Masquer secrets.
+	 * @return string
+	 */
+	public static function read_file_for_snapshot( $path, $redact ) {
+		if ( '' === $path || ! is_readable( $path ) ) {
+			return '';
+		}
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$content = file_get_contents( $path );
+		if ( ! is_string( $content ) ) {
+			return '';
+		}
+		if ( strlen( $content ) > 100000 ) {
+			$content = substr( $content, 0, 100000 ) . "\n… (tronqué)";
+		}
+		if ( $redact ) {
+			$content = self::redact_secrets( $content );
+		}
+		return $content;
+	}
+
+	/**
+	 * @param string $content Contenu.
+	 * @return string
+	 */
+	private static function redact_secrets( $content ) {
+		$redacted = preg_replace(
+			"/((?:define\s*\(\s*['\"][^'\"]*(?:PASSWORD|SECRET|KEY|SALT|NONCE)[^'\"]*['\"]\s*,\s*)(['\"])).+?(\\2\\s*\\))/is",
+			'$1[redacted]$3',
+			$content
+		);
+		return is_string( $redacted ) ? $redacted : $content;
 	}
 }

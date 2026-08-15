@@ -23,7 +23,7 @@ class Gi_Toolkit_Compromise_Detection {
 
 	const DEDUP_TTL = 1800;
 
-	const ALERTS_MAX = 40;
+	const ALERTS_MAX = 80;
 
 	/**
 	 * @var self|null
@@ -191,7 +191,13 @@ class Gi_Toolkit_Compromise_Detection {
 
 		$alerts = Gi_Toolkit_Compromise_Detection_Monitor::diff_snapshots( $old, $new );
 		foreach ( $alerts as $alert ) {
-			self::raise_alert( $alert['type'], $alert['summary'], $alert['details'] );
+			$extra = array();
+			foreach ( array( 'diff', 'context', 'preview' ) as $key ) {
+				if ( ! empty( $alert[ $key ] ) ) {
+					$extra[ $key ] = $alert[ $key ];
+				}
+			}
+			self::raise_alert( $alert['type'], $alert['summary'], $alert['details'], $extra );
 		}
 
 		Gi_Toolkit_Compromise_Detection_Monitor::save_snapshot( $new );
@@ -211,13 +217,15 @@ class Gi_Toolkit_Compromise_Detection {
 			self::raise_alert(
 				'watch_admin_user',
 				__( 'Nouvel utilisateur administrateur détecté', 'gi-toolkit' ),
-				$user->user_login . ' (#' . (int) $user_id . ')'
+				$user->user_login . ' (#' . (int) $user_id . ')',
+				array( 'context' => Gi_Toolkit_Compromise_Detection_Monitor::user_fact_rows( (int) $user_id, $user->user_login ) )
 			);
 		} elseif ( array_intersect( $roles, array( 'editor', 'shop_manager' ) ) ) {
 			self::raise_alert(
 				'watch_role_elevation',
 				__( 'Nouvel utilisateur privilégié', 'gi-toolkit' ),
-				$user->user_login . ' — ' . implode( ', ', $roles )
+				$user->user_login . ' — ' . implode( ', ', $roles ),
+				array( 'context' => Gi_Toolkit_Compromise_Detection_Monitor::user_fact_rows( (int) $user_id, $user->user_login ) )
 			);
 		}
 	}
@@ -235,11 +243,15 @@ class Gi_Toolkit_Compromise_Detection {
 		}
 		$user  = get_userdata( (int) $user_id );
 		$login = $user ? $user->user_login : '#' . (int) $user_id;
+		$ctx   = Gi_Toolkit_Compromise_Detection_Monitor::user_fact_rows( (int) $user_id, $login );
+		$ctx[] = Gi_Toolkit_Compromise_Detection_Monitor::fact_row( __( 'Anciens rôles', 'gi-toolkit' ), implode( ', ', $old ) );
+		$ctx[] = Gi_Toolkit_Compromise_Detection_Monitor::fact_row( __( 'Nouveau rôle', 'gi-toolkit' ), (string) $role );
 		if ( 'administrator' === $role ) {
 			self::raise_alert(
 				'watch_admin_user',
 				__( 'Nouvel utilisateur administrateur détecté', 'gi-toolkit' ),
-				$login . ' (rôle administrator)'
+				$login . ' (rôle administrator)',
+				array( 'context' => $ctx )
 			);
 			return;
 		}
@@ -247,7 +259,8 @@ class Gi_Toolkit_Compromise_Detection {
 			self::raise_alert(
 				'watch_role_elevation',
 				__( 'Élévation de privilèges', 'gi-toolkit' ),
-				$login . ' → ' . $role
+				$login . ' → ' . $role,
+				array( 'context' => $ctx )
 			);
 		}
 	}
@@ -275,7 +288,8 @@ class Gi_Toolkit_Compromise_Detection {
 			self::raise_alert(
 				'watch_user_deleted',
 				__( 'Administrateur supprimé ou rétrogradé', 'gi-toolkit' ),
-				$user->user_login . ' (#' . (int) $user_id . ')'
+				$user->user_login . ' (#' . (int) $user_id . ')',
+				array( 'context' => Gi_Toolkit_Compromise_Detection_Monitor::user_fact_rows( (int) $user_id, $user->user_login ) )
 			);
 		}
 	}
@@ -304,7 +318,8 @@ class Gi_Toolkit_Compromise_Detection {
 		self::raise_alert(
 			'watch_password',
 			__( 'Mot de passe modifié (compte privilégié)', 'gi-toolkit' ),
-			$user->user_login . ' (#' . (int) $user_id . ')'
+			$user->user_login . ' (#' . (int) $user_id . ')',
+			array( 'context' => Gi_Toolkit_Compromise_Detection_Monitor::user_fact_rows( (int) $user_id, $user->user_login ) )
 		);
 	}
 
@@ -327,7 +342,8 @@ class Gi_Toolkit_Compromise_Detection {
 		self::raise_alert(
 			'watch_password',
 			__( 'Mot de passe modifié (compte privilégié)', 'gi-toolkit' ),
-			$user->user_login . ' (#' . (int) $user->ID . ')'
+			$user->user_login . ' (#' . (int) $user->ID . ')',
+			array( 'context' => Gi_Toolkit_Compromise_Detection_Monitor::user_fact_rows( (int) $user->ID, $user->user_login ) )
 		);
 	}
 
@@ -347,7 +363,8 @@ class Gi_Toolkit_Compromise_Detection {
 		self::raise_alert(
 			'watch_pages',
 			__( 'Page(s) ajoutée(s)', 'gi-toolkit' ),
-			$post->post_title . ' (#' . (int) $post_id . ')'
+			$post->post_title . ' (#' . (int) $post_id . ')',
+			array( 'context' => Gi_Toolkit_Compromise_Detection_Monitor::page_fact_rows( $post ) )
 		);
 	}
 
@@ -368,7 +385,8 @@ class Gi_Toolkit_Compromise_Detection {
 			self::raise_alert(
 				'watch_pages',
 				__( 'Page(s) ajoutée(s)', 'gi-toolkit' ),
-				$post->post_title . ' (#' . (int) $post->ID . ')'
+				$post->post_title . ' (#' . (int) $post->ID . ')',
+				array( 'context' => Gi_Toolkit_Compromise_Detection_Monitor::page_fact_rows( $post ) )
 			);
 		}
 	}
@@ -385,7 +403,8 @@ class Gi_Toolkit_Compromise_Detection {
 		self::raise_alert(
 			'watch_pages',
 			__( 'Page(s) supprimée(s)', 'gi-toolkit' ),
-			$post->post_title . ' (#' . (int) $post_id . ')'
+			$post->post_title . ' (#' . (int) $post_id . ')',
+			array( 'context' => Gi_Toolkit_Compromise_Detection_Monitor::page_fact_rows( $post ) )
 		);
 	}
 
@@ -401,7 +420,8 @@ class Gi_Toolkit_Compromise_Detection {
 		self::raise_alert(
 			'watch_pages',
 			__( 'Page(s) supprimée(s)', 'gi-toolkit' ),
-			$post->post_title . ' (#' . (int) $post_id . ')'
+			$post->post_title . ' (#' . (int) $post_id . ')',
+			array( 'context' => Gi_Toolkit_Compromise_Detection_Monitor::page_fact_rows( $post ) )
 		);
 	}
 
@@ -418,24 +438,27 @@ class Gi_Toolkit_Compromise_Detection {
 			return;
 		}
 		if ( 'plugin' === $type ) {
-			$slug = '';
+			$files = array();
 			if ( ! empty( $options['plugin'] ) ) {
-				$slug = (string) $options['plugin'];
+				$files[] = (string) $options['plugin'];
 			} elseif ( ! empty( $options['plugins'] ) && is_array( $options['plugins'] ) ) {
-				$slug = implode( ', ', $options['plugins'] );
+				$files = array_map( 'strval', $options['plugins'] );
 			}
+			$slug = implode( ', ', $files );
 			self::raise_alert(
 				'watch_plugins_themes',
 				__( 'Extension(s) ajoutée(s)', 'gi-toolkit' ),
-				$slug ? $slug : __( 'installation plugin', 'gi-toolkit' )
+				$slug ? $slug : __( 'installation plugin', 'gi-toolkit' ),
+				array( 'context' => Gi_Toolkit_Compromise_Detection_Monitor::plugin_fact_rows( $files ) )
 			);
 		}
 		if ( 'theme' === $type ) {
-			$slug = isset( $options['theme'] ) ? (string) $options['theme'] : __( 'installation thème', 'gi-toolkit' );
+			$slug = isset( $options['theme'] ) ? (string) $options['theme'] : '';
 			self::raise_alert(
 				'watch_plugins_themes',
 				__( 'Thème(s) ajouté(s)', 'gi-toolkit' ),
-				$slug
+				$slug ? $slug : __( 'installation thème', 'gi-toolkit' ),
+				array( 'context' => $slug ? Gi_Toolkit_Compromise_Detection_Monitor::theme_fact_rows( array( $slug ) ) : array() )
 			);
 		}
 	}
@@ -475,17 +498,24 @@ class Gi_Toolkit_Compromise_Detection {
 		self::raise_alert(
 			'watch_site_options',
 			$summary,
-			(string) $old . ' → ' . (string) $new
+			(string) $old . ' → ' . (string) $new,
+			array(
+				'context' => array(
+					Gi_Toolkit_Compromise_Detection_Monitor::fact_row( __( 'Ancienne valeur', 'gi-toolkit' ), (string) $old ),
+					Gi_Toolkit_Compromise_Detection_Monitor::fact_row( __( 'Nouvelle valeur', 'gi-toolkit' ), (string) $new ),
+				),
+			)
 		);
 	}
 
 	/**
-	 * @param string $type    Clé de surveillance.
-	 * @param string $summary Titre.
-	 * @param string $details Détails.
+	 * @param string               $type    Clé de surveillance.
+	 * @param string               $summary Titre.
+	 * @param string               $details Détails.
+	 * @param array<string, mixed> $extra   Contexte (diff, …).
 	 * @return void
 	 */
-	public static function raise_alert( $type, $summary, $details = '' ) {
+	public static function raise_alert( $type, $summary, $details = '', $extra = array() ) {
 		self::load_helpers();
 
 		$instance = self::$instance;
@@ -505,11 +535,33 @@ class Gi_Toolkit_Compromise_Detection {
 		}
 		set_transient( 'gi_toolkit_compromise_dedup_' . $fingerprint, 1, self::DEDUP_TTL );
 
+		$diff = '';
+		if ( is_array( $extra ) && ! empty( $extra['diff'] ) ) {
+			$diff = self::sanitize_diff( (string) $extra['diff'] );
+		}
+
+		$preview = '';
+		if ( is_array( $extra ) && ! empty( $extra['preview'] ) ) {
+			$preview = self::sanitize_diff( (string) $extra['preview'] );
+		}
+
+		$context = self::request_context();
+		if ( is_array( $extra ) && ! empty( $extra['context'] ) && is_array( $extra['context'] ) ) {
+			$context = array_merge( $context, $extra['context'] );
+		}
+
 		$entry = array(
-			'time'    => time(),
-			'type'    => sanitize_key( $type ),
-			'summary' => sanitize_text_field( $summary ),
-			'details' => sanitize_text_field( $details ),
+			'id'          => self::new_alert_id(),
+			'time'        => time(),
+			'type'        => sanitize_key( $type ),
+			'summary'     => sanitize_text_field( $summary ),
+			'details'     => sanitize_text_field( $details ),
+			'diff'        => $diff,
+			'preview'     => $preview,
+			'context'     => self::sanitize_context( $context ),
+			'status'      => 'open',
+			'resolved_at' => 0,
+			'resolved_by' => 0,
 		);
 		self::store_alert( $entry );
 
@@ -530,6 +582,173 @@ class Gi_Toolkit_Compromise_Detection {
 			$summary,
 			$details
 		);
+	}
+
+	/**
+	 * @return string
+	 */
+	private static function new_alert_id() {
+		if ( function_exists( 'wp_generate_uuid4' ) ) {
+			return wp_generate_uuid4();
+		}
+		return uniqid( 'cd_', true );
+	}
+
+	/**
+	 * @param string $diff Diff.
+	 * @return string
+	 */
+	private static function sanitize_diff( $diff ) {
+		$diff = str_replace( "\0", '', (string) $diff );
+		if ( strlen( $diff ) > 50000 ) {
+			$diff = substr( $diff, 0, 50000 ) . "\n… (tronqué)";
+		}
+		return $diff;
+	}
+
+	/**
+	 * @param array<int, mixed> $rows Faits.
+	 * @return array<int, array{label:string,value:string,url?:string}>
+	 */
+	private static function sanitize_context( $rows ) {
+		if ( ! is_array( $rows ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( array_slice( $rows, 0, 40 ) as $row ) {
+			if ( ! is_array( $row ) || empty( $row['label'] ) ) {
+				continue;
+			}
+			$item = array(
+				'label' => sanitize_text_field( (string) $row['label'] ),
+				'value' => sanitize_textarea_field( isset( $row['value'] ) ? (string) $row['value'] : '' ),
+			);
+			if ( ! empty( $row['url'] ) ) {
+				$url = esc_url_raw( (string) $row['url'] );
+				if ( '' !== $url ) {
+					$item['url'] = $url;
+				}
+			}
+			$out[] = $item;
+		}
+		return $out;
+	}
+
+	/**
+	 * IP et utilisateur au moment de l’alerte.
+	 *
+	 * @return array<int, array{label:string,value:string,url?:string}>
+	 */
+	private static function request_context() {
+		self::load_helpers();
+		$rows = array();
+		$ip   = Gi_Toolkit_Compromise_Detection_Monitor::client_ip();
+		if ( '' !== $ip ) {
+			$rows[] = Gi_Toolkit_Compromise_Detection_Monitor::fact_row( __( 'Adresse IP', 'gi-toolkit' ), $ip );
+		}
+		$user = wp_get_current_user();
+		if ( $user instanceof WP_User && $user->exists() ) {
+			$rows[] = Gi_Toolkit_Compromise_Detection_Monitor::fact_row(
+				__( 'Utilisateur connecté', 'gi-toolkit' ),
+				$user->user_login . ' (#' . (int) $user->ID . ')',
+				admin_url( 'user-edit.php?user_id=' . (int) $user->ID )
+			);
+		} else {
+			$rows[] = Gi_Toolkit_Compromise_Detection_Monitor::fact_row(
+				__( 'Utilisateur connecté', 'gi-toolkit' ),
+				__( 'aucun (cron ou visiteur anonyme)', 'gi-toolkit' )
+			);
+		}
+		return $rows;
+	}
+
+	/**
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function get_alerts() {
+		$log = get_option( self::OPTION_ALERTS, array() );
+		if ( ! is_array( $log ) ) {
+			return array();
+		}
+		$changed = false;
+		foreach ( $log as $i => $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			if ( empty( $row['id'] ) ) {
+				$log[ $i ]['id'] = self::new_alert_id();
+				$changed         = true;
+			}
+			if ( empty( $row['status'] ) ) {
+				$log[ $i ]['status'] = 'open';
+				$changed             = true;
+			}
+			if ( ! isset( $log[ $i ]['diff'] ) ) {
+				$log[ $i ]['diff'] = '';
+			}
+		}
+		if ( $changed ) {
+			update_option( self::OPTION_ALERTS, $log, false );
+		}
+		return $log;
+	}
+
+	/**
+	 * @param string $id     ID alerte.
+	 * @param string $status open|resolved.
+	 * @return bool
+	 */
+	public static function set_alert_status( $id, $status ) {
+		$id     = (string) $id;
+		$status = 'resolved' === $status ? 'resolved' : 'open';
+		if ( '' === $id ) {
+			return false;
+		}
+		$log     = self::get_alerts();
+		$changed = false;
+		$user_id = get_current_user_id();
+		foreach ( $log as $i => $row ) {
+			if ( ! is_array( $row ) || (string) ( $row['id'] ?? '' ) !== $id ) {
+				continue;
+			}
+			$log[ $i ]['status'] = $status;
+			if ( 'resolved' === $status ) {
+				$log[ $i ]['resolved_at'] = time();
+				$log[ $i ]['resolved_by'] = $user_id;
+			} else {
+				$log[ $i ]['resolved_at'] = 0;
+				$log[ $i ]['resolved_by'] = 0;
+			}
+			$changed = true;
+			break;
+		}
+		if ( $changed ) {
+			update_option( self::OPTION_ALERTS, $log, false );
+		}
+		return $changed;
+	}
+
+	/**
+	 * @return int
+	 */
+	public static function resolve_all_alerts() {
+		$log   = self::get_alerts();
+		$count = 0;
+		$user  = get_current_user_id();
+		$now   = time();
+		foreach ( $log as $i => $row ) {
+			if ( ! is_array( $row ) || 'open' !== ( $row['status'] ?? 'open' ) ) {
+				continue;
+			}
+			$log[ $i ]['status']      = 'resolved';
+			$log[ $i ]['resolved_at'] = $now;
+			$log[ $i ]['resolved_by'] = $user;
+			++$count;
+		}
+		if ( $count ) {
+			update_option( self::OPTION_ALERTS, $log, false );
+		}
+		return $count;
 	}
 
 	/**
@@ -765,6 +984,26 @@ class Gi_Toolkit_Compromise_Detection {
 			exit;
 		}
 
+		if ( isset( $_POST['gi_compromise_resolve'] ) ) {
+			$id = sanitize_text_field( wp_unslash( $_POST['gi_compromise_resolve'] ) );
+			self::set_alert_status( $id, 'resolved' );
+			wp_safe_redirect( add_query_arg( 'gi_compromise_notice', 'resolved', $this->log_redirect( $redirect ) ) );
+			exit;
+		}
+
+		if ( isset( $_POST['gi_compromise_reopen'] ) ) {
+			$id = sanitize_text_field( wp_unslash( $_POST['gi_compromise_reopen'] ) );
+			self::set_alert_status( $id, 'open' );
+			wp_safe_redirect( add_query_arg( 'gi_compromise_notice', 'reopened', $this->log_redirect( $redirect ) ) );
+			exit;
+		}
+
+		if ( isset( $_POST['gi_compromise_resolve_all'] ) ) {
+			self::resolve_all_alerts();
+			wp_safe_redirect( add_query_arg( 'gi_compromise_notice', 'resolved_all', $this->log_redirect( $redirect ) ) );
+			exit;
+		}
+
 		$notice = 'saved';
 		if ( isset( $_POST['gi_compromise_test_pushover'] ) ) {
 			self::load_helpers();
@@ -784,6 +1023,170 @@ class Gi_Toolkit_Compromise_Detection {
 	}
 
 	/**
+	 * Conserve le filtre du journal après une action.
+	 *
+	 * @param string $redirect URL.
+	 * @return string
+	 */
+	private function log_redirect( $redirect ) {
+		$filter = isset( $_POST['gi_compromise_log'] ) ? sanitize_key( wp_unslash( $_POST['gi_compromise_log'] ) ) : '';
+		if ( ! $filter && isset( $_GET['gi_compromise_log'] ) ) {
+			$filter = sanitize_key( wp_unslash( $_GET['gi_compromise_log'] ) );
+		}
+		if ( in_array( $filter, array( 'open', 'resolved', 'all' ), true ) ) {
+			return add_query_arg( 'gi_compromise_log', $filter, $redirect );
+		}
+		return $redirect;
+	}
+
+	/**
+	 * @param array<string, mixed> $row Alerte.
+	 * @return string
+	 */
+	private function current_file_preview( $row ) {
+		$type    = isset( $row['type'] ) ? (string) $row['type'] : '';
+		$summary = isset( $row['summary'] ) ? (string) $row['summary'] : '';
+		$details = isset( $row['details'] ) ? (string) $row['details'] : '';
+		if ( 'watch_core_files' !== $type && false === strpos( $summary, 'Fichier sensible' ) ) {
+			return '';
+		}
+		$hay = $details . ' ' . $summary;
+		$snap      = Gi_Toolkit_Compromise_Detection_Monitor::get_snapshot();
+		$contents  = isset( $snap['file_contents'] ) && is_array( $snap['file_contents'] ) ? $snap['file_contents'] : array();
+		foreach ( Gi_Toolkit_Compromise_Detection_Monitor::sensitive_files() as $key => $meta ) {
+			if ( false === strpos( $hay, $meta['label'] ) ) {
+				continue;
+			}
+			$body = isset( $contents[ $key ] ) ? (string) $contents[ $key ] : '';
+			if ( '' === $body ) {
+				$body = Gi_Toolkit_Compromise_Detection_Monitor::read_file_for_snapshot( $meta['path'], ! empty( $meta['redact'] ) );
+			}
+			if ( '' === $body ) {
+				return '';
+			}
+			$lines   = explode( "\n", $body );
+			$out     = array( '--- a/' . $meta['label'] . ' (état actuel)' );
+			$out[]   = '+++ b/' . $meta['label'];
+			foreach ( $lines as $line ) {
+				$out[] = '  ' . $line;
+			}
+			return implode( "\n", $out );
+		}
+		return '';
+	}
+
+	/**
+	 * @param string $diff Diff unifié.
+	 * @return void
+	 */
+	private function render_diff( $diff ) {
+		$diff  = (string) $diff;
+		$lines = preg_split( "/\r\n|\r|\n/", $diff );
+		if ( ! is_array( $lines ) ) {
+			$lines = array( $diff );
+		}
+
+		$looks_like_diff = false;
+		foreach ( $lines as $line ) {
+			if ( 0 === strpos( $line, '---' ) || 0 === strpos( $line, '+++' ) || 0 === strpos( $line, '+ ' ) || 0 === strpos( $line, '- ' ) ) {
+				$looks_like_diff = true;
+				break;
+			}
+		}
+		if ( ! $looks_like_diff ) {
+			echo '<p class="gi-cd-diff-note">' . esc_html( $diff ) . '</p>';
+			return;
+		}
+
+		echo '<pre class="gi-cd-diff">';
+		foreach ( $lines as $line ) {
+			$class = 'gi-cd-diff__line';
+			if ( 0 === strpos( $line, '+++' ) || 0 === strpos( $line, '---' ) ) {
+				$class .= ' gi-cd-diff__line--meta';
+			} elseif ( isset( $line[0] ) && '+' === $line[0] ) {
+				$class .= ' gi-cd-diff__line--add';
+			} elseif ( isset( $line[0] ) && '-' === $line[0] ) {
+				$class .= ' gi-cd-diff__line--del';
+			}
+			echo '<span class="' . esc_attr( $class ) . '">' . esc_html( $line === '' ? ' ' : $line ) . '</span>';
+		}
+		echo '</pre>';
+	}
+
+	/**
+	 * @param array<string, mixed> $row         Alerte.
+	 * @param bool                 $is_resolved Traitée.
+	 * @return void
+	 */
+	private function render_alert_details( $row, $is_resolved ) {
+		$context = isset( $row['context'] ) && is_array( $row['context'] ) ? $row['context'] : array();
+		$diff    = isset( $row['diff'] ) ? (string) $row['diff'] : '';
+		$preview = isset( $row['preview'] ) ? (string) $row['preview'] : '';
+		$details = isset( $row['details'] ) ? (string) $row['details'] : '';
+		$legacy  = false;
+
+		if ( '' === $diff && '' === $preview ) {
+			$file_preview = $this->current_file_preview( $row );
+			if ( '' !== $file_preview ) {
+				$diff   = $file_preview;
+				$legacy = true;
+			}
+		}
+
+		if ( empty( $context ) && '' !== $details ) {
+			$context[] = array(
+				'label' => __( 'Détail', 'gi-toolkit' ),
+				'value' => $details,
+			);
+		}
+
+		if ( empty( $context ) && '' === $diff && '' === $preview ) {
+			return;
+		}
+
+		$summary = ( '' !== $diff )
+			? __( 'Voir les modifications', 'gi-toolkit' )
+			: __( 'Voir les détails', 'gi-toolkit' );
+		?>
+		<details class="gi-cd-alert__details"<?php echo $is_resolved ? '' : ' open'; ?>>
+			<summary><?php echo esc_html( $summary ); ?></summary>
+			<?php if ( ! empty( $context ) ) : ?>
+				<dl class="gi-cd-facts">
+					<?php foreach ( $context as $fact ) : ?>
+						<?php
+						if ( ! is_array( $fact ) || empty( $fact['label'] ) ) {
+							continue;
+						}
+						$value = isset( $fact['value'] ) ? (string) $fact['value'] : '';
+						$url   = isset( $fact['url'] ) ? (string) $fact['url'] : '';
+						?>
+						<div class="gi-cd-facts__row">
+							<dt><?php echo esc_html( (string) $fact['label'] ); ?></dt>
+							<dd>
+								<?php if ( '' !== $url ) : ?>
+									<a href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( $value ); ?></a>
+								<?php else : ?>
+									<?php echo esc_html( $value ); ?>
+								<?php endif; ?>
+							</dd>
+						</div>
+					<?php endforeach; ?>
+				</dl>
+			<?php endif; ?>
+			<?php if ( $legacy ) : ?>
+				<p class="description"><?php esc_html_e( 'Le contenu précédent n’a pas été conservé (alerte antérieure à cette fonctionnalité). Voici l’état actuel du fichier ; les prochaines modifications afficheront un diff ligne à ligne.', 'gi-toolkit' ); ?></p>
+			<?php endif; ?>
+			<?php if ( '' !== $diff ) : ?>
+				<?php $this->render_diff( $diff ); ?>
+			<?php endif; ?>
+			<?php if ( '' !== $preview ) : ?>
+				<pre class="gi-cd-preview"><?php echo esc_html( $preview ); ?></pre>
+			<?php endif; ?>
+		</details>
+		<?php
+	}
+
+	/**
 	 * @return void
 	 */
 	private function submenu_content() {
@@ -793,9 +1196,26 @@ class Gi_Toolkit_Compromise_Detection {
 		$snapshot    = Gi_Toolkit_Compromise_Detection_Monitor::get_snapshot();
 		$last_scan   = isset( $snapshot['taken_at'] ) ? (int) $snapshot['taken_at'] : 0;
 		$next_cron   = wp_next_scheduled( self::CRON_HOOK );
-		$alerts      = get_option( self::OPTION_ALERTS, array() );
-		if ( ! is_array( $alerts ) ) {
-			$alerts = array();
+		$alerts      = self::get_alerts();
+		$log_filter  = isset( $_GET['gi_compromise_log'] ) ? sanitize_key( wp_unslash( $_GET['gi_compromise_log'] ) ) : 'open';
+		if ( ! in_array( $log_filter, array( 'open', 'resolved', 'all' ), true ) ) {
+			$log_filter = 'open';
+		}
+		$open_count = 0;
+		$done_count = 0;
+		foreach ( $alerts as $row ) {
+			if ( 'resolved' === ( $row['status'] ?? 'open' ) ) {
+				++$done_count;
+			} else {
+				++$open_count;
+			}
+		}
+		$visible = array();
+		foreach ( $alerts as $row ) {
+			$status = isset( $row['status'] ) ? (string) $row['status'] : 'open';
+			if ( 'all' === $log_filter || $status === $log_filter ) {
+				$visible[] = $row;
+			}
 		}
 		$notice = isset( $_GET['gi_compromise_notice'] ) ? sanitize_key( wp_unslash( $_GET['gi_compromise_notice'] ) ) : '';
 		$labels = self::watch_labels();
@@ -845,6 +1265,14 @@ class Gi_Toolkit_Compromise_Detection {
 							/* translators: %s: datetime or em dash */
 							__( 'Prochain cron : %s', 'gi-toolkit' ),
 							$next_cron ? wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $next_cron ) : '—'
+						)
+					);
+					echo ' · ';
+					echo esc_html(
+						sprintf(
+							/* translators: %d: open alerts */
+							_n( '%d alerte à traiter', '%d alertes à traiter', $open_count, 'gi-toolkit' ),
+							$open_count
 						)
 					);
 					?>
@@ -947,30 +1375,96 @@ class Gi_Toolkit_Compromise_Detection {
 				<div class="gi-toolkit__section__body__item">
 					<div class="gi-toolkit__section__body__item__title"><?php esc_html_e( 'Journal des alertes', 'gi-toolkit' ); ?></div>
 					<div class="gi-toolkit__section__body__item__content">
+						<input type="hidden" name="gi_compromise_log" value="<?php echo esc_attr( $log_filter ); ?>" />
+						<?php
+						$base_log = admin_url( 'admin.php?page=gi-toolkit-settings-compromise-detection' );
+						?>
+						<ul class="gi-cd-log-filters">
+							<li>
+								<a href="<?php echo esc_url( add_query_arg( 'gi_compromise_log', 'open', $base_log ) ); ?>" class="<?php echo 'open' === $log_filter ? 'is-current' : ''; ?>">
+									<?php
+									echo esc_html(
+										sprintf(
+											/* translators: %d: count */
+											__( 'À traiter (%d)', 'gi-toolkit' ),
+											$open_count
+										)
+									);
+									?>
+								</a>
+							</li>
+							<li>
+								<a href="<?php echo esc_url( add_query_arg( 'gi_compromise_log', 'resolved', $base_log ) ); ?>" class="<?php echo 'resolved' === $log_filter ? 'is-current' : ''; ?>">
+									<?php
+									echo esc_html(
+										sprintf(
+											/* translators: %d: count */
+											__( 'Traitées (%d)', 'gi-toolkit' ),
+											$done_count
+										)
+									);
+									?>
+								</a>
+							</li>
+							<li>
+								<a href="<?php echo esc_url( add_query_arg( 'gi_compromise_log', 'all', $base_log ) ); ?>" class="<?php echo 'all' === $log_filter ? 'is-current' : ''; ?>">
+									<?php esc_html_e( 'Toutes', 'gi-toolkit' ); ?>
+								</a>
+							</li>
+						</ul>
 						<?php if ( empty( $alerts ) ) : ?>
 							<p><?php esc_html_e( 'Aucune alerte pour le moment.', 'gi-toolkit' ); ?></p>
+						<?php elseif ( empty( $visible ) ) : ?>
+							<p><?php esc_html_e( 'Aucune alerte dans ce filtre.', 'gi-toolkit' ); ?></p>
 						<?php else : ?>
-							<p>
+							<p class="gi-cd-actions">
+								<?php if ( $open_count > 0 && 'resolved' !== $log_filter ) : ?>
+									<button type="submit" class="button" name="gi_compromise_resolve_all" value="1"><?php esc_html_e( 'Tout marquer comme traité', 'gi-toolkit' ); ?></button>
+								<?php endif; ?>
 								<button type="submit" class="button" name="gi_compromise_clear_log" value="1"><?php esc_html_e( 'Vider le journal', 'gi-toolkit' ); ?></button>
 							</p>
-							<table class="widefat striped gi-cd-log">
-								<thead>
-									<tr>
-										<th><?php esc_html_e( 'Date', 'gi-toolkit' ); ?></th>
-										<th><?php esc_html_e( 'Alerte', 'gi-toolkit' ); ?></th>
-										<th><?php esc_html_e( 'Détails', 'gi-toolkit' ); ?></th>
-									</tr>
-								</thead>
-								<tbody>
-									<?php foreach ( $alerts as $row ) : ?>
-										<tr>
-											<td><?php echo esc_html( ! empty( $row['time'] ) ? wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $row['time'] ) : '—' ); ?></td>
-											<td><?php echo esc_html( isset( $row['summary'] ) ? (string) $row['summary'] : '' ); ?></td>
-											<td><code><?php echo esc_html( isset( $row['details'] ) ? (string) $row['details'] : '' ); ?></code></td>
-										</tr>
-									<?php endforeach; ?>
-								</tbody>
-							</table>
+							<?php foreach ( $visible as $row ) : ?>
+								<?php
+								$is_resolved = 'resolved' === ( $row['status'] ?? 'open' );
+								$alert_id    = isset( $row['id'] ) ? (string) $row['id'] : '';
+								?>
+								<article class="gi-cd-alert<?php echo $is_resolved ? ' gi-cd-alert--resolved' : ''; ?>">
+									<header class="gi-cd-alert__head">
+										<div>
+											<span class="gi-cd-alert__badge gi-cd-alert__badge--<?php echo $is_resolved ? 'done' : 'open'; ?>">
+												<?php echo $is_resolved ? esc_html__( 'Traitée', 'gi-toolkit' ) : esc_html__( 'À traiter', 'gi-toolkit' ); ?>
+											</span>
+											<strong class="gi-cd-alert__title"><?php echo esc_html( isset( $row['summary'] ) ? (string) $row['summary'] : '' ); ?></strong>
+											<div class="gi-cd-alert__meta">
+												<?php echo esc_html( ! empty( $row['time'] ) ? wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $row['time'] ) : '—' ); ?>
+												<?php if ( ! empty( $row['details'] ) ) : ?>
+													— <code><?php echo esc_html( (string) $row['details'] ); ?></code>
+												<?php endif; ?>
+												<?php if ( $is_resolved && ! empty( $row['resolved_at'] ) ) : ?>
+													—
+													<?php
+													echo esc_html(
+														sprintf(
+															/* translators: %s: datetime */
+															__( 'traitée le %s', 'gi-toolkit' ),
+															wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $row['resolved_at'] )
+														)
+													);
+													?>
+												<?php endif; ?>
+											</div>
+										</div>
+										<div class="gi-cd-alert__actions">
+											<?php if ( $alert_id && ! $is_resolved ) : ?>
+												<button type="submit" class="button button-primary" name="gi_compromise_resolve" value="<?php echo esc_attr( $alert_id ); ?>"><?php esc_html_e( 'Marquer comme traitée', 'gi-toolkit' ); ?></button>
+											<?php elseif ( $alert_id ) : ?>
+												<button type="submit" class="button" name="gi_compromise_reopen" value="<?php echo esc_attr( $alert_id ); ?>"><?php esc_html_e( 'Réouvrir', 'gi-toolkit' ); ?></button>
+											<?php endif; ?>
+										</div>
+									</header>
+									<?php $this->render_alert_details( $row, $is_resolved ); ?>
+								</article>
+							<?php endforeach; ?>
 						<?php endif; ?>
 						<p class="description">
 							<?php esc_html_e( 'Le cron WordPress se déclenche surtout lors des visites. Pour un scan réellement chaque minute, planifiez wp-cron.php via crontab ou le panneau d’hébergement. Les événements (nouvel admin, page, plugin…) sont aussi détectés immédiatement via les hooks WordPress.', 'gi-toolkit' ); ?>
@@ -993,8 +1487,11 @@ class Gi_Toolkit_Compromise_Detection {
 			'resumed'  => array( 'success', __( 'Surveillance reprise.', 'gi-toolkit' ) ),
 			'baseline' => array( 'success', __( 'État actuel mémorisé comme normal. Les prochains écarts déclencheront une alerte.', 'gi-toolkit' ) ),
 			'scanned'  => array( 'success', __( 'Scan manuel terminé.', 'gi-toolkit' ) ),
-			'cleared'  => array( 'success', __( 'Journal vidé.', 'gi-toolkit' ) ),
-			'test_ok'  => array( 'success', __( 'Notification de test Pushover envoyée.', 'gi-toolkit' ) ),
+			'cleared'      => array( 'success', __( 'Journal vidé.', 'gi-toolkit' ) ),
+			'resolved'     => array( 'success', __( 'Alerte marquée comme traitée.', 'gi-toolkit' ) ),
+			'reopened'     => array( 'success', __( 'Alerte rouverte.', 'gi-toolkit' ) ),
+			'resolved_all' => array( 'success', __( 'Toutes les alertes ouvertes ont été marquées comme traitées.', 'gi-toolkit' ) ),
+			'test_ok'      => array( 'success', __( 'Notification de test Pushover envoyée.', 'gi-toolkit' ) ),
 			'test_fail'=> array( 'error', __( 'Échec de la notification de test Pushover.', 'gi-toolkit' ) ),
 		);
 		if ( ! isset( $messages[ $notice ] ) ) {
