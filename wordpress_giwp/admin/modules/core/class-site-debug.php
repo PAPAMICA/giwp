@@ -285,6 +285,7 @@ class Gi_Toolkit_Site_Debug {
 		);
 
 		$cron = $data['cron'] ?? array();
+		$reliable = isset( $cron['reliable_cron'] ) && is_array( $cron['reliable_cron'] ) ? $cron['reliable_cron'] : array();
 		$sections[] = self::section(
 			'cron',
 			__( 'Planification (WP-Cron)', 'gi-toolkit' ),
@@ -292,6 +293,12 @@ class Gi_Toolkit_Site_Debug {
 				'wp_cron_disabled' => $cron['wp_cron_disabled'] ?? false,
 				'alternate_cron'   => $cron['alternate_cron'] ?? false,
 				'total_scheduled'  => $cron['total_scheduled'] ?? 0,
+				'reliable_enabled' => $reliable['enabled'] ?? false,
+				'reliable_source'  => $reliable['source'] ?? '',
+				'reliable_overdue' => $reliable['overdue'] ?? 0,
+				'reliable_last_run' => ! empty( $reliable['last_run'] )
+					? wp_date( 'Y-m-d H:i:s', (int) $reliable['last_run'] )
+					: '',
 			) ),
 			self::render_table_block( __( 'Prochains événements', 'gi-toolkit' ), array( 'hook', 'next_run', 'schedule', 'args' ), $cron['next_events'] ?? array() )
 		);

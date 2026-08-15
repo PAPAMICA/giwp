@@ -1274,7 +1274,7 @@ class Gi_Toolkit_Modules_Data {
 			),
 			'Gi_Toolkit_Cron_Manager' => array(
 				'name' => esc_html_x( "CRON Manager", "Module name", 'gi-toolkit' ),
-				'desc' => esc_html_x( "Manage cron events on your website.", "Module description", 'gi-toolkit' ),
+				'desc' => esc_html_x( "Liste des tâches WP-Cron, runner fiable GI-Toolkit, exécution manuelle et ligne crontab.", "Module description", 'gi-toolkit' ),
 			),
 			'Gi_Toolkit_Hook_Filter_Debugger' => array(
 				'name' => esc_html_x( "Hook And Filter Debugger", "Module name", 'gi-toolkit' ),

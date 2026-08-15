@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.29.18 =
+* Add: Cron fiable GI-Toolkit — remplace le déclenchement WP-Cron (visites + loopback HTTP) sans changer wp_schedule_event ; filet si DISABLE_WP_CRON ; tick MainWP ; URL crontab secrète.
+
 = 2.29.17 =
 * Update: Détection de compromission — widget barre d’admin redessiné (badge, cartes d’alertes, boutons maintenance et pause).
 

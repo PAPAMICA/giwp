@@ -458,6 +458,7 @@ class Gi_Toolkit_Site_Debug_Collector {
 			'alternate_cron' => defined( 'ALTERNATE_WP_CRON' ) && ALTERNATE_WP_CRON,
 			'total_scheduled' => count( $events ),
 			'next_events'     => array_slice( $events, 0, 30 ),
+			'reliable_cron'   => class_exists( 'Gi_Toolkit_Reliable_Cron' ) ? Gi_Toolkit_Reliable_Cron::get_health() : array(),
 		);
 	}
 
@@ -785,7 +786,19 @@ class Gi_Toolkit_Site_Debug_Collector {
 		}
 
 		if ( ! empty( $data['cron']['wp_cron_disabled'] ) ) {
-			$items[] = self::alert( 'warn', __( 'WP-Cron désactivé (DISABLE_WP_CRON)', 'gi-toolkit' ) );
+			$overdue = (int) ( $data['cron']['reliable_cron']['overdue'] ?? 0 );
+			if ( $overdue > 180 ) {
+				$items[] = self::alert( 'error', __( 'WP-Cron désactivé et tâches en retard', 'gi-toolkit' ) );
+			} else {
+				$items[] = self::alert( 'ok', __( 'WP-Cron système (DISABLE_WP_CRON) + filet GI-Toolkit', 'gi-toolkit' ) );
+			}
+		} elseif ( ! empty( $data['cron']['reliable_cron']['enabled'] ) ) {
+			$overdue = (int) ( $data['cron']['reliable_cron']['overdue'] ?? 0 );
+			if ( $overdue > 180 ) {
+				$items[] = self::alert( 'warn', __( 'Cron GI-Toolkit en retard', 'gi-toolkit' ) );
+			} else {
+				$items[] = self::alert( 'ok', __( 'Cron fiable GI-Toolkit actif', 'gi-toolkit' ) );
+			}
 		}
 
 		if ( empty( $data['rest']['rest_ok'] ) ) {

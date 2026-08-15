@@ -25,6 +25,10 @@ class Gi_Toolkit_MainWP_API {
 
 		$action = isset( $data['action'] ) ? sanitize_key( $data['action'] ) : '';
 
+		if ( class_exists( 'Gi_Toolkit_Reliable_Cron' ) && in_array( $action, array( 'status', 'sync_integrations', 'mail' ), true ) ) {
+			Gi_Toolkit_Reliable_Cron::run_due( 'mainwp' );
+		}
+
 		switch ( $action ) {
 			case 'status':
 				return self::success( self::get_status() );
@@ -218,6 +222,10 @@ class Gi_Toolkit_MainWP_API {
 		}
 		if ( class_exists( 'Gi_Toolkit_UpdraftPlus_Status' ) ) {
 			$payload['updraftplus'] = Gi_Toolkit_UpdraftPlus_Status::get_mainwp_status_payload();
+		}
+
+		if ( class_exists( 'Gi_Toolkit_Reliable_Cron' ) ) {
+			$payload['cron'] = Gi_Toolkit_Reliable_Cron::get_health();
 		}
 
 		return $payload;

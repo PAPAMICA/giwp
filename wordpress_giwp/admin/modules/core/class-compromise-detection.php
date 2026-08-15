@@ -2010,7 +2010,7 @@ class Gi_Toolkit_Compromise_Detection {
 							<?php endforeach; ?>
 						<?php endif; ?>
 						<p class="description">
-							<?php esc_html_e( 'Le cron WordPress se déclenche surtout lors des visites. Pour un scan réellement chaque minute, planifiez wp-cron.php via crontab ou le panneau d’hébergement. Les événements (nouvel admin, page, plugin…) sont aussi détectés immédiatement via les hooks WordPress.', 'gi-toolkit' ); ?>
+							<?php esc_html_e( 'Le scan minute passe par le cron fiable GI-Toolkit (plus seulement les visites). Un crontab vers l’URL secrète (CRON Manager) garantit une exécution même sans trafic. Les événements (nouvel admin, page, plugin…) sont aussi détectés immédiatement via les hooks WordPress.', 'gi-toolkit' ); ?>
 						</p>
 					</div>
 				</div>

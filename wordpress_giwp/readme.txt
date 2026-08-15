@@ -4,7 +4,7 @@ Tags: all in one plugin, admin, security, disable features, easy to use
 Requires at least: 6.0.0
 Tested up to: 6.9.3
 Requires PHP: 7.4
-Stable tag: 2.29.17
+Stable tag: 2.29.18
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -195,6 +195,9 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 4. Code snippets
 
 == Changelog ==
+
+= 2.29.18 =
+* Add: Cron fiable GI-Toolkit — remplace le déclenchement WP-Cron sans changer les tâches planifiées ; tick MainWP ; URL crontab.
 
 = 2.29.17 =
 * Update: Détection de compromission — widget barre d’admin redessiné (badge, cartes d’alertes, boutons maintenance et pause).
