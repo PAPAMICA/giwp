@@ -346,10 +346,7 @@
 		root = root || document;
 
 		collectGiwebGw(root).forEach(function (gw) {
-			var widget = gw.closest(
-				'.mainwp-giweb-mail-widget--detailed, .mainwp-giweb-backup-widget--detailed, .mainwp-giweb-uptime-kuma-widget--detailed'
-			);
-			if (widget && widget.contains(gw)) {
+			if (gw.querySelector('.giweb-gw-toolbar, .giweb-gw-list')) {
 				delete gw.dataset.giwebGwBound;
 				bindPanel(gw);
 			}

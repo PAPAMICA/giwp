@@ -112,7 +112,11 @@ class Gi_Toolkit_Reliable_Cron {
 	}
 
 	/**
-	 * Exécute les tâches dues (verrou anti-chevauchement).
+	 * Exécute les tâches dues dans le processus courant (pas de spawn HTTP vers wp-cron.php).
+	 *
+	 * Depuis WP 5.7, `_wp_cron()` ne fait que lancer spawn_cron() : un POST non bloquant
+	 * vers wp-cron.php. C’est précisément le mécanisme qu’on remplace (souvent bloqué).
+	 * De plus, définir DOING_CRON avant `_wp_cron()` fait échouer spawn_cron() immédiatement.
 	 *
 	 * @param string $source shutdown|endpoint|mainwp|manual.
 	 * @return bool
@@ -121,19 +125,21 @@ class Gi_Toolkit_Reliable_Cron {
 		if ( self::$ran ) {
 			return false;
 		}
-		if ( ! function_exists( '_wp_cron' ) ) {
+		if ( ! function_exists( 'wp_get_ready_cron_jobs' ) ) {
 			return false;
 		}
 		if ( ! self::has_due_events() ) {
 			self::touch_health( $source, false );
 			return false;
 		}
-		if ( ! self::acquire_lock() ) {
+
+		$lock = self::acquire_lock();
+		if ( ! $lock ) {
 			return false;
 		}
 
 		self::$ran = true;
-		if ( in_array( $source, array( 'shutdown', 'endpoint' ), true ) && ! defined( 'DOING_CRON' ) ) {
+		if ( ! defined( 'DOING_CRON' ) ) {
 			define( 'DOING_CRON', true );
 		}
 		if ( function_exists( 'ignore_user_abort' ) ) {
@@ -142,9 +148,12 @@ class Gi_Toolkit_Reliable_Cron {
 		if ( function_exists( 'set_time_limit' ) ) {
 			set_time_limit( 120 );
 		}
+		if ( function_exists( 'wp_raise_memory_limit' ) ) {
+			wp_raise_memory_limit( 'cron' );
+		}
 
-		_wp_cron();
-		self::release_lock();
+		self::execute_ready_events( $lock );
+		self::release_lock( $lock );
 		self::touch_health( $source, true );
 		return true;
 	}
@@ -263,29 +272,109 @@ class Gi_Toolkit_Reliable_Cron {
 	}
 
 	/**
-	 * @return bool
+	 * @return string|false Jeton de verrou, ou false si occupé.
 	 */
 	private static function acquire_lock() {
 		$now     = microtime( true );
 		$lock    = (float) get_transient( 'doing_cron' );
 		$timeout = defined( 'WP_CRON_LOCK_TIMEOUT' ) ? (int) WP_CRON_LOCK_TIMEOUT : 60;
-		if ( $lock && ( $lock + $timeout ) > $now && ( $now + 10 ) > $lock ) {
+		if ( $lock && ( $lock + $timeout ) > $now ) {
 			return false;
 		}
 		if ( get_transient( 'gi_toolkit_cron_lock' ) ) {
 			return false;
 		}
+
+		$token = sprintf( '%.22F', $now );
+		set_transient( 'doing_cron', $token );
 		set_transient( 'gi_toolkit_cron_lock', 1, $timeout );
-		set_transient( 'doing_cron', sprintf( '%.22F', $now ) );
-		return true;
+		return $token;
 	}
 
 	/**
+	 * @param string $token Jeton posé par acquire_lock().
 	 * @return void
 	 */
-	private static function release_lock() {
+	private static function release_lock( $token = '' ) {
 		delete_transient( 'gi_toolkit_cron_lock' );
-		delete_transient( 'doing_cron' );
+		if ( '' === $token || self::read_doing_cron_lock() === $token ) {
+			delete_transient( 'doing_cron' );
+		}
+	}
+
+	/**
+	 * Lecture non cachée du verrou WP (comme wp-cron.php).
+	 *
+	 * @return string|int|false
+	 */
+	private static function read_doing_cron_lock() {
+		global $wpdb;
+
+		if ( wp_using_ext_object_cache() ) {
+			return wp_cache_get( 'doing_cron', 'transient', true );
+		}
+		if ( ! $wpdb ) {
+			return get_transient( 'doing_cron' );
+		}
+
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT option_value FROM $wpdb->options WHERE option_name = %s LIMIT 1", '_transient_doing_cron' ) );
+		return is_object( $row ) ? $row->option_value : false;
+	}
+
+	/**
+	 * Exécute les hooks dus (logique de wp-cron.php, sans HTTP).
+	 *
+	 * @param string $token Jeton doing_cron.
+	 * @return int Nombre d’événements lancés.
+	 */
+	private static function execute_ready_events( $token ) {
+		$crons = wp_get_ready_cron_jobs();
+		if ( empty( $crons ) ) {
+			return 0;
+		}
+
+		$gmt_time = microtime( true );
+		$ran      = 0;
+		$max      = 50;
+
+		foreach ( $crons as $timestamp => $cronhooks ) {
+			if ( $timestamp > $gmt_time ) {
+				break;
+			}
+			if ( ! is_array( $cronhooks ) ) {
+				continue;
+			}
+
+			foreach ( $cronhooks as $hook => $keys ) {
+				if ( ! is_array( $keys ) ) {
+					continue;
+				}
+				foreach ( $keys as $v ) {
+					if ( $ran >= $max ) {
+						return $ran;
+					}
+					if ( ! is_array( $v ) ) {
+						continue;
+					}
+
+					$schedule = $v['schedule'] ?? false;
+					$args     = isset( $v['args'] ) && is_array( $v['args'] ) ? $v['args'] : array();
+
+					if ( $schedule ) {
+						wp_reschedule_event( $timestamp, $schedule, $hook, $args, true );
+					}
+					wp_unschedule_event( $timestamp, $hook, $args, true );
+					do_action_ref_array( $hook, $args );
+					++$ran;
+
+					if ( self::read_doing_cron_lock() !== $token ) {
+						return $ran;
+					}
+				}
+			}
+		}
+
+		return $ran;
 	}
 
 	/**

@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.29.21 =
+* Fix: Cron fiable — exécute réellement les tâches dans le processus (WP 5.7+ `_wp_cron()` ne fait plus que spawn wp-cron.php, d’où les « En panne » malgré un dernier passage récent).
+
 = 2.29.20 =
 * Add: Détection de compromission — statut compact injecté dans la synchro MainWP (alertes ouvertes, pause, dernier scan).
 
