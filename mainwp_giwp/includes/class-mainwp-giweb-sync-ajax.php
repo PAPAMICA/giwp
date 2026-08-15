@@ -50,7 +50,7 @@ class MainWP_GIWeb_Sync_Ajax {
 		if ( empty( $bundle ) || empty( $bundle['modules'] ) ) {
 			return null;
 		}
-		return MainWP_GIWeb_Uptime_Kuma::merge_into_bundle( MainWP_GIWeb_Matomo::merge_into_bundle( $bundle ) );
+		return MainWP_GIWeb_Bundle::merge_integrations( $bundle );
 	}
 
 	/**
@@ -873,7 +873,7 @@ class MainWP_GIWeb_Sync_Ajax {
 				wp_send_json_error( array( 'message' => __( 'Session de déploiement expirée. Relancez le déploiement.', 'mainwp-giweb' ) ) );
 			}
 
-			$bundle = MainWP_GIWeb_Uptime_Kuma::merge_into_bundle( MainWP_GIWeb_Matomo::merge_into_bundle( $ctx['bundle'] ) );
+			$bundle = MainWP_GIWeb_Bundle::merge_integrations( $ctx['bundle'] );
 			$args   = MainWP_GIWeb_Overrides::apply_to_bundle( $bundle, $site_id );
 			$result = MainWP_GIWeb_API::import_site( $site_id, $bundle, $args );
 			$ok     = ! empty( $result['success'] );

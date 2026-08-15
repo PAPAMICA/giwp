@@ -206,6 +206,20 @@ class MainWP_GIWeb_Bundle {
 	}
 
 	/**
+	 * Injecte les identifiants centralisés (Matomo, Kuma, Pushover) avant déploiement.
+	 *
+	 * @param array<string, mixed> $bundle Bundle.
+	 * @return array<string, mixed>
+	 */
+	public static function merge_integrations( $bundle ) {
+		$bundle = is_array( $bundle ) ? $bundle : array();
+		$bundle = MainWP_GIWeb_Matomo::merge_into_bundle( $bundle );
+		$bundle = MainWP_GIWeb_Uptime_Kuma::merge_into_bundle( $bundle );
+		$bundle = MainWP_GIWeb_Pushover::merge_into_bundle( $bundle );
+		return $bundle;
+	}
+
+	/**
 	 * @param string $key Clé tableau.
 	 * @return bool
 	 */

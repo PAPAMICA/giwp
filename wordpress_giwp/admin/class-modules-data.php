@@ -522,6 +522,12 @@ class Gi_Toolkit_Modules_Data {
 				'pro'           => false,
 				'path'          => 'core/class-limit-login-attempts.php',
 			),
+			'Gi_Toolkit_Compromise_Detection' => array(
+				'original_name' => 'Compromise Detection',
+				'group'         => 'security',
+				'pro'           => false,
+				'path'          => 'core/class-compromise-detection.php',
+			),
 			'Gi_Toolkit_Block_User_Registration_From_Disposable_Email' => array(
 				'original_name' => "Block User Registration from Disposable Email",
 				'group'         => 'security',
@@ -1189,6 +1195,10 @@ class Gi_Toolkit_Modules_Data {
 			'Gi_Toolkit_Limit_Login_Attempts' => array(
 				'name' => esc_html_x( "Limit Login Attempts", "Module name", 'gi-toolkit' ),
 				'desc' => esc_html_x( "Prevent brute force attacks by limiting the number of failed login attempts allowed per IP address.", "Module description", 'gi-toolkit' ),
+			),
+			'Gi_Toolkit_Compromise_Detection' => array(
+				'name' => esc_html_x( 'Détection de compromission', 'Module name', 'gi-toolkit' ),
+				'desc' => esc_html_x( 'Surveille les signes de piratage (admin, pages, mots de passe, extensions, requêtes sortantes…) toutes les minutes et envoie une alerte Pushover. Pause 1 h / 2 h / 24 h pour la maintenance.', 'Module description', 'gi-toolkit' ),
 			),
 			'Gi_Toolkit_Block_User_Registration_From_Disposable_Email' => array(
 				'name' => esc_html_x( "Block User Registration from Disposable Email", "Module name", 'gi-toolkit' ),

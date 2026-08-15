@@ -201,6 +201,54 @@ $logs            = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 				</div>
 			</details>
 
+			<details class="mainwp-giweb-settings-accordion"<?php echo MainWP_GIWeb_Pushover::is_configured() ? ' open' : ''; ?>>
+				<summary class="mainwp-giweb-settings-accordion__summary">
+					<?php esc_html_e( 'Pushover (détection de compromission)', 'mainwp-giweb' ); ?>
+					<?php if ( MainWP_GIWeb_Pushover::is_configured() ) : ?>
+						<span class="mainwp-giweb-settings-badge mainwp-giweb-settings-badge--ok"><?php esc_html_e( 'Configuré', 'mainwp-giweb' ); ?></span>
+					<?php endif; ?>
+				</summary>
+				<div class="mainwp-giweb-settings-accordion__body">
+					<div class="mainwp-giweb-settings-grid mainwp-giweb-settings-grid--2">
+						<div class="mainwp-giweb-settings-field">
+							<label for="mainwp_giweb_pushover_app_token"><?php esc_html_e( 'Jeton application (API Token)', 'mainwp-giweb' ); ?></label>
+							<input type="password" class="large-text code" id="mainwp_giweb_pushover_app_token" name="pushover_app_token" value="" autocomplete="new-password" placeholder="<?php echo ! empty( $settings['pushover_app_token'] ) ? esc_attr__( '•••••••• (laisser vide pour conserver)', 'mainwp-giweb' ) : ''; ?>" />
+						</div>
+						<div class="mainwp-giweb-settings-field">
+							<label for="mainwp_giweb_pushover_user_key"><?php esc_html_e( 'Clé utilisateur (User Key)', 'mainwp-giweb' ); ?></label>
+							<input type="password" class="large-text code" id="mainwp_giweb_pushover_user_key" name="pushover_user_key" value="" autocomplete="new-password" placeholder="<?php echo ! empty( $settings['pushover_user_key'] ) ? esc_attr__( '•••••••• (laisser vide pour conserver)', 'mainwp-giweb' ) : ''; ?>" />
+						</div>
+					</div>
+					<div class="mainwp-giweb-settings-field">
+						<label for="mainwp_giweb_pushover_device"><?php esc_html_e( 'Appareil (optionnel)', 'mainwp-giweb' ); ?></label>
+						<input type="text" class="regular-text" id="mainwp_giweb_pushover_device" name="pushover_device" value="<?php echo esc_attr( (string) ( $settings['pushover_device'] ?? '' ) ); ?>" placeholder="<?php esc_attr_e( 'Tous les appareils si vide', 'mainwp-giweb' ); ?>" />
+					</div>
+					<div class="mainwp-giweb-settings-field">
+						<label for="mainwp_giweb_pushover_title"><?php esc_html_e( 'Titre de la notification', 'mainwp-giweb' ); ?></label>
+						<input type="text" class="large-text" id="mainwp_giweb_pushover_title" name="pushover_title" value="<?php echo esc_attr( (string) ( $settings['pushover_title'] ?? MainWP_GIWeb_Pushover::default_title() ) ); ?>" />
+					</div>
+					<div class="mainwp-giweb-settings-field">
+						<label for="mainwp_giweb_pushover_message"><?php esc_html_e( 'Message de la notification', 'mainwp-giweb' ); ?></label>
+						<textarea class="large-text code" id="mainwp_giweb_pushover_message" name="pushover_message" rows="7"><?php echo esc_textarea( (string) ( $settings['pushover_message'] ?? MainWP_GIWeb_Pushover::default_message() ) ); ?></textarea>
+						<p class="description">
+							<?php esc_html_e( 'Variables :', 'mainwp-giweb' ); ?>
+							<code>$website_name</code>
+							<code>$website_url</code>
+							<code>$website_host</code>
+							<code>$admin_url</code>
+							<code>$alert_summary</code>
+							<code>$alert_details</code>
+							<code>$alert_type</code>
+							<code>$alert_type_label</code>
+							<code>$datetime</code>
+							<code>$ip</code>
+							<code>$user</code>
+						</p>
+					</div>
+					<p class="description"><?php esc_html_e( 'Injecté dans le bundle à chaque déploiement (jetons + modèles). Active aussi le module « Détection de compromission » sur les sites enfants.', 'mainwp-giweb' ); ?></p>
+				</div>
+			</details>
+
 			<details class="mainwp-giweb-settings-accordion"<?php echo MainWP_GIWeb_Zabbix::is_configured() ? ' open' : ''; ?>>
 				<summary class="mainwp-giweb-settings-accordion__summary">
 					<?php esc_html_e( 'Zabbix', 'mainwp-giweb' ); ?>

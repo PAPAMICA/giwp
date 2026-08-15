@@ -1,0 +1,70 @@
+/**
+ * Module Détection de compromission.
+ */
+
+.gi-cd-status {
+	border-radius: 10px;
+	margin: 0 0 1.25rem;
+	padding: 14px 16px;
+}
+
+.gi-cd-status--ok {
+	background: #edfaef;
+	border: 1px solid #b8e0c4;
+	color: #1e4620;
+}
+
+.gi-cd-status--warn {
+	background: #fcf9e8;
+	border: 1px solid #f0c33c;
+	color: #614200;
+}
+
+.gi-cd-status--paused {
+	background: #f0f6fc;
+	border: 1px solid #72aee6;
+	color: #1d4f91;
+}
+
+.gi-cd-status__meta {
+	color: inherit;
+	font-size: 12px;
+	margin-top: 6px;
+	opacity: 0.85;
+}
+
+.gi-cd-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.gi-cd-fields p {
+	margin: 0 0 12px;
+}
+
+.gi-cd-watches {
+	display: grid;
+	gap: 6px 24px;
+	grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+.gi-cd-log code {
+	font-size: 12px;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.gi-cd-vars code {
+	background: #f0f0f1;
+	border-radius: 3px;
+	display: inline-block;
+	font-size: 11px;
+	margin: 2px 2px 0 0;
+	padding: 1px 5px;
+}
+
+.gi-cd-fields textarea {
+	max-width: 100%;
+	width: 100%;
+}

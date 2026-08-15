@@ -4,7 +4,7 @@ Tags: all in one plugin, admin, security, disable features, easy to use
 Requires at least: 6.0.0
 Tested up to: 6.9.3
 Requires PHP: 7.4
-Stable tag: 2.29.8
+Stable tag: 2.29.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -13,7 +13,7 @@ Duplicate post, post order, email via SMTP, code snippets, disable gutenberg, ch
 == Description ==
 GI-Toolkit est une boîte à outils tout-en-un pour optimiser WordPress : tableau de bord, sécurité, médias, e-mails SMTP, snippets, maintenance, et bien plus. Version personnalisée maintenue par Genevois Informatique pour déploiement sur sites clients.
 
-= 93 FREE modules =
+= 94 FREE modules =
 
 * Adminer: A full-featured database management tool.
 * Advanced Debug Mode
@@ -29,6 +29,7 @@ GI-Toolkit est une boîte à outils tout-en-un pour optimiser WordPress : tablea
 * Clean Profiles: Tidy up user profiles by removing sections you do not utilise.
 * Clean Up Admin Bar.
 * Code Snippets: Add custom code snippets without editing the theme's **functions.php**.
+* Compromise Detection: Surveille les signes de compromission (admin, pages, mots de passe, extensions, requêtes sortantes) et alerte via Pushover.
 * Content Duplication: One-click duplication of pages, posts and custom post types with taxonomy terms and post meta.
 * Content Order: Custom ordering for hierarchical content types and those supporting page attributes.
 * Custom Admin CSS: Add custom CSS on all admin pages for all user roles.
@@ -194,6 +195,12 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 4. Code snippets
 
 == Changelog ==
+
+= 2.29.10 =
+* Add: Détection de compromission — modèles de notification Pushover avec variables ; jetons et modèles déployés via MainWP.
+
+= 2.29.9 =
+* Add: module « Détection de compromission » — scan chaque minute, alertes Pushover, options de surveillance et pause 1 h / 2 h / 24 h.
 
 = 2.29.8 =
 * Fix: sync Matomo / Uptime Kuma — retry avec backoff sur « Too frequently » ; moins de faux positifs dans les logs de déploiement.

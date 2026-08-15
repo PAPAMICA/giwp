@@ -349,6 +349,11 @@ class MainWP_GIWeb {
 						'ftp_passive'                => ! empty( $_POST['ftp_passive'] ),
 						'ftp_ssl'                    => ! empty( $_POST['ftp_ssl'] ),
 						'ftp_auto_on_deploy'         => ! empty( $_POST['ftp_auto_on_deploy'] ),
+						'pushover_app_token'         => isset( $_POST['pushover_app_token'] ) ? sanitize_text_field( wp_unslash( $_POST['pushover_app_token'] ) ) : '',
+						'pushover_user_key'          => isset( $_POST['pushover_user_key'] ) ? sanitize_text_field( wp_unslash( $_POST['pushover_user_key'] ) ) : '',
+						'pushover_device'            => isset( $_POST['pushover_device'] ) ? sanitize_text_field( wp_unslash( $_POST['pushover_device'] ) ) : '',
+						'pushover_title'             => isset( $_POST['pushover_title'] ) ? sanitize_text_field( wp_unslash( $_POST['pushover_title'] ) ) : '',
+						'pushover_message'           => isset( $_POST['pushover_message'] ) ? sanitize_textarea_field( wp_unslash( $_POST['pushover_message'] ) ) : '',
 					)
 				);
 				MainWP_GIWeb_Notices::add( 'success', __( 'Réglages enregistrés.', 'mainwp-giweb' ) );

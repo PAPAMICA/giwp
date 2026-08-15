@@ -55,6 +55,11 @@ class MainWP_GIWeb_Settings {
 			'mail_widget_list_mode'         => 'cards',
 			'backup_widget_list_mode'       => 'cards',
 			'kuma_widget_list_mode'         => 'cards',
+			'pushover_app_token'            => '',
+			'pushover_user_key'             => '',
+			'pushover_device'               => '',
+			'pushover_title'                => '[GI] $alert_summary — $website_name',
+			'pushover_message'              => '$alert_summary' . "\n\n" . '$alert_details' . "\n\n" . 'Site : $website_name' . "\n" . 'URL : $website_url' . "\n" . 'Date : $datetime',
 		);
 	}
 
@@ -168,6 +173,38 @@ class MainWP_GIWeb_Settings {
 
 		$kuma_mode = isset( $data['kuma_widget_list_mode'] ) ? (string) $data['kuma_widget_list_mode'] : (string) ( $current['kuma_widget_list_mode'] ?? 'cards' );
 		$clean['kuma_widget_list_mode'] = in_array( $kuma_mode, array( 'cards', 'table' ), true ) ? $kuma_mode : 'cards';
+
+		if ( ! empty( $data['pushover_app_token'] ) ) {
+			$clean['pushover_app_token'] = sanitize_text_field( (string) $data['pushover_app_token'] );
+		} else {
+			$clean['pushover_app_token'] = (string) ( $current['pushover_app_token'] ?? '' );
+		}
+
+		if ( ! empty( $data['pushover_user_key'] ) ) {
+			$clean['pushover_user_key'] = sanitize_text_field( (string) $data['pushover_user_key'] );
+		} else {
+			$clean['pushover_user_key'] = (string) ( $current['pushover_user_key'] ?? '' );
+		}
+
+		if ( isset( $data['pushover_device'] ) ) {
+			$clean['pushover_device'] = sanitize_text_field( (string) $data['pushover_device'] );
+		} else {
+			$clean['pushover_device'] = (string) ( $current['pushover_device'] ?? '' );
+		}
+
+		if ( isset( $data['pushover_title'] ) ) {
+			$title = sanitize_text_field( (string) $data['pushover_title'] );
+			$clean['pushover_title'] = '' !== $title ? $title : MainWP_GIWeb_Pushover::default_title();
+		} else {
+			$clean['pushover_title'] = (string) ( $current['pushover_title'] ?? MainWP_GIWeb_Pushover::default_title() );
+		}
+
+		if ( isset( $data['pushover_message'] ) ) {
+			$message = sanitize_textarea_field( (string) $data['pushover_message'] );
+			$clean['pushover_message'] = '' !== $message ? $message : MainWP_GIWeb_Pushover::default_message();
+		} else {
+			$clean['pushover_message'] = (string) ( $current['pushover_message'] ?? MainWP_GIWeb_Pushover::default_message() );
+		}
 
 		return update_option( self::OPTION_KEY, $clean, false );
 	}

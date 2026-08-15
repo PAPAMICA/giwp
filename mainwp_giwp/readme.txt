@@ -3,7 +3,7 @@ Contributors: genevois-informatique
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.7.3
+Stable tag: 1.7.4
 License: GPLv2 or later
 
 Gérez et déployez GI-Toolkit sur tous vos sites WordPress via MainWP.
@@ -54,6 +54,9 @@ MainWP > Extensions > GI-Toolkit Manager
 - [ ] Modèle « Default » défini comme profil par défaut dans Réglages
 
 == Changelog ==
+
+= 1.7.4 =
+* Add: Pushover centralisé (jeton, clé, modèles de notification avec variables) injecté dans le bundle à chaque déploiement ; active le module Détection de compromission.
 
 = 1.7.3 =
 * Fix: après déploiement, ne resynchronise Matomo / Uptime Kuma que s’ils ont échoué à l’import (évite le double hit et le rate-limit « Too frequently ») ; logs d’import allégés.

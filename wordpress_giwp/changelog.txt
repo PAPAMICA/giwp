@@ -1,5 +1,11 @@
 == Changelog ==
 
+= 2.29.10 =
+* Add: Détection de compromission — modèles de notification Pushover avec variables ($website_name, $alert_summary, …) ; jetons et modèles déployés via MainWP.
+
+= 2.29.9 =
+* Add: module « Détection de compromission » — scan chaque minute (admin, pages, mots de passe, extensions/thèmes, requêtes sortantes, PHP dans uploads, fichiers sensibles), alertes Pushover, options de surveillance et pause 1 h / 2 h / 24 h.
+
 = 2.29.8 =
 * Fix: sync Matomo / Uptime Kuma — retry avec backoff sur rate-limit (« Too frequently ») ; l’API `sync_integrations` accepte des flags ciblés (`refresh_matomo` / `refresh_kuma`).
 
