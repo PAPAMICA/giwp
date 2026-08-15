@@ -228,6 +228,14 @@ class Gi_Toolkit_MainWP_API {
 			$payload['cron'] = Gi_Toolkit_Reliable_Cron::get_health();
 		}
 
+		$cd_file = defined( 'GI_TOOLKIT_PLUGIN_PATH' ) ? GI_TOOLKIT_PLUGIN_PATH . 'admin/modules/core/class-compromise-detection.php' : '';
+		if ( $cd_file && is_file( $cd_file ) && ! class_exists( 'Gi_Toolkit_Compromise_Detection', false ) ) {
+			require_once $cd_file;
+		}
+		if ( class_exists( 'Gi_Toolkit_Compromise_Detection' ) ) {
+			$payload['compromise'] = Gi_Toolkit_Compromise_Detection::get_mainwp_status_payload();
+		}
+
 		return $payload;
 	}
 

@@ -156,7 +156,7 @@ class MainWP_GIWeb_Widget_UI {
 	 */
 	public static function render_brand( $icon_modifier, $title, $subtitle ) {
 		$icon_class = 'giweb-gw-brand__icon';
-		if ( in_array( $icon_modifier, array( 'mail', 'backup', 'kuma' ), true ) ) {
+		if ( in_array( $icon_modifier, array( 'mail', 'backup', 'kuma', 'cron', 'cd' ), true ) ) {
 			$icon_class .= ' giweb-gw-brand__icon--' . $icon_modifier;
 		}
 		?>
@@ -179,7 +179,7 @@ class MainWP_GIWeb_Widget_UI {
 		$site_id  = absint( $refresh['site_id'] ?? 0 );
 		$detailed = ! empty( $refresh['detailed'] ) ? '1' : '0';
 
-		if ( ! in_array( $scope, array( 'mail', 'backup', 'kuma' ), true ) ) {
+		if ( ! in_array( $scope, array( 'mail', 'backup', 'kuma', 'cron', 'cd' ), true ) ) {
 			return;
 		}
 		?>

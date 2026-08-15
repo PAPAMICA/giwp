@@ -1434,6 +1434,75 @@ class Gi_Toolkit_Compromise_Detection {
 	}
 
 	/**
+	 * Statut compact pour la synchro MainWP (pas de diffs ni de secrets).
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function get_mainwp_status_payload() {
+		$active = self::is_module_enabled();
+		$open   = $active ? self::get_open_alerts() : array();
+		$all    = $active ? self::get_alerts() : array();
+
+		$open_count = count( $open );
+		$resolved   = 0;
+		foreach ( $all as $row ) {
+			if ( is_array( $row ) && 'resolved' === ( $row['status'] ?? 'open' ) ) {
+				++$resolved;
+			}
+		}
+
+		$groups = array();
+		foreach ( $open as $row ) {
+			$label = isset( $row['summary'] ) ? (string) $row['summary'] : __( 'Alerte', 'gi-toolkit' );
+			if ( ! isset( $groups[ $label ] ) ) {
+				$groups[ $label ] = 0;
+			}
+			++$groups[ $label ];
+		}
+		$types = array();
+		foreach ( array_slice( $groups, 0, 5, true ) as $label => $n ) {
+			$types[] = array(
+				'label' => $label,
+				'count' => (int) $n,
+			);
+		}
+
+		$latest = '';
+		if ( isset( $open[0]['summary'] ) ) {
+			$latest = (string) $open[0]['summary'];
+		}
+
+		$settings = get_option( self::OPTION_SETTINGS, array() );
+		if ( ! is_array( $settings ) ) {
+			$settings = array();
+		}
+		$pushover_ok = '' !== trim( (string) ( $settings['pushover_app_token'] ?? '' ) )
+			&& '' !== trim( (string) ( $settings['pushover_user_key'] ?? '' ) );
+
+		$last_scan = 0;
+		if ( $active ) {
+			self::load_helpers();
+			if ( class_exists( 'Gi_Toolkit_Compromise_Detection_Monitor' ) ) {
+				$snap      = Gi_Toolkit_Compromise_Detection_Monitor::get_snapshot();
+				$last_scan = isset( $snap['taken_at'] ) ? (int) $snap['taken_at'] : 0;
+			}
+		}
+
+		return array(
+			'module_active'   => $active,
+			'open_count'      => $open_count,
+			'resolved_count'  => $resolved,
+			'paused'          => $active && self::is_paused(),
+			'pause_until'     => $active ? self::pause_until() : 0,
+			'last_scan'       => $last_scan,
+			'pushover_ok'     => $pushover_ok,
+			'maintenance'     => self::is_maintenance_enabled(),
+			'latest_summary'  => $latest,
+			'types'           => $types,
+		);
+	}
+
+	/**
 	 * @return bool
 	 */
 	private static function is_maintenance_enabled() {

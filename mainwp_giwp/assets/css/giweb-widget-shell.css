@@ -3,6 +3,8 @@
  */
 .mainwp-giweb-mail-widget,
 .mainwp-giweb-backup-widget,
+.mainwp-giweb-cron-widget,
+.mainwp-giweb-cd-widget,
 .mainwp-giweb-uptime-kuma-widget {
 	--giweb-gw-bg: var(--background-color-3, #fff);
 	--giweb-gw-surface: var(--background-color-2, #f6f7f7);
@@ -25,9 +27,13 @@
 
 .mainwp-giweb-mail-widget--dark,
 .mainwp-giweb-backup-widget--dark,
+.mainwp-giweb-cron-widget--dark,
+.mainwp-giweb-cd-widget--dark,
 .mainwp-giweb-uptime-kuma-widget--dark,
 body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget,
 body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-cron-widget,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-cd-widget,
 body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget {
 	--giweb-gw-bg: var(--background-color-3, #1a1b1f);
 	--giweb-gw-surface: var(--background-color-2, #121318);
@@ -50,6 +56,16 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget {
 
 .mainwp-giweb-backup-widget {
 	--giweb-gw-brand-gradient: linear-gradient(135deg, #316bff, #1e4fd6);
+}
+
+.mainwp-giweb-cron-widget {
+	--giweb-gw-brand-gradient: linear-gradient(135deg, #0ea5e9, #0369a1);
+	--giweb-gw-brand-glow: rgba(14, 165, 233, 0.18);
+}
+
+.mainwp-giweb-cd-widget {
+	--giweb-gw-brand-gradient: linear-gradient(135deg, #f04438, #f79009);
+	--giweb-gw-brand-glow: rgba(240, 68, 56, 0.18);
 }
 
 .mainwp-giweb-uptime-kuma-widget {
@@ -131,6 +147,54 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget {
 	box-shadow: 0 5px 0 #fff, 0 10px 0 #fff;
 	height: 3px;
 	top: 16px;
+}
+
+.giweb-gw-brand__icon--cron::before,
+.giweb-gw-brand__icon--cron::after {
+	border: 2px solid #fff;
+	content: "";
+	left: 50%;
+	position: absolute;
+	top: 50%;
+}
+
+.giweb-gw-brand__icon--cron::before {
+	border-radius: 50%;
+	height: 16px;
+	margin: -8px 0 0 -8px;
+	width: 16px;
+}
+
+.giweb-gw-brand__icon--cron::after {
+	border-width: 0 0 2px 2px;
+	height: 6px;
+	margin: -5px 0 0 -1px;
+	width: 5px;
+}
+
+.giweb-gw-brand__icon--cd::before,
+.giweb-gw-brand__icon--cd::after {
+	content: "";
+	left: 50%;
+	position: absolute;
+	top: 50%;
+}
+
+.giweb-gw-brand__icon--cd::before {
+	border: 2px solid #fff;
+	border-radius: 3px 3px 50% 50% / 3px 3px 70% 70%;
+	height: 16px;
+	margin: -9px 0 0 -7px;
+	width: 14px;
+}
+
+.giweb-gw-brand__icon--cd::after {
+	border: solid #fff;
+	border-width: 0 0 2px 2px;
+	height: 4px;
+	margin: -1px 0 0 -4px;
+	transform: rotate(-45deg);
+	width: 7px;
 }
 
 .giweb-gw-brand__icon--kuma::after {
@@ -349,75 +413,103 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget {
 
 /* Mode clair explicite (MainWP dashboard) */
 .mainwp-giweb-mail-widget--light .giweb-gw-table-wrap,
-.mainwp-giweb-backup-widget--light .giweb-gw-table-wrap,
+.mainwp-giweb-backup-widget--light,
+.mainwp-giweb-cron-widget--light .giweb-gw-table-wrap,
+.mainwp-giweb-cd-widget--light .giweb-gw-table-wrap,
 .mainwp-giweb-uptime-kuma-widget--light .giweb-gw-table-wrap {
 	background: #fff;
 	border-color: rgba(0, 0, 0, 0.08);
 }
 
 .mainwp-giweb-mail-widget--light .giweb-gw-table thead th,
-.mainwp-giweb-backup-widget--light .giweb-gw-table thead th,
+.mainwp-giweb-backup-widget--light,
+.mainwp-giweb-cron-widget--light .giweb-gw-table thead th,
+.mainwp-giweb-cd-widget--light .giweb-gw-table thead th,
 .mainwp-giweb-uptime-kuma-widget--light .giweb-gw-table thead th {
 	background: #f6f7f7 !important;
 	color: #646970 !important;
 }
 
 .mainwp-giweb-mail-widget--light .giweb-gw-table tbody td,
-.mainwp-giweb-backup-widget--light .giweb-gw-table tbody td,
+.mainwp-giweb-backup-widget--light,
+.mainwp-giweb-cron-widget--light .giweb-gw-table tbody td,
+.mainwp-giweb-cd-widget--light .giweb-gw-table tbody td,
 .mainwp-giweb-uptime-kuma-widget--light .giweb-gw-table tbody td {
 	color: #1d2327 !important;
 }
 
 .mainwp-giweb-mail-widget--light .giweb-gw-table tbody tr:nth-child(even) td,
-.mainwp-giweb-backup-widget--light .giweb-gw-table tbody tr:nth-child(even) td,
+.mainwp-giweb-backup-widget--light,
+.mainwp-giweb-cron-widget--light .giweb-gw-table tbody tr:nth-child(even) td,
+.mainwp-giweb-cd-widget--light .giweb-gw-table tbody tr:nth-child(even) td,
 .mainwp-giweb-uptime-kuma-widget--light .giweb-gw-table tbody tr:nth-child(even) td {
 	background: rgba(0, 0, 0, 0.02) !important;
 }
 
 /* Mode sombre explicite */
 .mainwp-giweb-mail-widget--dark .giweb-gw-table-wrap,
-.mainwp-giweb-backup-widget--dark .giweb-gw-table-wrap,
+.mainwp-giweb-backup-widget--dark,
+.mainwp-giweb-cron-widget--dark .giweb-gw-table-wrap,
+.mainwp-giweb-cd-widget--dark .giweb-gw-table-wrap,
 .mainwp-giweb-uptime-kuma-widget--dark .giweb-gw-table-wrap,
 body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget .giweb-gw-table-wrap,
-body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget .giweb-gw-table-wrap,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-cron-widget .giweb-gw-table-wrap,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-cd-widget .giweb-gw-table-wrap,
 body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget .giweb-gw-table-wrap {
 	background: #121318;
 	border-color: rgba(255, 255, 255, 0.1);
 }
 
 .mainwp-giweb-mail-widget--dark .giweb-gw-table thead th,
-.mainwp-giweb-backup-widget--dark .giweb-gw-table thead th,
+.mainwp-giweb-backup-widget--dark,
+.mainwp-giweb-cron-widget--dark .giweb-gw-table thead th,
+.mainwp-giweb-cd-widget--dark .giweb-gw-table thead th,
 .mainwp-giweb-uptime-kuma-widget--dark .giweb-gw-table thead th,
 body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget .giweb-gw-table thead th,
-body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget .giweb-gw-table thead th,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-cron-widget .giweb-gw-table thead th,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-cd-widget .giweb-gw-table thead th,
 body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget .giweb-gw-table thead th {
 	background: #1a1b1f !important;
 	color: rgba(255, 255, 255, 0.55) !important;
 }
 
 .mainwp-giweb-mail-widget--dark .giweb-gw-table tbody td,
-.mainwp-giweb-backup-widget--dark .giweb-gw-table tbody td,
+.mainwp-giweb-backup-widget--dark,
+.mainwp-giweb-cron-widget--dark .giweb-gw-table tbody td,
+.mainwp-giweb-cd-widget--dark .giweb-gw-table tbody td,
 .mainwp-giweb-uptime-kuma-widget--dark .giweb-gw-table tbody td,
 body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget .giweb-gw-table tbody td,
-body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget .giweb-gw-table tbody td,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-cron-widget .giweb-gw-table tbody td,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-cd-widget .giweb-gw-table tbody td,
 body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget .giweb-gw-table tbody td {
 	color: rgba(255, 255, 255, 0.92) !important;
 }
 
 .mainwp-giweb-mail-widget--dark .giweb-gw-table tbody tr:nth-child(even) td,
-.mainwp-giweb-backup-widget--dark .giweb-gw-table tbody tr:nth-child(even) td,
+.mainwp-giweb-backup-widget--dark,
+.mainwp-giweb-cron-widget--dark .giweb-gw-table tbody tr:nth-child(even) td,
+.mainwp-giweb-cd-widget--dark .giweb-gw-table tbody tr:nth-child(even) td,
 .mainwp-giweb-uptime-kuma-widget--dark .giweb-gw-table tbody tr:nth-child(even) td,
 body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget .giweb-gw-table tbody tr:nth-child(even) td,
-body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget .giweb-gw-table tbody tr:nth-child(even) td,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-cron-widget .giweb-gw-table tbody tr:nth-child(even) td,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-cd-widget .giweb-gw-table tbody tr:nth-child(even) td,
 body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget .giweb-gw-table tbody tr:nth-child(even) td {
 	background: rgba(255, 255, 255, 0.04) !important;
 }
 
 .mainwp-giweb-mail-widget--dark .giweb-gw-table tbody tr:hover td,
-.mainwp-giweb-backup-widget--dark .giweb-gw-table tbody tr:hover td,
+.mainwp-giweb-backup-widget--dark,
+.mainwp-giweb-cron-widget--dark .giweb-gw-table tbody tr:hover td,
+.mainwp-giweb-cd-widget--dark .giweb-gw-table tbody tr:hover td,
 .mainwp-giweb-uptime-kuma-widget--dark .giweb-gw-table tbody tr:hover td,
 body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-mail-widget .giweb-gw-table tbody tr:hover td,
-body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget .giweb-gw-table tbody tr:hover td,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-backup-widget,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-cron-widget .giweb-gw-table tbody tr:hover td,
+body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-cd-widget .giweb-gw-table tbody tr:hover td,
 body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget .giweb-gw-table tbody tr:hover td {
 	background: rgba(91, 140, 255, 0.12) !important;
 }
@@ -534,7 +626,9 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget .giweb-gw-ta
 }
 
 .mainwp-giweb-mail-widget .giweb-gw-search__input,
-.mainwp-giweb-backup-widget .giweb-gw-search__input {
+.mainwp-giweb-backup-widget .giweb-gw-search__input,
+.mainwp-giweb-cron-widget .giweb-gw-search__input,
+.mainwp-giweb-cd-widget .giweb-gw-search__input {
 	-webkit-appearance: none;
 	appearance: none;
 	background: var(--giweb-gw-surface) !important;
@@ -551,7 +645,9 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget .giweb-gw-ta
 }
 
 .mainwp-giweb-mail-widget .giweb-gw-search__input:focus,
-.mainwp-giweb-backup-widget .giweb-gw-search__input:focus {
+.mainwp-giweb-backup-widget .giweb-gw-search__input:focus,
+.mainwp-giweb-cron-widget .giweb-gw-search__input:focus,
+.mainwp-giweb-cd-widget .giweb-gw-search__input:focus {
 	border-color: var(--giweb-gw-accent) !important;
 	box-shadow: 0 0 0 2px rgba(49, 107, 255, 0.15);
 	outline: 0;

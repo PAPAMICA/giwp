@@ -86,6 +86,18 @@ class MainWP_GIWeb_MainWP_Sync {
 			$score += 30;
 		}
 		$score += min( 20, (int) ( $payload['total'] ?? 0 ) );
+		if ( ! empty( $payload['last_run'] ) ) {
+			$score += 15;
+		}
+		if ( ! empty( $payload['last_scan'] ) ) {
+			$score += 15;
+		}
+		if ( array_key_exists( 'overdue', $payload ) ) {
+			$score += 10;
+		}
+		if ( array_key_exists( 'open_count', $payload ) ) {
+			$score += 10;
+		}
 		if ( ! empty( $payload['last_backup_time'] ) ) {
 			$score += 15;
 		}
@@ -139,7 +151,7 @@ class MainWP_GIWeb_MainWP_Sync {
 		$merged      = $remote_data;
 
 		foreach ( $sync_data as $key => $value ) {
-			if ( in_array( $key, array( 'mail_catcher', 'updraftplus' ), true ) && is_array( $value ) ) {
+			if ( in_array( $key, array( 'mail_catcher', 'updraftplus', 'cron', 'compromise' ), true ) && is_array( $value ) ) {
 				$existing       = isset( $merged[ $key ] ) && is_array( $merged[ $key ] ) ? $merged[ $key ] : null;
 				$merged[ $key ] = self::pick_richer_payload( $existing, $value );
 				continue;
@@ -184,6 +196,14 @@ class MainWP_GIWeb_MainWP_Sync {
 
 		if ( ! empty( $information['gi_toolkit_updraftplus'] ) && is_array( $information['gi_toolkit_updraftplus'] ) ) {
 			$data['updraftplus'] = $information['gi_toolkit_updraftplus'];
+		}
+
+		if ( ! empty( $information['gi_toolkit_cron'] ) && is_array( $information['gi_toolkit_cron'] ) ) {
+			$data['cron'] = $information['gi_toolkit_cron'];
+		}
+
+		if ( ! empty( $information['gi_toolkit_compromise'] ) && is_array( $information['gi_toolkit_compromise'] ) ) {
+			$data['compromise'] = $information['gi_toolkit_compromise'];
 		}
 
 		if ( empty( $data ) ) {
@@ -258,6 +278,8 @@ class MainWP_GIWeb_MainWP_Sync {
 		MainWP_GIWeb_Status_Cache::set_site( $site_id, $api );
 		MainWP_GIWeb_Mail_Stats::record_site_sync( $site_id, $label, $url, $api, $information );
 		MainWP_GIWeb_Backup_Stats::record_site_sync( $site_id, $label, $url, $api, $information );
+		MainWP_GIWeb_Cron_Stats::record_site_sync( $site_id, $label, $url, $api, $information );
+		MainWP_GIWeb_Compromise_Stats::record_site_sync( $site_id, $label, $url, $api, $information );
 		MainWP_GIWeb_Uptime_Kuma_Widget::schedule_refresh_on_sync();
 	}
 

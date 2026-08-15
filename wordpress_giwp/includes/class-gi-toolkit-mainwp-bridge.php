@@ -84,6 +84,14 @@ class Gi_Toolkit_MainWP_Bridge {
 			$information['gi_toolkit_updraftplus'] = $status['updraftplus'];
 		}
 
+		if ( ! empty( $status['cron'] ) && is_array( $status['cron'] ) ) {
+			$information['gi_toolkit_cron'] = $status['cron'];
+		}
+
+		if ( ! empty( $status['compromise'] ) && is_array( $status['compromise'] ) ) {
+			$information['gi_toolkit_compromise'] = $status['compromise'];
+		}
+
 		return $information;
 	}
 

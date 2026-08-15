@@ -173,6 +173,8 @@ class MainWP_GIWeb_Sync_Ajax {
 			MainWP_GIWeb_Status_Cache::mark_sync_started();
 			update_option( MainWP_GIWeb_Mail_Stats::AGGREGATE_OPTION, array( 'sites' => array(), 'network' => MainWP_GIWeb_Mail_Stats::compute_network( array() ), 'updated_at' => 0 ), false );
 			update_option( MainWP_GIWeb_Backup_Stats::AGGREGATE_OPTION, array( 'sites' => array(), 'network' => MainWP_GIWeb_Backup_Stats::compute_network( array() ), 'updated_at' => 0 ), false );
+			update_option( MainWP_GIWeb_Cron_Stats::AGGREGATE_OPTION, array( 'sites' => array(), 'network' => MainWP_GIWeb_Cron_Stats::compute_network( array() ), 'updated_at' => 0 ), false );
+			update_option( MainWP_GIWeb_Compromise_Stats::AGGREGATE_OPTION, array( 'sites' => array(), 'network' => MainWP_GIWeb_Compromise_Stats::compute_network( array() ), 'updated_at' => 0 ), false );
 			MainWP_GIWeb_Mail_Stats::clear_alert();
 
 			wp_send_json_success(
@@ -214,6 +216,8 @@ class MainWP_GIWeb_Sync_Ajax {
 			$url = is_array( $row ) ? (string) ( $row['url'] ?? '' ) : '';
 			MainWP_GIWeb_Mail_Stats::record_site_sync( $site_id, $label, $url, $result['api'] );
 			MainWP_GIWeb_Backup_Stats::record_site_sync( $site_id, $label, $url, $result['api'] );
+			MainWP_GIWeb_Cron_Stats::record_site_sync( $site_id, $label, $url, $result['api'] );
+			MainWP_GIWeb_Compromise_Stats::record_site_sync( $site_id, $label, $url, $result['api'] );
 			MainWP_GIWeb_Uptime_Kuma_Widget::schedule_refresh_on_sync();
 
 			$result['mail_summary'] = MainWP_GIWeb_Mail_Stats::get_client_summary();
@@ -268,6 +272,24 @@ class MainWP_GIWeb_Sync_Ajax {
 				),
 				false
 			);
+			update_option(
+				MainWP_GIWeb_Cron_Stats::AGGREGATE_OPTION,
+				array(
+					'sites'      => array(),
+					'network'    => MainWP_GIWeb_Cron_Stats::compute_network( array() ),
+					'updated_at' => 0,
+				),
+				false
+			);
+			update_option(
+				MainWP_GIWeb_Compromise_Stats::AGGREGATE_OPTION,
+				array(
+					'sites'      => array(),
+					'network'    => MainWP_GIWeb_Compromise_Stats::compute_network( array() ),
+					'updated_at' => 0,
+				),
+				false
+			);
 			MainWP_GIWeb_Mail_Stats::clear_alert();
 			$sites = MainWP_GIWeb_Sites::fetch_all( $act );
 		} else {
@@ -289,6 +311,8 @@ class MainWP_GIWeb_Sync_Ajax {
 			MainWP_GIWeb_Status_Cache::set_site( $id, $result['api'] );
 			MainWP_GIWeb_Mail_Stats::record_site_sync( $id, $label, $url, $result['api'] );
 			MainWP_GIWeb_Backup_Stats::record_site_sync( $id, $label, $url, $result['api'] );
+			MainWP_GIWeb_Cron_Stats::record_site_sync( $id, $label, $url, $result['api'] );
+			MainWP_GIWeb_Compromise_Stats::record_site_sync( $id, $label, $url, $result['api'] );
 		}
 
 		if ( $site_id <= 0 ) {
@@ -297,9 +321,13 @@ class MainWP_GIWeb_Sync_Ajax {
 
 		$mail_agg    = MainWP_GIWeb_Mail_Stats::get_aggregate();
 		$backup_agg  = MainWP_GIWeb_Backup_Stats::get_aggregate();
+		$cron_agg    = MainWP_GIWeb_Cron_Stats::get_aggregate();
+		$cd_agg      = MainWP_GIWeb_Compromise_Stats::get_aggregate();
 		$updated_at  = max(
 			(int) ( $mail_agg['updated_at'] ?? 0 ),
-			(int) ( $backup_agg['updated_at'] ?? 0 )
+			(int) ( $backup_agg['updated_at'] ?? 0 ),
+			(int) ( $cron_agg['updated_at'] ?? 0 ),
+			(int) ( $cd_agg['updated_at'] ?? 0 )
 		);
 
 		return array(
@@ -321,7 +349,7 @@ class MainWP_GIWeb_Sync_Ajax {
 			$site_id  = isset( $_POST['site_id'] ) ? absint( $_POST['site_id'] ) : 0;
 			$detailed = ! empty( $_POST['detailed'] );
 
-			if ( ! in_array( $scope, array( 'mail', 'backup', 'kuma' ), true ) ) {
+			if ( ! in_array( $scope, array( 'mail', 'backup', 'kuma', 'cron', 'cd' ), true ) ) {
 				wp_send_json_error(
 					array( 'message' => __( 'Type de widget invalide.', 'mainwp-giweb' ) )
 				);
@@ -373,6 +401,20 @@ class MainWP_GIWeb_Sync_Ajax {
 						MainWP_GIWeb_Backup_Widget::render_site_body( $site_id );
 					} else {
 						MainWP_GIWeb_Backup_Widget::render_network_body( $detailed );
+					}
+					break;
+				case 'cron':
+					if ( $site_id > 0 ) {
+						MainWP_GIWeb_Cron_Widget::render_site_body( $site_id );
+					} else {
+						MainWP_GIWeb_Cron_Widget::render_network_body( $detailed );
+					}
+					break;
+				case 'cd':
+					if ( $site_id > 0 ) {
+						MainWP_GIWeb_Compromise_Widget::render_site_body( $site_id );
+					} else {
+						MainWP_GIWeb_Compromise_Widget::render_network_body( $detailed );
 					}
 					break;
 				case 'kuma':

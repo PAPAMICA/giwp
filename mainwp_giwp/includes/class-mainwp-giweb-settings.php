@@ -54,6 +54,8 @@ class MainWP_GIWeb_Settings {
 			'ftp_auto_on_deploy'            => '1',
 			'mail_widget_list_mode'         => 'cards',
 			'backup_widget_list_mode'       => 'cards',
+			'cron_widget_list_mode'         => 'cards',
+			'cd_widget_list_mode'           => 'cards',
 			'kuma_widget_list_mode'         => 'cards',
 			'pushover_app_token'            => '',
 			'pushover_user_key'             => '',
@@ -170,6 +172,12 @@ class MainWP_GIWeb_Settings {
 
 		$backup_mode = isset( $data['backup_widget_list_mode'] ) ? (string) $data['backup_widget_list_mode'] : (string) ( $current['backup_widget_list_mode'] ?? 'cards' );
 		$clean['backup_widget_list_mode'] = in_array( $backup_mode, array( 'cards', 'table' ), true ) ? $backup_mode : 'cards';
+
+		$cron_mode = isset( $data['cron_widget_list_mode'] ) ? (string) $data['cron_widget_list_mode'] : (string) ( $current['cron_widget_list_mode'] ?? 'cards' );
+		$clean['cron_widget_list_mode'] = in_array( $cron_mode, array( 'cards', 'table' ), true ) ? $cron_mode : 'cards';
+
+		$cd_mode = isset( $data['cd_widget_list_mode'] ) ? (string) $data['cd_widget_list_mode'] : (string) ( $current['cd_widget_list_mode'] ?? 'cards' );
+		$clean['cd_widget_list_mode'] = in_array( $cd_mode, array( 'cards', 'table' ), true ) ? $cd_mode : 'cards';
 
 		$kuma_mode = isset( $data['kuma_widget_list_mode'] ) ? (string) $data['kuma_widget_list_mode'] : (string) ( $current['kuma_widget_list_mode'] ?? 'cards' );
 		$clean['kuma_widget_list_mode'] = in_array( $kuma_mode, array( 'cards', 'table' ), true ) ? $kuma_mode : 'cards';

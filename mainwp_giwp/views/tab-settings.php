@@ -122,6 +122,20 @@ $logs            = get_option( MainWP_GIWeb_Onboarding::LOG_OPTION, array() );
 					</select>
 				</div>
 				<div class="mainwp-giweb-settings-field">
+					<label for="mainwp_giweb_cron_widget_list_mode"><?php esc_html_e( 'Cron (détaillé)', 'mainwp-giweb' ); ?></label>
+					<select name="cron_widget_list_mode" id="mainwp_giweb_cron_widget_list_mode">
+						<option value="cards" <?php selected( 'cards', $settings['cron_widget_list_mode'] ?? 'cards' ); ?>><?php esc_html_e( 'Cartes', 'mainwp-giweb' ); ?></option>
+						<option value="table" <?php selected( 'table', $settings['cron_widget_list_mode'] ?? 'cards' ); ?>><?php esc_html_e( 'Tableau', 'mainwp-giweb' ); ?></option>
+					</select>
+				</div>
+				<div class="mainwp-giweb-settings-field">
+					<label for="mainwp_giweb_cd_widget_list_mode"><?php esc_html_e( 'Compromission (détaillé)', 'mainwp-giweb' ); ?></label>
+					<select name="cd_widget_list_mode" id="mainwp_giweb_cd_widget_list_mode">
+						<option value="cards" <?php selected( 'cards', $settings['cd_widget_list_mode'] ?? 'cards' ); ?>><?php esc_html_e( 'Cartes', 'mainwp-giweb' ); ?></option>
+						<option value="table" <?php selected( 'table', $settings['cd_widget_list_mode'] ?? 'cards' ); ?>><?php esc_html_e( 'Tableau', 'mainwp-giweb' ); ?></option>
+					</select>
+				</div>
+				<div class="mainwp-giweb-settings-field">
 					<label for="mainwp_giweb_kuma_widget_list_mode"><?php esc_html_e( 'Uptime Kuma (détaillé)', 'mainwp-giweb' ); ?></label>
 					<select name="kuma_widget_list_mode" id="mainwp_giweb_kuma_widget_list_mode">
 						<option value="cards" <?php selected( 'cards', $settings['kuma_widget_list_mode'] ?? 'cards' ); ?>><?php esc_html_e( 'Cartes', 'mainwp-giweb' ); ?></option>

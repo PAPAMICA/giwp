@@ -1,5 +1,11 @@
 == Changelog ==
 
+= 2.29.20 =
+* Add: Détection de compromission — statut compact injecté dans la synchro MainWP (alertes ouvertes, pause, dernier scan).
+
+= 2.29.19 =
+* Add: Détection de compromission / cron — le statut du cron fiable est injecté dans la synchro MainWP (widget dashboard).
+
 = 2.29.18 =
 * Add: Cron fiable GI-Toolkit — remplace le déclenchement WP-Cron (visites + loopback HTTP) sans changer wp_schedule_event ; filet si DISABLE_WP_CRON ; tick MainWP ; URL crontab secrète.
 

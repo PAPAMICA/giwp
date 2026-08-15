@@ -17,6 +17,10 @@ class MainWP_GIWeb_Metabox {
 		'mainwp-giweb-mail-widget-detailed',
 		'mainwp-giweb-backup-widget-simple',
 		'mainwp-giweb-backup-widget-detailed',
+		'mainwp-giweb-cron-widget-simple',
+		'mainwp-giweb-cron-widget-detailed',
+		'mainwp-giweb-cd-widget-simple',
+		'mainwp-giweb-cd-widget-detailed',
 		'mainwp-giweb-uptime-kuma-widget-simple',
 		'mainwp-giweb-uptime-kuma-widget-detailed',
 	);

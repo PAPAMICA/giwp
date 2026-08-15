@@ -11,6 +11,8 @@ class MainWP_GIWeb_Manage_Sites {
 	const COL_UPTIME = 'giweb_uptime_kuma';
 	const COL_MAIL   = 'giweb_mail';
 	const COL_BACKUP = 'giweb_backup';
+	const COL_CRON   = 'giweb_cron';
+	const COL_CD     = 'giweb_cd';
 
 	/**
 	 * @return void
@@ -64,6 +66,8 @@ class MainWP_GIWeb_Manage_Sites {
 			self::COL_UPTIME => __( 'Uptime Kuma', 'mainwp-giweb' ),
 			self::COL_MAIL   => __( 'Mails', 'mainwp-giweb' ),
 			self::COL_BACKUP => __( 'Backup', 'mainwp-giweb' ),
+			self::COL_CRON   => __( 'Cron', 'mainwp-giweb' ),
+			self::COL_CD     => __( 'Compromission', 'mainwp-giweb' ),
 		);
 
 		$out = array();
@@ -114,6 +118,18 @@ class MainWP_GIWeb_Manage_Sites {
 			);
 		}
 
+		if ( self::COL_CRON === $column_name ) {
+			$item[ self::COL_CRON ] = MainWP_GIWeb_Cron_Stats::format_site_cron_cell(
+				MainWP_GIWeb_Cron_Stats::get_site_cron( $site_id )
+			);
+		}
+
+		if ( self::COL_CD === $column_name ) {
+			$item[ self::COL_CD ] = MainWP_GIWeb_Compromise_Stats::format_site_compromise_cell(
+				MainWP_GIWeb_Compromise_Stats::get_site_compromise( $site_id )
+			);
+		}
+
 		return $item;
 	}
 
@@ -158,6 +174,18 @@ class MainWP_GIWeb_Manage_Sites {
 		wp_enqueue_style(
 			'mainwp-giweb-backup-widget',
 			MAINWP_GIWEB_PLUGIN_URL . 'assets/css/backup-widget.css',
+			array( 'mainwp-giweb-widget-shell', 'mainwp-giweb-manage-sites' ),
+			MAINWP_GIWEB_VERSION
+		);
+		wp_enqueue_style(
+			'mainwp-giweb-cron-widget',
+			MAINWP_GIWEB_PLUGIN_URL . 'assets/css/cron-widget.css',
+			array( 'mainwp-giweb-widget-shell', 'mainwp-giweb-manage-sites' ),
+			MAINWP_GIWEB_VERSION
+		);
+		wp_enqueue_style(
+			'mainwp-giweb-cd-widget',
+			MAINWP_GIWEB_PLUGIN_URL . 'assets/css/compromise-widget.css',
 			array( 'mainwp-giweb-widget-shell', 'mainwp-giweb-manage-sites' ),
 			MAINWP_GIWEB_VERSION
 		);
