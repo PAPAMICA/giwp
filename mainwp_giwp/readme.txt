@@ -3,7 +3,7 @@ Contributors: genevois-informatique
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.7.7
+Stable tag: 1.7.8
 License: GPLv2 or later
 
 Gérez et déployez GI-Toolkit sur tous vos sites WordPress via MainWP.
@@ -54,6 +54,9 @@ MainWP > Extensions > GI-Toolkit Manager
 - [ ] Modèle « Default » défini comme profil par défaut dans Réglages
 
 == Changelog ==
+
+= 1.7.8 =
+* Fix: le widget Compromission ne réaffiche plus d’anciennes alertes déjà traitées après une sync (payload le plus récent conservé).
 
 = 1.7.7 =
 * Fix: les filtres / recherche des widgets Cron et Compromission (vues cartes et tableau) fonctionnent comme pour les mails.

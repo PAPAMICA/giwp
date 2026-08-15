@@ -536,8 +536,8 @@ class Gi_Toolkit_Compromise_Detection {
 			return;
 		}
 
-		$fingerprint = md5( $type . '|' . $summary . '|' . $details );
-		if ( get_transient( 'gi_toolkit_compromise_dedup_' . $fingerprint ) ) {
+		$fingerprint = self::alert_fingerprint( $type, $summary, $details );
+		if ( self::should_skip_duplicate_alert( $fingerprint ) ) {
 			return;
 		}
 		set_transient( 'gi_toolkit_compromise_dedup_' . $fingerprint, 1, self::DEDUP_TTL );
@@ -572,6 +572,7 @@ class Gi_Toolkit_Compromise_Detection {
 			'preview'     => $preview,
 			'context'     => self::sanitize_context( $context ),
 			'host'        => $host,
+			'fingerprint' => $fingerprint,
 			'status'      => 'open',
 			'resolved_at' => 0,
 			'resolved_by' => 0,
@@ -868,6 +869,9 @@ class Gi_Toolkit_Compromise_Detection {
 		}
 		if ( $changed ) {
 			update_option( self::OPTION_ALERTS, $log, false );
+			if ( 'resolved' === $status ) {
+				self::accept_current_baseline();
+			}
 		}
 		return $changed;
 	}
@@ -891,8 +895,84 @@ class Gi_Toolkit_Compromise_Detection {
 		}
 		if ( $count ) {
 			update_option( self::OPTION_ALERTS, $log, false );
+			self::accept_current_baseline();
 		}
 		return $count;
+	}
+
+	/**
+	 * Empreinte stable d’une alerte (déduplication).
+	 *
+	 * @param string $type    Type.
+	 * @param string $summary Résumé.
+	 * @param string $details Détails.
+	 * @return string
+	 */
+	private static function alert_fingerprint( $type, $summary, $details ) {
+		return md5( (string) $type . '|' . (string) $summary . '|' . (string) $details );
+	}
+
+	/**
+	 * Ignore une nouvelle alerte déjà ouverte, ou déjà traitée tant que le snapshot
+	 * n’a pas avancé (évite de recréer l’alerte au scan suivant / à la sync MainWP).
+	 *
+	 * @param string $fingerprint Empreinte.
+	 * @return bool
+	 */
+	private static function should_skip_duplicate_alert( $fingerprint ) {
+		if ( '' === $fingerprint ) {
+			return false;
+		}
+		if ( get_transient( 'gi_toolkit_compromise_dedup_' . $fingerprint ) ) {
+			return true;
+		}
+
+		$taken_at = 0;
+		self::load_helpers();
+		if ( class_exists( 'Gi_Toolkit_Compromise_Detection_Monitor' ) ) {
+			$snap     = Gi_Toolkit_Compromise_Detection_Monitor::get_snapshot();
+			$taken_at = is_array( $snap ) ? (int) ( $snap['taken_at'] ?? 0 ) : 0;
+		}
+
+		foreach ( self::get_alerts() as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			$existing = (string) ( $row['fingerprint'] ?? '' );
+			if ( '' === $existing ) {
+				$existing = self::alert_fingerprint(
+					(string) ( $row['type'] ?? '' ),
+					(string) ( $row['summary'] ?? '' ),
+					(string) ( $row['details'] ?? '' )
+				);
+			}
+			if ( ! hash_equals( $fingerprint, $existing ) ) {
+				continue;
+			}
+			if ( 'resolved' !== ( $row['status'] ?? 'open' ) ) {
+				return true;
+			}
+			if ( $taken_at <= (int) ( $row['resolved_at'] ?? 0 ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Enregistre l’état actuel comme normal (plus de rediff sur le même écart).
+	 *
+	 * @return void
+	 */
+	private static function accept_current_baseline() {
+		self::load_helpers();
+		if ( ! class_exists( 'Gi_Toolkit_Compromise_Detection_Monitor' ) ) {
+			return;
+		}
+		Gi_Toolkit_Compromise_Detection_Monitor::save_snapshot(
+			Gi_Toolkit_Compromise_Detection_Monitor::build_snapshot()
+		);
 	}
 
 	/**
@@ -1499,6 +1579,7 @@ class Gi_Toolkit_Compromise_Detection {
 			'maintenance'     => self::is_maintenance_enabled(),
 			'latest_summary'  => $latest,
 			'types'           => $types,
+			'reported_at'     => time(),
 		);
 	}
 

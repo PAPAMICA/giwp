@@ -135,7 +135,16 @@ class MainWP_GIWeb_MainWP_Sync {
 			return $a;
 		}
 
-		return array_merge( $a, $b );
+		$time_a = (int) ( $a['reported_at'] ?? $a['last_scan'] ?? $a['last_run'] ?? $a['last_backup_time'] ?? 0 );
+		$time_b = (int) ( $b['reported_at'] ?? $b['last_scan'] ?? $b['last_run'] ?? $b['last_backup_time'] ?? 0 );
+		if ( $time_b > $time_a ) {
+			return $b;
+		}
+		if ( $time_a > $time_b ) {
+			return $a;
+		}
+
+		return array_merge( $b, $a );
 	}
 
 	/**
