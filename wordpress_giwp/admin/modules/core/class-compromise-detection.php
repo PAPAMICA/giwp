@@ -25,6 +25,8 @@ class Gi_Toolkit_Compromise_Detection {
 
 	const ALERTS_MAX = 80;
 
+	const RESOLVE_TTL = 2592000;
+
 	/**
 	 * @var self|null
 	 */
@@ -70,6 +72,11 @@ class Gi_Toolkit_Compromise_Detection {
 			add_action( 'init', array( $this, 'maybe_schedule_cron' ) );
 			add_action( self::CRON_HOOK, array( $this, 'run_scan' ) );
 			$this->register_realtime_hooks();
+			add_action( 'admin_bar_menu', array( $this, 'register_admin_bar' ), 98 );
+			add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_bar_assets' ) );
+			add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_admin_bar_assets' ) );
+			add_action( 'admin_post_gi_compromise_toolbar', array( $this, 'handle_toolbar_action' ) );
+			add_action( 'init', array( $this, 'handle_public_resolve' ), 1 );
 		}
 	}
 
@@ -550,6 +557,11 @@ class Gi_Toolkit_Compromise_Detection {
 			$context = array_merge( $context, $extra['context'] );
 		}
 
+		$host = '';
+		if ( is_array( $extra ) && ! empty( $extra['host'] ) ) {
+			$host = Gi_Toolkit_Compromise_Detection_Monitor::sanitize_host( (string) $extra['host'] );
+		}
+
 		$entry = array(
 			'id'          => self::new_alert_id(),
 			'time'        => time(),
@@ -559,6 +571,7 @@ class Gi_Toolkit_Compromise_Detection {
 			'diff'        => $diff,
 			'preview'     => $preview,
 			'context'     => self::sanitize_context( $context ),
+			'host'        => $host,
 			'status'      => 'open',
 			'resolved_at' => 0,
 			'resolved_by' => 0,
@@ -580,7 +593,10 @@ class Gi_Toolkit_Compromise_Detection {
 			$settings,
 			$type,
 			$summary,
-			$details
+			$details,
+			1,
+			'siren',
+			$entry['id']
 		);
 	}
 
@@ -592,6 +608,134 @@ class Gi_Toolkit_Compromise_Detection {
 			return wp_generate_uuid4();
 		}
 		return uniqid( 'cd_', true );
+	}
+
+	/**
+	 * Secret HMAC pour les liens « marquer comme traitée » (sans connexion).
+	 *
+	 * @return string
+	 */
+	private static function resolve_secret() {
+		return wp_salt( 'auth' ) . '|gi-toolkit-compromise-resolve';
+	}
+
+	/**
+	 * @param string $alert_id ID alerte.
+	 * @return string
+	 */
+	public static function make_resolve_url( $alert_id ) {
+		$alert_id = (string) $alert_id;
+		if ( '' === $alert_id ) {
+			return '';
+		}
+		$exp = time() + self::RESOLVE_TTL;
+		$sig = hash_hmac( 'sha256', $alert_id . '|' . (string) $exp, self::resolve_secret() );
+		return add_query_arg(
+			array(
+				'gi_cd_resolve' => '1',
+				'id'            => $alert_id,
+				'exp'           => (string) $exp,
+				'sig'           => $sig,
+			),
+			home_url( '/' )
+		);
+	}
+
+	/**
+	 * Lien signé depuis Pushover : marque l’alerte comme traitée sans connexion.
+	 *
+	 * @return void
+	 */
+	public function handle_public_resolve() {
+		if ( empty( $_GET['gi_cd_resolve'] ) ) {
+			return;
+		}
+
+		$id  = isset( $_GET['id'] ) ? sanitize_text_field( wp_unslash( $_GET['id'] ) ) : '';
+		$exp = isset( $_GET['exp'] ) ? absint( wp_unslash( $_GET['exp'] ) ) : 0;
+		$sig = isset( $_GET['sig'] ) ? sanitize_text_field( wp_unslash( $_GET['sig'] ) ) : '';
+
+		nocache_headers();
+
+		$status  = 'invalid';
+		$summary = '';
+
+		if ( '' === $id || ! $exp || ! preg_match( '/^[a-f0-9]{64}$/', $sig ) ) {
+			self::render_public_resolve_page( 'invalid', '' );
+			return;
+		}
+
+		$expected = hash_hmac( 'sha256', $id . '|' . (string) $exp, self::resolve_secret() );
+		if ( ! hash_equals( $expected, $sig ) ) {
+			self::render_public_resolve_page( 'invalid', '' );
+			return;
+		}
+
+		if ( $exp < time() ) {
+			self::render_public_resolve_page( 'expired', '' );
+			return;
+		}
+
+		$found = null;
+		foreach ( self::get_alerts() as $row ) {
+			if ( is_array( $row ) && (string) ( $row['id'] ?? '' ) === $id ) {
+				$found = $row;
+				break;
+			}
+		}
+
+		if ( ! $found ) {
+			self::render_public_resolve_page( 'missing', '' );
+			return;
+		}
+
+		$summary = isset( $found['summary'] ) ? (string) $found['summary'] : '';
+		if ( 'resolved' === ( $found['status'] ?? 'open' ) ) {
+			self::render_public_resolve_page( 'already', $summary );
+			return;
+		}
+
+		self::set_alert_status( $id, 'resolved' );
+		self::render_public_resolve_page( 'ok', $summary );
+	}
+
+	/**
+	 * @param string $status  ok|already|expired|invalid|missing.
+	 * @param string $summary Titre alerte.
+	 * @return void
+	 */
+	private static function render_public_resolve_page( $status, $summary ) {
+		$titles = array(
+			'ok'      => __( 'Alerte marquée comme traitée', 'gi-toolkit' ),
+			'already' => __( 'Alerte déjà traitée', 'gi-toolkit' ),
+			'expired' => __( 'Lien expiré', 'gi-toolkit' ),
+			'invalid' => __( 'Lien invalide', 'gi-toolkit' ),
+			'missing' => __( 'Alerte introuvable', 'gi-toolkit' ),
+		);
+		$texts = array(
+			'ok'      => __( 'Cette alerte a été marquée comme traitée. Vous pouvez fermer cette page.', 'gi-toolkit' ),
+			'already' => __( 'Cette alerte était déjà marquée comme traitée.', 'gi-toolkit' ),
+			'expired' => __( 'Ce lien n’est plus valable (30 jours). Connectez-vous au site pour traiter l’alerte.', 'gi-toolkit' ),
+			'invalid' => __( 'Ce lien n’est pas valide.', 'gi-toolkit' ),
+			'missing' => __( 'Cette alerte n’existe plus (journal vidé ou trop ancien).', 'gi-toolkit' ),
+		);
+		$title = isset( $titles[ $status ] ) ? $titles[ $status ] : $titles['invalid'];
+		$text  = isset( $texts[ $status ] ) ? $texts[ $status ] : $texts['invalid'];
+		$ok    = in_array( $status, array( 'ok', 'already' ), true );
+
+		status_header( 200 );
+		header( 'Content-Type: text/html; charset=utf-8' );
+		echo '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
+		echo '<title>' . esc_html( $title ) . '</title>';
+		echo '<style>body{margin:0;font:16px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background:#f0f0f1;color:#1d2327}main{max-width:32rem;margin:12vh auto;padding:24px;background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}h1{font-size:1.25rem;margin:0 0 8px}p{margin:0 0 12px;color:#50575e}.ok{color:#1e4620}.bad{color:#b32d2e}code{font-size:13px}</style>';
+		echo '</head><body><main>';
+		echo '<h1 class="' . ( $ok ? 'ok' : 'bad' ) . '">' . esc_html( $title ) . '</h1>';
+		if ( '' !== $summary ) {
+			echo '<p><strong>' . esc_html( $summary ) . '</strong></p>';
+		}
+		echo '<p>' . esc_html( $text ) . '</p>';
+		echo '</main></body></html>';
+		exit;
 	}
 
 	/**
@@ -804,6 +948,7 @@ class Gi_Toolkit_Compromise_Detection {
 			'watch_site_options'    => '1',
 			'watch_core_files'      => '1',
 			'watch_login_spike'     => '1',
+			'outbound_whitelist'    => array(),
 		);
 	}
 
@@ -867,9 +1012,19 @@ class Gi_Toolkit_Compromise_Detection {
 		$defaults = self::default_settings();
 		$out      = array();
 
-		$out['pushover_app_token'] = sanitize_text_field( $new_settings['pushover_app_token'] ?? $defaults['pushover_app_token'] );
-		$out['pushover_user_key']  = sanitize_text_field( $new_settings['pushover_user_key'] ?? $defaults['pushover_user_key'] );
 		$out['pushover_device']    = sanitize_text_field( $new_settings['pushover_device'] ?? $defaults['pushover_device'] );
+		$stored                    = get_option( self::OPTION_SETTINGS, array() );
+		if ( ! is_array( $stored ) ) {
+			$stored = array();
+		}
+		$token = sanitize_text_field( $new_settings['pushover_app_token'] ?? '' );
+		$out['pushover_app_token'] = '' !== $token
+			? $token
+			: sanitize_text_field( (string) ( $stored['pushover_app_token'] ?? $defaults['pushover_app_token'] ) );
+		$user_key = sanitize_text_field( $new_settings['pushover_user_key'] ?? '' );
+		$out['pushover_user_key'] = '' !== $user_key
+			? $user_key
+			: sanitize_text_field( (string) ( $stored['pushover_user_key'] ?? $defaults['pushover_user_key'] ) );
 		$title                     = sanitize_text_field( $new_settings['pushover_title'] ?? $defaults['pushover_title'] );
 		$out['pushover_title']     = '' !== $title ? $title : $defaults['pushover_title'];
 		$message                   = sanitize_textarea_field( $new_settings['pushover_message'] ?? $defaults['pushover_message'] );
@@ -879,7 +1034,165 @@ class Gi_Toolkit_Compromise_Detection {
 			$out[ $key ] = ( isset( $new_settings[ $key ] ) && '1' === (string) $new_settings[ $key ] ) ? '1' : '0';
 		}
 
+		if ( array_key_exists( 'outbound_whitelist', $new_settings ) ) {
+			$raw = $new_settings['outbound_whitelist'];
+			$out['outbound_whitelist'] = self::sanitize_whitelist_list( $raw );
+		} else {
+			$out['outbound_whitelist'] = self::sanitize_whitelist_list( $stored['outbound_whitelist'] ?? array() );
+		}
+
 		return $out;
+	}
+
+	/**
+	 * @param mixed $raw Liste ou texte.
+	 * @return string[]
+	 */
+	public static function sanitize_whitelist_list( $raw ) {
+		if ( is_string( $raw ) ) {
+			$raw = preg_split( '/\r\n|\r|\n/', $raw );
+		}
+		if ( ! is_array( $raw ) ) {
+			return array();
+		}
+		$out = array();
+		self::load_helpers();
+		foreach ( $raw as $item ) {
+			$host = Gi_Toolkit_Compromise_Detection_Monitor::sanitize_host( (string) $item );
+			if ( '' !== $host ) {
+				$out[] = $host;
+			}
+		}
+		$out = array_values( array_unique( $out ) );
+		sort( $out );
+		return $out;
+	}
+
+	/**
+	 * @param string $host Hôte.
+	 * @return bool
+	 */
+	public static function add_outbound_whitelist( $host ) {
+		self::load_helpers();
+		$host = Gi_Toolkit_Compromise_Detection_Monitor::sanitize_host( $host );
+		if ( '' === $host ) {
+			return false;
+		}
+		$settings = get_option( self::OPTION_SETTINGS, array() );
+		if ( ! is_array( $settings ) ) {
+			$settings = array();
+		}
+		$list = self::sanitize_whitelist_list( $settings['outbound_whitelist'] ?? array() );
+		if ( ! in_array( $host, $list, true ) ) {
+			$list[] = $host;
+			sort( $list );
+		}
+		$settings['outbound_whitelist'] = $list;
+		update_option( self::OPTION_SETTINGS, $settings );
+		if ( self::$instance ) {
+			self::$instance->settings = wp_parse_args( $settings, self::default_settings() );
+		}
+		return true;
+	}
+
+	/**
+	 * @param string $host Hôte.
+	 * @return void
+	 */
+	public static function remove_outbound_whitelist( $host ) {
+		self::load_helpers();
+		$host = Gi_Toolkit_Compromise_Detection_Monitor::sanitize_host( $host );
+		$settings = get_option( self::OPTION_SETTINGS, array() );
+		if ( ! is_array( $settings ) ) {
+			return;
+		}
+		$list = self::sanitize_whitelist_list( $settings['outbound_whitelist'] ?? array() );
+		$list = array_values( array_diff( $list, array( $host ) ) );
+		$settings['outbound_whitelist'] = $list;
+		update_option( self::OPTION_SETTINGS, $settings );
+		if ( self::$instance ) {
+			self::$instance->settings = wp_parse_args( $settings, self::default_settings() );
+		}
+	}
+
+	/**
+	 * @param string $host Hôte.
+	 * @return void
+	 */
+	public static function resolve_outbound_alerts_for_host( $host ) {
+		self::load_helpers();
+		$host = Gi_Toolkit_Compromise_Detection_Monitor::sanitize_host( $host );
+		if ( '' === $host ) {
+			return;
+		}
+		$log     = self::get_alerts();
+		$changed = false;
+		$user_id = get_current_user_id();
+		$now     = time();
+		foreach ( $log as $i => $row ) {
+			if ( ! is_array( $row ) || 'watch_outbound' !== ( $row['type'] ?? '' ) ) {
+				continue;
+			}
+			if ( 'resolved' === ( $row['status'] ?? 'open' ) ) {
+				continue;
+			}
+			$match = false;
+			foreach ( self::outbound_hosts_from_alert( $row ) as $alert_host ) {
+				if ( Gi_Toolkit_Compromise_Detection_Monitor::host_matches_allowed( $alert_host, $host ) ) {
+					$match = true;
+					break;
+				}
+			}
+			if ( ! $match ) {
+				continue;
+			}
+			$log[ $i ]['status']      = 'resolved';
+			$log[ $i ]['resolved_at'] = $now;
+			$log[ $i ]['resolved_by'] = $user_id;
+			$changed                  = true;
+		}
+		if ( $changed ) {
+			update_option( self::OPTION_ALERTS, $log, false );
+		}
+	}
+
+	/**
+	 * @param array<string, mixed> $row Alerte.
+	 * @return string[]
+	 */
+	public static function outbound_hosts_from_alert( $row ) {
+		self::load_helpers();
+		$hosts = array();
+		if ( ! empty( $row['host'] ) ) {
+			$hosts[] = (string) $row['host'];
+		}
+		if ( ! empty( $row['context'] ) && is_array( $row['context'] ) ) {
+			foreach ( $row['context'] as $fact ) {
+				if ( ! is_array( $fact ) || empty( $fact['value'] ) ) {
+					continue;
+				}
+				$label = isset( $fact['label'] ) ? (string) $fact['label'] : '';
+				$value = (string) $fact['value'];
+				if ( __( 'Hôte', 'gi-toolkit' ) === $label || 'Hôte' === $label ) {
+					$hosts[] = $value;
+				} elseif ( false !== strpos( $label, 'Hôtes' ) || false !== strpos( $label, 'hotes' ) ) {
+					foreach ( explode( ',', $value ) as $part ) {
+						$hosts[] = $part;
+					}
+				}
+			}
+		}
+		if ( ! empty( $row['details'] ) && preg_match( '/^([a-z0-9.-]+)/i', (string) $row['details'], $m ) ) {
+			$hosts[] = $m[1];
+		}
+		$out = array();
+		foreach ( $hosts as $item ) {
+			$clean = Gi_Toolkit_Compromise_Detection_Monitor::sanitize_host( $item );
+			if ( '' !== $clean ) {
+				$out[] = $clean;
+			}
+		}
+		return array_values( array_unique( $out ) );
 	}
 
 	/**
@@ -895,6 +1208,241 @@ class Gi_Toolkit_Compromise_Detection {
 			array( $this, 'render_submenu' ),
 			null
 		);
+	}
+
+	/**
+	 * Icône barre d’admin s’il reste des alertes ouvertes.
+	 *
+	 * @param WP_Admin_Bar $wp_admin_bar Barre.
+	 * @return void
+	 */
+	public function register_admin_bar( $wp_admin_bar ) {
+		if ( ! is_admin_bar_showing() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$open = self::get_open_alerts();
+		if ( empty( $open ) ) {
+			return;
+		}
+
+		$count = count( $open );
+		$page  = admin_url( 'admin.php?page=gi-toolkit-settings-compromise-detection' );
+		$title = sprintf(
+			'<span class="gi-cd-ab-wrap"><span class="dashicons dashicons-shield gi-cd-ab-icon" aria-hidden="true"></span><span class="gi-cd-ab-count">%s</span></span>',
+			esc_html( number_format_i18n( $count ) )
+		);
+
+		$wp_admin_bar->add_node(
+			array(
+				'id'    => 'gi-compromise-toolbar',
+				'title' => $title,
+				'href'  => $page,
+				'meta'  => array(
+					'class' => 'gi-cd-ab-menu',
+					'title' => esc_attr(
+						sprintf(
+							/* translators: %d: open alerts */
+							_n( '%d alerte de compromission à traiter', '%d alertes de compromission à traiter', $count, 'gi-toolkit' ),
+							$count
+						)
+					),
+				),
+			)
+		);
+
+		$groups = array();
+		foreach ( $open as $row ) {
+			$label = isset( $row['summary'] ) ? (string) $row['summary'] : __( 'Alerte', 'gi-toolkit' );
+			if ( ! isset( $groups[ $label ] ) ) {
+				$groups[ $label ] = 0;
+			}
+			++$groups[ $label ];
+		}
+		$bits = array();
+		foreach ( array_slice( $groups, 0, 8, true ) as $label => $n ) {
+			$bits[] = esc_html( $label ) . ( $n > 1 ? ' ×' . (int) $n : '' );
+		}
+		$summary_html  = '<span class="gi-cd-ab-flyout__title">' . esc_html(
+			sprintf(
+				/* translators: %d: count */
+				_n( '%d alerte à traiter', '%d alertes à traiter', $count, 'gi-toolkit' ),
+				$count
+			)
+		) . '</span>';
+		$summary_html .= '<ul class="gi-cd-ab-flyout__types"><li>' . implode( '</li><li>', $bits ) . '</li></ul>';
+
+		$wp_admin_bar->add_node(
+			array(
+				'id'     => 'gi-cd-ab-summary',
+				'parent' => 'gi-compromise-toolbar',
+				'title'  => $summary_html,
+				'href'   => false,
+				'meta'   => array(
+					'class' => 'gi-cd-ab-summary',
+				),
+			)
+		);
+
+		$maint_on = self::is_maintenance_enabled();
+		$wp_admin_bar->add_node(
+			array(
+				'id'     => 'gi-cd-ab-maintenance',
+				'parent' => 'gi-compromise-toolbar',
+				'title'  => $maint_on
+					? esc_html__( 'Désactiver le mode maintenance', 'gi-toolkit' )
+					: esc_html__( 'Activer le mode maintenance', 'gi-toolkit' ),
+				'href'   => self::toolbar_action_url( $maint_on ? 'maintenance_off' : 'maintenance_on' ),
+			)
+		);
+
+		foreach ( array( 1 => __( 'Pause alertes 1 h', 'gi-toolkit' ), 2 => __( 'Pause alertes 2 h', 'gi-toolkit' ), 24 => __( 'Pause alertes 24 h', 'gi-toolkit' ) ) as $hours => $label ) {
+			$wp_admin_bar->add_node(
+				array(
+					'id'     => 'gi-cd-ab-pause-' . $hours,
+					'parent' => 'gi-compromise-toolbar',
+					'title'  => esc_html( $label ),
+					'href'   => self::toolbar_action_url( 'pause', $hours ),
+				)
+			);
+		}
+
+		if ( self::is_paused() ) {
+			$wp_admin_bar->add_node(
+				array(
+					'id'     => 'gi-cd-ab-resume',
+					'parent' => 'gi-compromise-toolbar',
+					'title'  => esc_html__( 'Reprendre la surveillance', 'gi-toolkit' ),
+					'href'   => self::toolbar_action_url( 'resume' ),
+				)
+			);
+		}
+
+		$wp_admin_bar->add_node(
+			array(
+				'id'     => 'gi-cd-ab-journal',
+				'parent' => 'gi-compromise-toolbar',
+				'title'  => esc_html__( 'Voir le journal', 'gi-toolkit' ),
+				'href'   => $page,
+			)
+		);
+	}
+
+	/**
+	 * @return void
+	 */
+	public function enqueue_admin_bar_assets() {
+		if ( ! is_admin_bar_showing() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		if ( empty( self::get_open_alerts() ) ) {
+			return;
+		}
+		wp_enqueue_style( 'dashicons' );
+		wp_enqueue_style(
+			'gi-toolkit-compromise-detection-admin-bar',
+			GI_TOOLKIT_PLUGIN_URL . 'admin/assets/css/compromise-detection-admin-bar.css',
+			array(),
+			defined( 'GI_TOOLKIT_VERSION' ) ? GI_TOOLKIT_VERSION : '1.0.0'
+		);
+	}
+
+	/**
+	 * @return void
+	 */
+	public function handle_toolbar_action() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Accès refusé.', 'gi-toolkit' ) );
+		}
+		check_admin_referer( 'gi_compromise_toolbar' );
+
+		$do    = isset( $_GET['gi_cd_do'] ) ? sanitize_key( wp_unslash( $_GET['gi_cd_do'] ) ) : '';
+		$hours = isset( $_GET['hours'] ) ? absint( $_GET['hours'] ) : 0;
+
+		if ( 'pause' === $do && in_array( $hours, array( 1, 2, 24 ), true ) ) {
+			update_option( self::OPTION_PAUSE, time() + ( $hours * HOUR_IN_SECONDS ), false );
+			self::load_helpers();
+			Gi_Toolkit_Compromise_Detection_Monitor::save_snapshot(
+				Gi_Toolkit_Compromise_Detection_Monitor::build_snapshot()
+			);
+		} elseif ( 'resume' === $do ) {
+			delete_option( self::OPTION_PAUSE );
+		} elseif ( 'maintenance_on' === $do ) {
+			self::set_maintenance_enabled( true );
+		} elseif ( 'maintenance_off' === $do ) {
+			self::set_maintenance_enabled( false );
+		}
+
+		$back = wp_get_referer();
+		if ( ! is_string( $back ) || '' === $back ) {
+			$back = admin_url( 'admin.php?page=gi-toolkit-settings-compromise-detection' );
+		}
+		wp_safe_redirect( $back );
+		exit;
+	}
+
+	/**
+	 * @param string $action pause|resume|maintenance_on|maintenance_off.
+	 * @param int    $hours  Durée si pause.
+	 * @return string
+	 */
+	private static function toolbar_action_url( $action, $hours = 0 ) {
+		$args = array(
+			'action'   => 'gi_compromise_toolbar',
+			'gi_cd_do' => $action,
+		);
+		if ( $hours ) {
+			$args['hours'] = (int) $hours;
+		}
+		return wp_nonce_url( add_query_arg( $args, admin_url( 'admin-post.php' ) ), 'gi_compromise_toolbar' );
+	}
+
+	/**
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function get_open_alerts() {
+		$open = array();
+		foreach ( self::get_alerts() as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			if ( 'resolved' !== ( $row['status'] ?? 'open' ) ) {
+				$open[] = $row;
+			}
+		}
+		return $open;
+	}
+
+	/**
+	 * @return bool
+	 */
+	private static function is_maintenance_enabled() {
+		$settings = get_option( GI_TOOLKIT_PLUGIN_SETTINGS . '_maintenance_mode', array() );
+		if ( ! is_array( $settings ) ) {
+			return false;
+		}
+		return '1' === (string) ( $settings['enabled'] ?? '0' );
+	}
+
+	/**
+	 * @param bool $enabled Activer.
+	 * @return void
+	 */
+	private static function set_maintenance_enabled( $enabled ) {
+		$mods = get_option( GI_TOOLKIT_PLUGIN_SETTINGS, array() );
+		if ( ! is_array( $mods ) ) {
+			$mods = array();
+		}
+		$mods['Gi_Toolkit_Maintenance_Mode'] = '1';
+		update_option( GI_TOOLKIT_PLUGIN_SETTINGS, $mods );
+
+		$option   = GI_TOOLKIT_PLUGIN_SETTINGS . '_maintenance_mode';
+		$settings = get_option( $option, array() );
+		if ( ! is_array( $settings ) ) {
+			$settings = array();
+		}
+		$settings['enabled'] = $enabled ? '1' : '0';
+		update_option( $option, $settings );
 	}
 
 	/**
@@ -1001,6 +1549,24 @@ class Gi_Toolkit_Compromise_Detection {
 		if ( isset( $_POST['gi_compromise_resolve_all'] ) ) {
 			self::resolve_all_alerts();
 			wp_safe_redirect( add_query_arg( 'gi_compromise_notice', 'resolved_all', $this->log_redirect( $redirect ) ) );
+			exit;
+		}
+
+		if ( isset( $_POST['gi_compromise_whitelist'] ) ) {
+			$host = Gi_Toolkit_Compromise_Detection_Monitor::sanitize_host( wp_unslash( $_POST['gi_compromise_whitelist'] ) );
+			if ( self::add_outbound_whitelist( $host ) ) {
+				self::resolve_outbound_alerts_for_host( $host );
+				wp_safe_redirect( add_query_arg( 'gi_compromise_notice', 'whitelisted', $this->log_redirect( $redirect ) ) );
+				exit;
+			}
+			wp_safe_redirect( add_query_arg( 'gi_compromise_notice', 'whitelist_fail', $this->log_redirect( $redirect ) ) );
+			exit;
+		}
+
+		if ( isset( $_POST['gi_compromise_unwhitelist'] ) ) {
+			$host = Gi_Toolkit_Compromise_Detection_Monitor::sanitize_host( wp_unslash( $_POST['gi_compromise_unwhitelist'] ) );
+			self::remove_outbound_whitelist( $host );
+			wp_safe_redirect( add_query_arg( 'gi_compromise_notice', 'unwhitelisted', $this->log_redirect( $redirect ) ) );
 			exit;
 		}
 
@@ -1148,7 +1714,7 @@ class Gi_Toolkit_Compromise_Detection {
 			? __( 'Voir les modifications', 'gi-toolkit' )
 			: __( 'Voir les détails', 'gi-toolkit' );
 		?>
-		<details class="gi-cd-alert__details"<?php echo $is_resolved ? '' : ' open'; ?>>
+		<details class="gi-cd-alert__details">
 			<summary><?php echo esc_html( $summary ); ?></summary>
 			<?php if ( ! empty( $context ) ) : ?>
 				<dl class="gi-cd-facts">
@@ -1220,6 +1786,8 @@ class Gi_Toolkit_Compromise_Detection {
 		$notice = isset( $_GET['gi_compromise_notice'] ) ? sanitize_key( wp_unslash( $_GET['gi_compromise_notice'] ) ) : '';
 		$labels = self::watch_labels();
 		$pushover_ok = '' !== trim( (string) $settings['pushover_app_token'] ) && '' !== trim( (string) $settings['pushover_user_key'] );
+		$has_app_token = '' !== trim( (string) $settings['pushover_app_token'] );
+		$has_user_key  = '' !== trim( (string) $settings['pushover_user_key'] );
 		?>
 		<div class="gi-toolkit__section gi-cd">
 			<div class="gi-toolkit__section__desc">
@@ -1293,81 +1861,6 @@ class Gi_Toolkit_Compromise_Detection {
 							<?php endif; ?>
 							<button type="submit" class="button" name="gi_compromise_baseline" value="1"><?php esc_html_e( 'Marquer l’état actuel comme normal', 'gi-toolkit' ); ?></button>
 							<button type="submit" class="button" name="gi_compromise_scan_now" value="1"><?php esc_html_e( 'Scanner maintenant', 'gi-toolkit' ); ?></button>
-						</div>
-					</div>
-				</div>
-
-				<div class="gi-toolkit__section__body__item">
-					<div class="gi-toolkit__section__body__item__title"><?php esc_html_e( 'Compte Pushover', 'gi-toolkit' ); ?></div>
-					<div class="gi-toolkit__section__body__item__content">
-						<p>
-							<?php
-							echo wp_kses(
-								sprintf(
-									/* translators: %s: pushover.net URL */
-									__( 'Créez une application sur %s, puis collez le jeton (API Token) et votre clé utilisateur (User Key).', 'gi-toolkit' ),
-									'<a href="https://pushover.net/" target="_blank" rel="noopener noreferrer">pushover.net</a>'
-								),
-								array(
-									'a' => array(
-										'href'   => array(),
-										'target' => array(),
-										'rel'    => array(),
-									),
-								)
-							);
-							?>
-						</p>
-						<div class="gi-cd-fields">
-							<p>
-								<label for="gi_cd_pushover_app_token"><strong><?php esc_html_e( 'Jeton application (API Token / token)', 'gi-toolkit' ); ?></strong></label><br />
-								<input type="text" class="regular-text code" id="gi_cd_pushover_app_token" name="<?php echo esc_attr( $this->option_id . '[pushover_app_token]' ); ?>" value="<?php echo esc_attr( (string) $settings['pushover_app_token'] ); ?>" autocomplete="off" />
-							</p>
-							<p>
-								<label for="gi_cd_pushover_user_key"><strong><?php esc_html_e( 'Clé utilisateur (User Key / user)', 'gi-toolkit' ); ?></strong></label><br />
-								<input type="text" class="regular-text code" id="gi_cd_pushover_user_key" name="<?php echo esc_attr( $this->option_id . '[pushover_user_key]' ); ?>" value="<?php echo esc_attr( (string) $settings['pushover_user_key'] ); ?>" autocomplete="off" />
-							</p>
-							<p>
-								<label for="gi_cd_pushover_device"><strong><?php esc_html_e( 'Appareil (optionnel)', 'gi-toolkit' ); ?></strong></label><br />
-								<input type="text" class="regular-text" id="gi_cd_pushover_device" name="<?php echo esc_attr( $this->option_id . '[pushover_device]' ); ?>" value="<?php echo esc_attr( (string) $settings['pushover_device'] ); ?>" placeholder="<?php esc_attr_e( 'Tous les appareils si vide', 'gi-toolkit' ); ?>" />
-							</p>
-							<p>
-								<label for="gi_cd_pushover_title"><strong><?php esc_html_e( 'Titre de la notification', 'gi-toolkit' ); ?></strong></label><br />
-								<input type="text" class="large-text" id="gi_cd_pushover_title" name="<?php echo esc_attr( $this->option_id . '[pushover_title]' ); ?>" value="<?php echo esc_attr( (string) $settings['pushover_title'] ); ?>" />
-							</p>
-							<p>
-								<label for="gi_cd_pushover_message"><strong><?php esc_html_e( 'Message de la notification', 'gi-toolkit' ); ?></strong></label><br />
-								<textarea class="large-text code" id="gi_cd_pushover_message" name="<?php echo esc_attr( $this->option_id . '[pushover_message]' ); ?>" rows="7"><?php echo esc_textarea( (string) $settings['pushover_message'] ); ?></textarea>
-							</p>
-							<p class="description gi-cd-vars">
-								<?php esc_html_e( 'Variables disponibles :', 'gi-toolkit' ); ?>
-								<?php foreach ( Gi_Toolkit_Compromise_Detection_Pushover::available_variables() as $var => $var_label ) : ?>
-									<code title="<?php echo esc_attr( $var_label ); ?>"><?php echo esc_html( $var ); ?></code>
-								<?php endforeach; ?>
-							</p>
-						</div>
-						<p>
-							<button type="submit" class="button" name="gi_compromise_test_pushover" value="1"><?php esc_html_e( 'Envoyer une notification de test', 'gi-toolkit' ); ?></button>
-							<span class="description"><?php esc_html_e( 'Enregistre d’abord les réglages, puis envoie le test.', 'gi-toolkit' ); ?></span>
-						</p>
-					</div>
-				</div>
-
-				<div class="gi-toolkit__section__body__item">
-					<div class="gi-toolkit__section__body__item__title"><?php esc_html_e( 'Éléments à surveiller', 'gi-toolkit' ); ?></div>
-					<div class="gi-toolkit__section__body__item__content">
-						<p><?php esc_html_e( 'Tout est actif par défaut. Décochez ce que vous ne souhaitez pas surveiller.', 'gi-toolkit' ); ?></p>
-						<div class="gi-cd-watches">
-							<?php foreach ( $labels as $key => $label ) : ?>
-								<div class="gi-toolkit__checkbox">
-									<label class="gi-toolkit__checkbox__label">
-										<input type="hidden" name="<?php echo esc_attr( $this->option_id . '[' . $key . ']' ); ?>" value="0" />
-										<input type="checkbox" name="<?php echo esc_attr( $this->option_id . '[' . $key . ']' ); ?>" value="1" <?php checked( (string) $settings[ $key ], '1' ); ?> />
-										<span class="mark"></span>
-										<span class="gi-toolkit__checkbox__label__text"><?php echo esc_html( $label ); ?></span>
-									</label>
-								</div>
-							<?php endforeach; ?>
 						</div>
 					</div>
 				</div>
@@ -1455,6 +1948,36 @@ class Gi_Toolkit_Compromise_Detection {
 											</div>
 										</div>
 										<div class="gi-cd-alert__actions">
+											<?php
+											if ( 'watch_outbound' === ( $row['type'] ?? '' ) ) {
+												foreach ( self::outbound_hosts_from_alert( $row ) as $out_host ) {
+													if ( Gi_Toolkit_Compromise_Detection_Monitor::is_allowed_host( $out_host ) ) {
+														echo '<span class="description">' . esc_html(
+															sprintf(
+																/* translators: %s: hostname */
+																__( '%s autorisé', 'gi-toolkit' ),
+																$out_host
+															)
+														) . '</span>';
+														continue;
+													}
+													if ( $is_resolved ) {
+														continue;
+													}
+													printf(
+														'<button type="submit" class="button" name="gi_compromise_whitelist" value="%1$s">%2$s</button>',
+														esc_attr( $out_host ),
+														esc_html(
+															sprintf(
+																/* translators: %s: hostname */
+																__( 'Autoriser %s', 'gi-toolkit' ),
+																$out_host
+															)
+														)
+													);
+												}
+											}
+											?>
 											<?php if ( $alert_id && ! $is_resolved ) : ?>
 												<button type="submit" class="button button-primary" name="gi_compromise_resolve" value="<?php echo esc_attr( $alert_id ); ?>"><?php esc_html_e( 'Marquer comme traitée', 'gi-toolkit' ); ?></button>
 											<?php elseif ( $alert_id ) : ?>
@@ -1471,6 +1994,109 @@ class Gi_Toolkit_Compromise_Detection {
 						</p>
 					</div>
 				</div>
+				<details class="gi-cd-fold">
+					<summary><?php esc_html_e( 'Compte Pushover', 'gi-toolkit' ); ?></summary>
+					<div class="gi-cd-fold__body">
+						<p>
+							<?php
+							echo wp_kses(
+								sprintf(
+									/* translators: %s: pushover.net URL */
+									__( 'Créez une application sur %s, puis collez le jeton (API Token) et votre clé utilisateur (User Key).', 'gi-toolkit' ),
+									'<a href="https://pushover.net/" target="_blank" rel="noopener noreferrer">pushover.net</a>'
+								),
+								array(
+									'a' => array(
+										'href'   => array(),
+										'target' => array(),
+										'rel'    => array(),
+									),
+								)
+							);
+							?>
+						</p>
+						<div class="gi-cd-fields">
+							<p>
+								<label for="gi_cd_pushover_app_token"><strong><?php esc_html_e( 'Jeton application (API Token / token)', 'gi-toolkit' ); ?></strong></label><br />
+								<input type="password" class="regular-text code" id="gi_cd_pushover_app_token" name="<?php echo esc_attr( $this->option_id . '[pushover_app_token]' ); ?>" value="" autocomplete="new-password" placeholder="<?php echo $has_app_token ? esc_attr__( 'Jeton enregistré — laissez vide pour conserver', 'gi-toolkit' ) : ''; ?>" />
+								<?php if ( $has_app_token ) : ?>
+									<br /><span class="description"><?php esc_html_e( 'Le jeton n’est pas affiché. Laissez le champ vide pour le conserver.', 'gi-toolkit' ); ?></span>
+								<?php endif; ?>
+							</p>
+							<p>
+								<label for="gi_cd_pushover_user_key"><strong><?php esc_html_e( 'Clé utilisateur (User Key / user)', 'gi-toolkit' ); ?></strong></label><br />
+								<input type="password" class="regular-text code" id="gi_cd_pushover_user_key" name="<?php echo esc_attr( $this->option_id . '[pushover_user_key]' ); ?>" value="" autocomplete="new-password" placeholder="<?php echo $has_user_key ? esc_attr__( 'Clé enregistrée — laissez vide pour conserver', 'gi-toolkit' ) : ''; ?>" />
+								<?php if ( $has_user_key ) : ?>
+									<br /><span class="description"><?php esc_html_e( 'La clé n’est pas affichée. Laissez le champ vide pour la conserver.', 'gi-toolkit' ); ?></span>
+								<?php endif; ?>
+							</p>
+							<p>
+								<label for="gi_cd_pushover_device"><strong><?php esc_html_e( 'Appareil (optionnel)', 'gi-toolkit' ); ?></strong></label><br />
+								<input type="text" class="regular-text" id="gi_cd_pushover_device" name="<?php echo esc_attr( $this->option_id . '[pushover_device]' ); ?>" value="<?php echo esc_attr( (string) $settings['pushover_device'] ); ?>" placeholder="<?php esc_attr_e( 'Tous les appareils si vide', 'gi-toolkit' ); ?>" />
+							</p>
+							<p>
+								<label for="gi_cd_pushover_title"><strong><?php esc_html_e( 'Titre de la notification', 'gi-toolkit' ); ?></strong></label><br />
+								<input type="text" class="large-text" id="gi_cd_pushover_title" name="<?php echo esc_attr( $this->option_id . '[pushover_title]' ); ?>" value="<?php echo esc_attr( (string) $settings['pushover_title'] ); ?>" />
+							</p>
+							<p>
+								<label for="gi_cd_pushover_message"><strong><?php esc_html_e( 'Message de la notification', 'gi-toolkit' ); ?></strong></label><br />
+								<textarea class="large-text code" id="gi_cd_pushover_message" name="<?php echo esc_attr( $this->option_id . '[pushover_message]' ); ?>" rows="7"><?php echo esc_textarea( (string) $settings['pushover_message'] ); ?></textarea>
+							</p>
+							<p class="description gi-cd-vars">
+								<?php esc_html_e( 'Un bouton « Marquer comme traitée » est ajouté à la notification Pushover (lien signé, sans connexion, valable 30 jours). Variable :', 'gi-toolkit' ); ?>
+								<code title="<?php echo esc_attr( __( 'Lien signé pour traiter l’alerte', 'gi-toolkit' ) ); ?>">$resolve_url</code>
+							</p>
+							<p class="description gi-cd-vars">
+								<?php esc_html_e( 'Variables disponibles :', 'gi-toolkit' ); ?>
+								<?php foreach ( Gi_Toolkit_Compromise_Detection_Pushover::available_variables() as $var => $var_label ) : ?>
+									<code title="<?php echo esc_attr( $var_label ); ?>"><?php echo esc_html( $var ); ?></code>
+								<?php endforeach; ?>
+							</p>
+						</div>
+						<p>
+							<button type="submit" class="button" name="gi_compromise_test_pushover" value="1"><?php esc_html_e( 'Envoyer une notification de test', 'gi-toolkit' ); ?></button>
+							<span class="description"><?php esc_html_e( 'Enregistre d’abord les réglages, puis envoie le test.', 'gi-toolkit' ); ?></span>
+						</p>
+					</div>
+				</details>
+
+				<details class="gi-cd-fold">
+					<summary><?php esc_html_e( 'Éléments à surveiller', 'gi-toolkit' ); ?></summary>
+					<div class="gi-cd-fold__body">
+						<p><?php esc_html_e( 'Tout est actif par défaut. Décochez ce que vous ne souhaitez pas surveiller.', 'gi-toolkit' ); ?></p>
+						<div class="gi-cd-watches">
+							<?php foreach ( $labels as $key => $label ) : ?>
+								<div class="gi-toolkit__checkbox">
+									<label class="gi-toolkit__checkbox__label">
+										<input type="hidden" name="<?php echo esc_attr( $this->option_id . '[' . $key . ']' ); ?>" value="0" />
+										<input type="checkbox" name="<?php echo esc_attr( $this->option_id . '[' . $key . ']' ); ?>" value="1" <?php checked( (string) $settings[ $key ], '1' ); ?> />
+										<span class="mark"></span>
+										<span class="gi-toolkit__checkbox__label__text"><?php echo esc_html( $label ); ?></span>
+									</label>
+								</div>
+							<?php endforeach; ?>
+						</div>
+						<?php
+						$custom_wl = self::sanitize_whitelist_list( $settings['outbound_whitelist'] ?? array() );
+						?>
+						<div class="gi-cd-whitelist">
+							<p><strong><?php esc_html_e( 'Domaines autorisés (requêtes sortantes)', 'gi-toolkit' ); ?></strong></p>
+							<p class="description"><?php esc_html_e( 'Un domaine par ligne. Les sous-domaines sont inclus (example.com autorise aussi api.example.com). Vous pouvez aussi autoriser un domaine depuis une alerte.', 'gi-toolkit' ); ?></p>
+							<textarea class="large-text code" name="<?php echo esc_attr( $this->option_id . '[outbound_whitelist]' ); ?>" rows="4" placeholder="cdn.exemple.com"><?php echo esc_textarea( implode( "\n", $custom_wl ) ); ?></textarea>
+							<?php if ( ! empty( $custom_wl ) ) : ?>
+								<ul class="gi-cd-whitelist__list">
+									<?php foreach ( $custom_wl as $wl_host ) : ?>
+										<li>
+											<code><?php echo esc_html( $wl_host ); ?></code>
+											<button type="submit" class="button-link" name="gi_compromise_unwhitelist" value="<?php echo esc_attr( $wl_host ); ?>"><?php esc_html_e( 'Retirer', 'gi-toolkit' ); ?></button>
+										</li>
+									<?php endforeach; ?>
+								</ul>
+							<?php endif; ?>
+						</div>
+					</div>
+				</details>
+
 			</div>
 		</div>
 		<?php
@@ -1490,8 +2116,11 @@ class Gi_Toolkit_Compromise_Detection {
 			'cleared'      => array( 'success', __( 'Journal vidé.', 'gi-toolkit' ) ),
 			'resolved'     => array( 'success', __( 'Alerte marquée comme traitée.', 'gi-toolkit' ) ),
 			'reopened'     => array( 'success', __( 'Alerte rouverte.', 'gi-toolkit' ) ),
-			'resolved_all' => array( 'success', __( 'Toutes les alertes ouvertes ont été marquées comme traitées.', 'gi-toolkit' ) ),
-			'test_ok'      => array( 'success', __( 'Notification de test Pushover envoyée.', 'gi-toolkit' ) ),
+			'resolved_all'  => array( 'success', __( 'Toutes les alertes ouvertes ont été marquées comme traitées.', 'gi-toolkit' ) ),
+			'whitelisted'   => array( 'success', __( 'Domaine ajouté à la whitelist. Les prochaines requêtes vers ce domaine (et ses sous-domaines) ne déclencheront plus d’alerte.', 'gi-toolkit' ) ),
+			'unwhitelisted' => array( 'success', __( 'Domaine retiré de la whitelist.', 'gi-toolkit' ) ),
+			'whitelist_fail'=> array( 'error', __( 'Impossible d’ajouter ce domaine à la whitelist.', 'gi-toolkit' ) ),
+			'test_ok'       => array( 'success', __( 'Notification de test Pushover envoyée.', 'gi-toolkit' ) ),
 			'test_fail'=> array( 'error', __( 'Échec de la notification de test Pushover.', 'gi-toolkit' ) ),
 		);
 		if ( ! isset( $messages[ $notice ] ) ) {

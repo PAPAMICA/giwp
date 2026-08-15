@@ -700,9 +700,16 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 			}
 			Gi_Toolkit_Compromise_Detection::raise_alert(
 				'watch_outbound',
-				__( 'Requêtes sortantes suspectes (scan d’autres sites)', 'gi-toolkit' ),
+				sprintf(
+					/* translators: %s: hostname */
+					__( 'Requêtes sortantes suspectes : %s', 'gi-toolkit' ),
+					$host
+				),
 				$details,
-				array( 'context' => $context )
+				array(
+					'context' => $context,
+					'host'    => $host,
+				)
 			);
 		}
 
@@ -874,6 +881,12 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 	public static function is_allowed_host( $host ) {
 		$host = strtolower( $host );
 
+		foreach ( self::user_whitelist() as $allowed ) {
+			if ( self::host_matches_allowed( $host, $allowed ) ) {
+				return true;
+			}
+		}
+
 		$site_host = wp_parse_url( home_url(), PHP_URL_HOST );
 		$site_host = is_string( $site_host ) ? strtolower( $site_host ) : '';
 		if ( '' !== $site_host ) {
@@ -908,6 +921,10 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 			'cdnjs.cloudflare.com',
 			'unpkg.com',
 			'code.jquery.com',
+			'noc1.wordfence.com',
+			'noc2.wordfence.com',
+			'api.wordfence.com',
+			'wp-rocket.me',
 		);
 		if ( in_array( $host, $exact, true ) ) {
 			return true;
@@ -921,19 +938,93 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 			'.googleapis.com',
 			'.google.com',
 			'.gstatic.com',
+			'.google-analytics.com',
+			'.googletagmanager.com',
+			'.recaptcha.net',
 			'.github.com',
 			'.githubusercontent.com',
 			'.pushover.net',
 			'.cloudflare.com',
+			'.cloudflareinsights.com',
 			'.cloudfront.net',
 			'.amazonaws.com',
 			'.woocommerce.com',
 			'.wpmudev.com',
 			'.mainwp.com',
 			'.elementor.com',
+			'.elementor.cloud',
+			'.wp-rocket.me',
+			'.wp-media.me',
+			'.imagify.io',
+			'.wordfence.com',
+			'.yoast.com',
+			'.rankmath.com',
+			'.jetpack.com',
+			'.automattic.com',
+			'.akismet.com',
 			'.gravity.com',
+			'.gravityforms.com',
+			'.wpml.org',
+			'.polylang.pro',
+			'.wpforms.com',
+			'.ninjaforms.com',
+			'.fluentforms.com',
+			'.advancedcustomfields.com',
+			'.deliciousbrains.com',
+			'.updraftplus.com',
+			'.blogvault.net',
+			'.malcare.com',
+			'.really-simple-ssl.com',
+			'.ithemes.com',
+			'.solidwp.com',
+			'.patchstack.com',
+			'.sucuri.net',
+			'.wpengine.com',
+			'.wpenginepowered.com',
+			'.kinsta.com',
+			'.siteground.com',
+			'.sgvps.net',
+			'.cloudways.com',
+			'.o2switch.fr',
+			'.infomaniak.com',
+			'.ovh.net',
+			'.ovh.com',
+			'.hostinger.com',
+			'.litespeedtech.com',
+			'.quic.cloud',
 			'.paypal.com',
 			'.stripe.com',
+			'.mollie.com',
+			'.klarna.com',
+			'.brevo.com',
+			'.sendinblue.com',
+			'.mailchimp.com',
+			'.hubspot.com',
+			'.intercom.io',
+			'.crisp.chat',
+			'.zendesk.com',
+			'.helpscout.net',
+			'.facebook.com',
+			'.facebook.net',
+			'.fontawesome.com',
+			'.typekit.net',
+			'.adobe.com',
+			'.hotjar.com',
+			'.clarity.ms',
+			'.sentry.io',
+			'.datadoghq.com',
+			'.newrelic.com',
+			'.matomo.org',
+			'.matomo.cloud',
+			'.innocraft.cloud',
+			'.cookiebot.com',
+			'.iubenda.com',
+			'.tarteaucitron.io',
+			'.tinymce.com',
+			'.tiny.cloud',
+			'.bootstrapcdn.com',
+			'.maxcdn.com',
+			'.jsdelivr.net',
 			'.genevois-informatique.com',
 		);
 		foreach ( $suffixes as $suffix ) {
@@ -963,6 +1054,61 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 		}
 
 		return false;
+	}
+
+	/**
+	 * @param string $host Hôte brut.
+	 * @return string
+	 */
+	public static function sanitize_host( $host ) {
+		$host = strtolower( trim( (string) $host ) );
+		$host = preg_replace( '#^https?://#', '', $host );
+		$host = is_string( $host ) ? $host : '';
+		$host = preg_replace( '#/.*$#', '', $host );
+		$host = is_string( $host ) ? $host : '';
+		$host = preg_replace( '/:\d+$/', '', $host );
+		$host = is_string( $host ) ? $host : '';
+		$host = trim( $host, '.' );
+		if ( '' === $host || strlen( $host ) > 253 ) {
+			return '';
+		}
+		if ( filter_var( $host, FILTER_VALIDATE_IP ) ) {
+			return $host;
+		}
+		if ( ! preg_match( '/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/', $host ) ) {
+			return '';
+		}
+		return $host;
+	}
+
+	/**
+	 * @param string $host    Hôte testé.
+	 * @param string $allowed Domaine autorisé.
+	 * @return bool
+	 */
+	public static function host_matches_allowed( $host, $allowed ) {
+		$host    = strtolower( (string) $host );
+		$allowed = strtolower( (string) $allowed );
+		if ( '' === $host || '' === $allowed ) {
+			return false;
+		}
+		if ( $host === $allowed ) {
+			return true;
+		}
+		$suffix = '.' . $allowed;
+		return substr( $host, -strlen( $suffix ) ) === $suffix;
+	}
+
+	/**
+	 * @return string[]
+	 */
+	public static function user_whitelist() {
+		if ( ! class_exists( 'Gi_Toolkit_Compromise_Detection' ) ) {
+			return array();
+		}
+		$settings = Gi_Toolkit_Compromise_Detection::read_settings();
+		$list     = isset( $settings['outbound_whitelist'] ) ? $settings['outbound_whitelist'] : array();
+		return Gi_Toolkit_Compromise_Detection::sanitize_whitelist_list( $list );
 	}
 
 	/**

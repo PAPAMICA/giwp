@@ -1,0 +1,68 @@
+/* Barre d’admin — alertes de compromission. */
+
+#wpadminbar #wp-admin-bar-gi-compromise-toolbar > .ab-item {
+	align-items: center;
+	display: flex;
+	height: 32px;
+	padding: 0 10px;
+}
+
+#wpadminbar .gi-cd-ab-wrap {
+	align-items: center;
+	display: inline-flex;
+	gap: 6px;
+	line-height: 1;
+}
+
+#wpadminbar .gi-cd-ab-icon {
+	color: #f87171;
+	display: inline-block;
+	font-family: dashicons;
+	font-size: 18px;
+	height: 18px;
+	line-height: 1;
+	width: 18px;
+}
+
+#wpadminbar .gi-cd-ab-count {
+	color: #f87171;
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1;
+}
+
+#wpadminbar #wp-admin-bar-gi-compromise-toolbar:hover > .ab-item,
+#wpadminbar #wp-admin-bar-gi-compromise-toolbar .ab-item:focus {
+	background: #2c3338;
+}
+
+#wpadminbar #wp-admin-bar-gi-cd-ab-summary .ab-item {
+	height: auto;
+	line-height: 1.4;
+	min-width: 260px;
+	padding: 10px 14px;
+	white-space: normal;
+}
+
+#wpadminbar .gi-cd-ab-flyout__title {
+	color: #f0f0f1;
+	display: block;
+	font-size: 13px;
+	font-weight: 600;
+	margin-bottom: 8px;
+}
+
+#wpadminbar .gi-cd-ab-flyout__types {
+	color: #c3c4c7;
+	list-style: disc;
+	margin: 0 0 0 16px;
+	padding: 0;
+}
+
+#wpadminbar .gi-cd-ab-flyout__types li {
+	margin: 0 0 4px;
+}
+
+#wpadminbar #wp-admin-bar-gi-cd-ab-maintenance > .ab-item {
+	font-weight: 600;
+}

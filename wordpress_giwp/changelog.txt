@@ -1,5 +1,18 @@
 == Changelog ==
 
+= 2.29.16 =
+* Update: Détection de compromission — le résumé des alertes de requêtes sortantes affiche le domaine concerné.
+
+= 2.29.15 =
+* Add: Détection de compromission — lien signé dans l’alerte Pushover pour marquer comme traitée sans se connecter (valable 30 jours).
+
+= 2.29.14 =
+* Add: Détection de compromission — bouton « Autoriser le domaine » sur les alertes de requêtes sortantes (whitelist personnalisée, sous-domaines inclus).
+
+= 2.29.13 =
+* Add: Détection de compromission — icône barre d’admin (alertes ouvertes, mode maintenance rapide), réglages repliés, jetons masqués, whitelist HTTP élargie (Wordfence, Elementor, WP Rocket…).
+* Update: le panneau « Voir les détails » est fermé par défaut.
+
 = 2.29.12 =
 * Add: Détection de compromission — panneau de détails pour toutes les alertes (utilisateur, IP, contexte, aperçu de fichiers).
 

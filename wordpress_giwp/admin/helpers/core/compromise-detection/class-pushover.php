@@ -27,7 +27,7 @@ class Gi_Toolkit_Compromise_Detection_Pushover {
 	 * @param string               $sound    Son Pushover.
 	 * @return array{success:bool, message:string}
 	 */
-	public static function send( $settings, $title, $message, $priority = 1, $sound = 'siren' ) {
+	public static function send( $settings, $title, $message, $priority = 1, $sound = 'siren', $url = '', $url_title = '' ) {
 		$token = isset( $settings['pushover_app_token'] ) ? trim( (string) $settings['pushover_app_token'] ) : '';
 		$user  = isset( $settings['pushover_user_key'] ) ? trim( (string) $settings['pushover_user_key'] ) : '';
 
@@ -38,7 +38,13 @@ class Gi_Toolkit_Compromise_Detection_Pushover {
 			);
 		}
 
-		$url = home_url( '/' );
+		$url = is_string( $url ) ? $url : '';
+		if ( '' === $url ) {
+			$url = admin_url( 'admin.php?page=gi-toolkit-settings-compromise-detection' );
+		}
+		if ( '' === $url_title ) {
+			$url_title = __( 'Ouvrir le journal', 'gi-toolkit' );
+		}
 
 		$title = self::truncate( $title, 250 );
 		$body  = self::truncate( $message, 1024 );
@@ -51,7 +57,7 @@ class Gi_Toolkit_Compromise_Detection_Pushover {
 			'priority'  => (int) $priority,
 			'sound'     => sanitize_key( $sound ),
 			'url'       => $url,
-			'url_title' => __( 'Ouvrir le site', 'gi-toolkit' ),
+			'url_title' => self::truncate( $url_title, 100 ),
 		);
 
 		$device = isset( $settings['pushover_device'] ) ? trim( (string) $settings['pushover_device'] ) : '';
@@ -116,13 +122,21 @@ class Gi_Toolkit_Compromise_Detection_Pushover {
 	 * @param string               $details  Détails.
 	 * @param int                  $priority Priorité Pushover.
 	 * @param string               $sound    Son.
+	 * @param string               $alert_id ID alerte (lien traiter).
 	 * @return array{success:bool, message:string}
 	 */
-	public static function send_alert( $settings, $type, $summary, $details = '', $priority = 1, $sound = 'siren' ) {
-		$vars    = self::build_variables( $type, $summary, $details );
+	public static function send_alert( $settings, $type, $summary, $details = '', $priority = 1, $sound = 'siren', $alert_id = '' ) {
+		$resolve = '';
+		if ( '' !== (string) $alert_id && class_exists( 'Gi_Toolkit_Compromise_Detection' ) ) {
+			$resolve = Gi_Toolkit_Compromise_Detection::make_resolve_url( (string) $alert_id );
+		}
+		$vars    = self::build_variables( $type, $summary, $details, $resolve );
 		$title   = self::apply_template( self::title_template( $settings ), $vars );
 		$message = self::apply_template( self::message_template( $settings ), $vars );
-		return self::send( $settings, $title, $message, $priority, $sound );
+		$url_title = '' !== $resolve
+			? __( 'Marquer comme traitée', 'gi-toolkit' )
+			: '';
+		return self::send( $settings, $title, $message, $priority, $sound, $resolve, $url_title );
 	}
 
 	/**
@@ -151,7 +165,7 @@ class Gi_Toolkit_Compromise_Detection_Pushover {
 	 * @return string
 	 */
 	public static function default_message_template() {
-		return '$alert_summary' . "\n\n" . '$alert_details' . "\n\n" . 'Site : $website_name' . "\n" . 'URL : $website_url' . "\n" . 'Date : $datetime';
+		return '$alert_summary' . "\n\n" . '$alert_details' . "\n\n" . 'Site : $website_name' . "\n" . 'URL : $website_url' . "\n" . 'Date : $datetime' . "\n\n" . 'Marquer comme traitée : $resolve_url';
 	}
 
 	/**
@@ -170,6 +184,7 @@ class Gi_Toolkit_Compromise_Detection_Pushover {
 			'$datetime'         => __( 'Date et heure de l’alerte', 'gi-toolkit' ),
 			'$ip'               => __( 'Adresse IP de la requête', 'gi-toolkit' ),
 			'$user'             => __( 'Utilisateur WordPress connecté (si présent)', 'gi-toolkit' ),
+			'$resolve_url'      => __( 'Lien signé pour marquer l’alerte comme traitée sans connexion (30 jours)', 'gi-toolkit' ),
 		);
 	}
 
@@ -188,16 +203,21 @@ class Gi_Toolkit_Compromise_Detection_Pushover {
 	 */
 	public static function message_template( $settings ) {
 		$message = isset( $settings['pushover_message'] ) ? trim( (string) $settings['pushover_message'] ) : '';
-		return '' !== $message ? $message : self::default_message_template();
+		$legacy  = '$alert_summary' . "\n\n" . '$alert_details' . "\n\n" . 'Site : $website_name' . "\n" . 'URL : $website_url' . "\n" . 'Date : $datetime';
+		if ( '' === $message || $message === $legacy ) {
+			return self::default_message_template();
+		}
+		return $message;
 	}
 
 	/**
 	 * @param string $type    Type.
 	 * @param string $summary Résumé.
-	 * @param string $details Détails.
+	 * @param string $details     Détails.
+	 * @param string $resolve_url Lien traiter.
 	 * @return array<string, string>
 	 */
-	public static function build_variables( $type, $summary, $details = '' ) {
+	public static function build_variables( $type, $summary, $details = '', $resolve_url = '' ) {
 		$host = wp_parse_url( home_url(), PHP_URL_HOST );
 		$host = is_string( $host ) ? $host : '';
 		if ( 'www.' === substr( $host, 0, 4 ) ) {
@@ -228,6 +248,7 @@ class Gi_Toolkit_Compromise_Detection_Pushover {
 			'$datetime'         => wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ),
 			'$ip'               => is_string( $ip ) ? $ip : '',
 			'$user'             => $user,
+			'$resolve_url'      => (string) $resolve_url,
 		);
 	}
 

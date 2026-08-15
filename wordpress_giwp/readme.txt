@@ -4,7 +4,7 @@ Tags: all in one plugin, admin, security, disable features, easy to use
 Requires at least: 6.0.0
 Tested up to: 6.9.3
 Requires PHP: 7.4
-Stable tag: 2.29.12
+Stable tag: 2.29.16
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -195,6 +195,19 @@ Yes, the Media Encoder module automatically converts uploaded images to WebP, an
 4. Code snippets
 
 == Changelog ==
+
+= 2.29.16 =
+* Update: Détection de compromission — le résumé des alertes de requêtes sortantes affiche le domaine concerné.
+
+= 2.29.15 =
+* Add: Détection de compromission — lien signé Pushover pour marquer une alerte comme traitée sans connexion.
+
+= 2.29.14 =
+* Add: Détection de compromission — bouton « Autoriser le domaine » sur les alertes de requêtes sortantes (whitelist personnalisée).
+
+= 2.29.13 =
+* Add: Détection de compromission — icône barre d’admin, réglages repliés, jetons masqués, whitelist HTTP élargie.
+* Update: le panneau « Voir les détails » est fermé par défaut.
 
 = 2.29.12 =
 * Add: Détection de compromission — panneau de détails pour toutes les alertes (utilisateur, IP, contexte, aperçu de fichiers).

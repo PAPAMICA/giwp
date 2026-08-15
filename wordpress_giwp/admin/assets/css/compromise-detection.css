@@ -226,3 +226,41 @@
 	white-space: pre-wrap;
 	word-break: break-word;
 }
+
+.gi-cd-fold {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	margin: 0 0 10px;
+	padding: 4px 14px 4px;
+}
+
+.gi-cd-fold > summary {
+	cursor: pointer;
+	font-weight: 600;
+	padding: 10px 0;
+}
+
+.gi-cd-fold__body {
+	border-top: 1px solid #dcdcde;
+	padding: 12px 0 14px;
+}
+
+.gi-cd-whitelist {
+	border-top: 1px solid #dcdcde;
+	margin-top: 16px;
+	padding-top: 12px;
+}
+
+.gi-cd-whitelist__list {
+	list-style: none;
+	margin: 8px 0 0;
+	padding: 0;
+}
+
+.gi-cd-whitelist__list li {
+	align-items: center;
+	display: flex;
+	gap: 10px;
+	margin: 0 0 4px;
+}
