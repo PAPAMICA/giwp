@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.29.23 =
+* Fix: Détection de compromission — moins de faux positifs pages (requête SQL, ignore brouillons/corbeille) et .htaccess (flush rewrite / blocs plugins ignorés, alerte seulement si charge utile suspecte) ; exclusion `*.wordpress.com` pour les requêtes sortantes.
+
 = 2.29.22 =
 * Fix: Détection de compromission — marquer une alerte comme traitée enregistre l’état actuel comme normal et empêche le scan / la sync MainWP de recréer la même alerte.
 

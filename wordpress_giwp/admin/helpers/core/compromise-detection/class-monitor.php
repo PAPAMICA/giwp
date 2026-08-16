@@ -49,20 +49,7 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 			}
 		}
 
-		$pages = get_posts(
-			array(
-				'post_type'              => 'page',
-				'post_status'            => array( 'publish', 'draft', 'private', 'pending', 'future' ),
-				'posts_per_page'         => -1,
-				'fields'                 => 'ids',
-				'no_found_rows'          => true,
-				'update_post_meta_cache' => false,
-				'update_post_term_cache' => false,
-				'suppress_filters'       => true,
-			)
-		);
-		$pages = array_map( 'intval', is_array( $pages ) ? $pages : array() );
-		sort( $pages, SORT_NUMERIC );
+		$pages = self::snapshot_page_ids();
 
 		$plugins = array_keys( get_plugins() );
 		sort( $plugins );
@@ -236,8 +223,8 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 
 		$old_pages = isset( $old['pages'] ) && is_array( $old['pages'] ) ? $old['pages'] : array();
 		$new_pages = isset( $new['pages'] ) && is_array( $new['pages'] ) ? $new['pages'] : array();
-		$added_p   = array_diff( $new_pages, $old_pages );
-		$del_p     = array_diff( $old_pages, $new_pages );
+		$added_p   = self::filter_new_page_ids( $old_pages, $new_pages, (int) ( $old['taken_at'] ?? 0 ) );
+		$del_p     = self::filter_deleted_page_ids( $old_pages, $new_pages );
 		if ( ! empty( $added_p ) ) {
 			$context = array();
 			foreach ( array_slice( array_values( $added_p ), 0, 10 ) as $pid ) {
@@ -403,7 +390,10 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 			}
 			$old_body = isset( $old['file_contents'][ $key ] ) ? (string) $old['file_contents'][ $key ] : '';
 			$new_body = isset( $new['file_contents'][ $key ] ) ? (string) $new['file_contents'][ $key ] : '';
-			$diff     = self::unified_diff( $old_body, $new_body, $meta['label'] );
+			if ( 'htaccess_hash' === $key && ! self::htaccess_change_is_suspicious( $old_body, $new_body ) ) {
+				continue;
+			}
+			$diff = self::unified_diff( $old_body, $new_body, $meta['label'] );
 			if ( '' === $diff ) {
 				$diff = __( 'Le fichier a changé, mais le contenu précédent n’était pas encore enregistré. Les prochaines modifications afficheront un diff ligne à ligne.', 'gi-toolkit' );
 			}
@@ -902,6 +892,7 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 		$exact = array(
 			'api.wordpress.org',
 			'downloads.wordpress.org',
+			'wordpress.com',
 			'api.github.com',
 			'api.pushover.net',
 			'fonts.googleapis.com',
@@ -934,6 +925,7 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 			'.wordpress.org',
 			'.w.org',
 			'.wp.com',
+			'.wordpress.com',
 			'.gravatar.com',
 			'.googleapis.com',
 			'.google.com',
@@ -1067,6 +1059,8 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 		$host = preg_replace( '#/.*$#', '', $host );
 		$host = is_string( $host ) ? $host : '';
 		$host = preg_replace( '/:\d+$/', '', $host );
+		$host = is_string( $host ) ? $host : '';
+		$host = preg_replace( '/^\*\./', '', $host );
 		$host = is_string( $host ) ? $host : '';
 		$host = trim( $host, '.' );
 		if ( '' === $host || strlen( $host ) > 253 ) {
@@ -1287,6 +1281,89 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 	}
 
 	/**
+	 * IDs des pages suivies, via SQL (sans filtres Polylang / pre_get_posts).
+	 *
+	 * @return int[]
+	 */
+	private static function snapshot_page_ids() {
+		global $wpdb;
+
+		$ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT ID FROM {$wpdb->posts} WHERE post_type = %s AND post_status IN (%s,%s,%s) ORDER BY ID ASC",
+				'page',
+				'publish',
+				'private',
+				'future'
+			)
+		);
+		if ( ! is_array( $ids ) ) {
+			return array();
+		}
+		$ids = array_map( 'intval', $ids );
+		$ids = array_values( array_filter( $ids ) );
+		sort( $ids, SORT_NUMERIC );
+		return $ids;
+	}
+
+	/**
+	 * Nouvelles pages réellement créées (ignore brouillons, corbeille, pages déjà anciennes).
+	 *
+	 * @param int[] $old_pages Anciens IDs.
+	 * @param int[] $new_pages Nouveaux IDs.
+	 * @param int   $taken_at  Horodatage du snapshot précédent.
+	 * @return int[]
+	 */
+	private static function filter_new_page_ids( $old_pages, $new_pages, $taken_at ) {
+		$added = array_diff(
+			array_map( 'intval', is_array( $new_pages ) ? $new_pages : array() ),
+			array_map( 'intval', is_array( $old_pages ) ? $old_pages : array() )
+		);
+		$out      = array();
+		$taken_at = (int) $taken_at;
+		foreach ( $added as $pid ) {
+			$pid  = (int) $pid;
+			$post = get_post( $pid );
+			if ( ! $post instanceof WP_Post || 'page' !== $post->post_type ) {
+				continue;
+			}
+			if ( ! in_array( $post->post_status, array( 'publish', 'private', 'future' ), true ) ) {
+				continue;
+			}
+			$created = strtotime( (string) $post->post_date_gmt );
+			if ( $taken_at > 0 && $created > 0 && $created < ( $taken_at - 120 ) ) {
+				continue;
+			}
+			$out[] = $pid;
+		}
+		return $out;
+	}
+
+	/**
+	 * Pages vraiment supprimées (ignore corbeille, dépublication, brouillon).
+	 *
+	 * @param int[] $old_pages Anciens IDs.
+	 * @param int[] $new_pages Nouveaux IDs.
+	 * @return int[]
+	 */
+	private static function filter_deleted_page_ids( $old_pages, $new_pages ) {
+		$removed = array_diff(
+			array_map( 'intval', is_array( $old_pages ) ? $old_pages : array() ),
+			array_map( 'intval', is_array( $new_pages ) ? $new_pages : array() )
+		);
+		$out = array();
+		foreach ( $removed as $pid ) {
+			$pid  = (int) $pid;
+			$post = get_post( $pid );
+			if ( $post instanceof WP_Post ) {
+				continue;
+			}
+			$out[] = $pid;
+		}
+		return $out;
+	}
+
+	/**
 	 * @param int[] $ids IDs de pages.
 	 * @return string
 	 */
@@ -1312,6 +1389,95 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 			return $parent;
 		}
 		return '';
+	}
+
+	/**
+	 * Ignore les flush rewrite / blocs plugins légitimes ; alerte si charge utile suspecte.
+	 *
+	 * @param string $old Ancien contenu.
+	 * @param string $new Nouveau contenu.
+	 * @return bool
+	 */
+	private static function htaccess_change_is_suspicious( $old, $new ) {
+		$old = self::normalize_htaccess( $old );
+		$new = self::normalize_htaccess( $new );
+		if ( $old === $new ) {
+			return false;
+		}
+
+		$old_payload = self::htaccess_malicious_payload( $old );
+		$new_payload = self::htaccess_malicious_payload( $new );
+		if ( $new_payload === $old_payload ) {
+			return false;
+		}
+
+		return '' !== $new_payload;
+	}
+
+	/**
+	 * @param string $content Contenu .htaccess.
+	 * @return string
+	 */
+	private static function normalize_htaccess( $content ) {
+		$content = str_replace( array( "\r\n", "\r" ), "\n", (string) $content );
+		$stripped = preg_replace_callback(
+			'/^[ \t]*# BEGIN (.+?)[ \t]*\n.*?\n[ \t]*# END \1[ \t]*$/ims',
+			static function ( $m ) {
+				$block = $m[0];
+				if ( self::htaccess_malicious_payload( $block ) ) {
+					return $block;
+				}
+				return "\n";
+			},
+			$content
+		);
+		if ( is_string( $stripped ) ) {
+			$content = $stripped;
+		}
+		$content = preg_replace( '/\n{2,}/', "\n", $content );
+		return trim( is_string( $content ) ? $content : '' );
+	}
+
+	/**
+	 * Signatures malveillantes présentes (hors Wordfence WAF).
+	 *
+	 * @param string $content Contenu.
+	 * @return string
+	 */
+	private static function htaccess_malicious_payload( $content ) {
+		$content = (string) $content;
+		if ( '' === $content ) {
+			return '';
+		}
+
+		$found = array();
+		$rules = array(
+			'php_open'     => '/<\?(?:php|=)/i',
+			'sethandler'   => '/\b(?:SetHandler|AddHandler)\s+application\/x-httpd-(?:php|cgi)/i',
+			'addtype_php'  => '/\bAddType\s+(?:application\/x-httpd-php|text\/x-php)/i',
+			'engine_on'    => '/\bphp_flag\s+engine\s+on\b/i',
+			'eval'         => '/\b(?:eval|assert|gzinflate|str_rot13|base64_decode)\s*\(/i',
+		);
+
+		foreach ( $rules as $key => $regex ) {
+			if ( preg_match( $regex, $content ) ) {
+				$found[] = $key;
+			}
+		}
+
+		if ( preg_match_all( '/\b(?:php_value|php_admin_value)\s+auto_(?:prepend|append)_file\s+(\S+)/i', $content, $matches ) ) {
+			foreach ( $matches[1] as $target ) {
+				$target = trim( (string) $target, "\"'" );
+				if ( false === stripos( $target, 'wordfence-waf.php' ) ) {
+					$found[] = 'auto_prepend';
+					break;
+				}
+			}
+		}
+
+		$found = array_values( array_unique( $found ) );
+		sort( $found );
+		return implode( ',', $found );
 	}
 
 	/**
