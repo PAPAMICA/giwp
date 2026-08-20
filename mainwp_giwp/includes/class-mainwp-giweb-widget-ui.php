@@ -200,6 +200,41 @@ class MainWP_GIWeb_Widget_UI {
 	}
 
 	/**
+	 * @param array<string, mixed> $refresh scope, site_id, detailed, ack.
+	 * @return void
+	 */
+	public static function render_ack_button( array $refresh ) {
+		if ( empty( $refresh['ack'] ) ) {
+			return;
+		}
+
+		$scope    = sanitize_key( (string) ( $refresh['scope'] ?? '' ) );
+		$site_id  = absint( $refresh['site_id'] ?? 0 );
+		$detailed = ! empty( $refresh['detailed'] ) ? '1' : '0';
+
+		if ( 'cd' !== $scope ) {
+			return;
+		}
+
+		$label = $site_id > 0
+			? __( 'Acquitter', 'mainwp-giweb' )
+			: __( 'Tout acquitter', 'mainwp-giweb' );
+		?>
+		<button
+			type="button"
+			class="giweb-gw-ack"
+			data-refresh-scope="<?php echo esc_attr( $scope ); ?>"
+			data-refresh-site-id="<?php echo esc_attr( (string) $site_id ); ?>"
+			data-refresh-detailed="<?php echo esc_attr( $detailed ); ?>"
+			title="<?php esc_attr_e( 'Marquer les alertes ouvertes comme traitées et considérer l’état actuel comme normal', 'mainwp-giweb' ); ?>"
+			aria-label="<?php echo esc_attr( $label ); ?>"
+		>
+			<?php echo esc_html( $label ); ?>
+		</button>
+		<?php
+	}
+
+	/**
 	 * @param int    $updated_at   Timestamp sync.
 	 * @param string $empty_message Message si pas de sync.
 	 * @return void
@@ -251,6 +286,7 @@ class MainWP_GIWeb_Widget_UI {
 					<?php
 					if ( is_array( $refresh ) && ! empty( $refresh['scope'] ) ) {
 						self::render_refresh_button( $refresh );
+						self::render_ack_button( $refresh );
 					}
 					?>
 				</div>

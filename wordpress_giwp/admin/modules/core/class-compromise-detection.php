@@ -901,6 +901,19 @@ class Gi_Toolkit_Compromise_Detection {
 	}
 
 	/**
+	 * Acquittement distant (MainWP) : résout les alertes ouvertes et fige l’état actuel comme normal.
+	 *
+	 * @return int Nombre d’alertes marquées comme traitées.
+	 */
+	public static function ack_all_alerts() {
+		$resolved = self::resolve_all_alerts();
+		if ( 0 === $resolved ) {
+			self::accept_current_baseline();
+		}
+		return $resolved;
+	}
+
+	/**
 	 * Empreinte stable d’une alerte (déduplication).
 	 *
 	 * @param string $type    Type.

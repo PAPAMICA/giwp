@@ -233,7 +233,33 @@ body.mainwp-ui.mainwp-custom-theme .mainwp-giweb-uptime-kuma-widget {
 	align-items: center;
 	display: inline-flex;
 	flex-shrink: 0;
-	gap: 2px;
+	gap: 6px;
+}
+
+.giweb-gw-ack {
+	background: transparent;
+	border: 1px solid var(--giweb-gw-border);
+	border-radius: 999px;
+	color: var(--giweb-gw-muted);
+	cursor: pointer;
+	flex-shrink: 0;
+	font-size: 11px;
+	font-weight: 600;
+	height: 22px;
+	line-height: 20px;
+	padding: 0 10px;
+	white-space: nowrap;
+}
+
+.giweb-gw-ack:hover:not(:disabled) {
+	border-color: var(--giweb-gw-accent);
+	color: var(--giweb-gw-text);
+}
+
+.giweb-gw-ack:disabled,
+.giweb-gw-ack.is-loading {
+	cursor: wait;
+	opacity: 0.65;
 }
 
 .giweb-gw-refresh {

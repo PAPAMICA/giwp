@@ -358,6 +358,7 @@
 		});
 
 		bindRefreshButtons(root);
+		bindAckButtons(root);
 		refreshSyncLabels(root);
 	}
 
@@ -384,7 +385,6 @@
 			return;
 		}
 
-		var parent = gw.parentElement;
 		var scope = btn.getAttribute('data-refresh-scope') || '';
 		var siteId = btn.getAttribute('data-refresh-site-id') || '0';
 		var detailed = btn.getAttribute('data-refresh-detailed') || '0';
@@ -419,13 +419,7 @@
 					return;
 				}
 
-				gw.outerHTML = payload.data.html;
-				var freshGw = parent ? parent.querySelector('.giweb-gw') : null;
-				if (freshGw) {
-					initGiwebGw(freshGw);
-				} else {
-					initGiwebGw(document);
-				}
+				replaceWidgetHtml(gw, payload.data.html);
 			})
 			.catch(function () {
 				var message = (cfg.i18n && cfg.i18n.refreshError) || '';
@@ -437,6 +431,96 @@
 				btn.classList.remove('is-loading');
 				btn.disabled = false;
 			});
+	}
+
+	function bindAckButtons(root) {
+		(root || document).querySelectorAll('.giweb-gw-ack:not([data-giweb-ack-bound])').forEach(function (btn) {
+			btn.dataset.giwebAckBound = '1';
+			btn.addEventListener('click', function () {
+				handleCompromiseAck(btn);
+			});
+		});
+	}
+
+	function handleCompromiseAck(btn) {
+		var cfg = window.mainwpGiwebWidgetShell;
+		if (!cfg || !cfg.ajaxUrl || !cfg.ackAction) {
+			return;
+		}
+		if (btn.classList.contains('is-loading')) {
+			return;
+		}
+
+		var gw = btn.closest('.giweb-gw');
+		if (!gw) {
+			return;
+		}
+
+		var siteId = btn.getAttribute('data-refresh-site-id') || '0';
+		var confirmMsg =
+			siteId !== '0'
+				? (cfg.i18n && cfg.i18n.ackConfirmSite) || ''
+				: (cfg.i18n && cfg.i18n.ackConfirm) || '';
+		if (confirmMsg && !window.confirm(confirmMsg)) {
+			return;
+		}
+
+		var body = new FormData();
+		body.append('action', cfg.ackAction);
+		body.append('nonce', cfg.nonce);
+		body.append('site_id', siteId);
+		body.append('detailed', btn.getAttribute('data-refresh-detailed') || '0');
+
+		btn.classList.add('is-loading');
+		btn.disabled = true;
+
+		fetch(cfg.ajaxUrl, {
+			method: 'POST',
+			body: body,
+			credentials: 'same-origin'
+		})
+			.then(function (response) {
+				return response.json();
+			})
+			.then(function (payload) {
+				if (!payload || !payload.success || !payload.data || !payload.data.html) {
+					var err =
+						(payload && payload.data && payload.data.message) ||
+						(cfg.i18n && cfg.i18n.ackError) ||
+						'';
+					if (err) {
+						window.alert(err);
+					}
+					return;
+				}
+
+				if (payload.data.message) {
+					window.alert(payload.data.message);
+				}
+
+				replaceWidgetHtml(gw, payload.data.html);
+			})
+			.catch(function () {
+				var message = (cfg.i18n && cfg.i18n.ackError) || '';
+				if (message) {
+					window.alert(message);
+				}
+			})
+			.finally(function () {
+				btn.classList.remove('is-loading');
+				btn.disabled = false;
+			});
+	}
+
+	function replaceWidgetHtml(gw, html) {
+		var parent = gw.parentElement;
+		gw.outerHTML = html;
+		var freshGw = parent ? parent.querySelector('.giweb-gw') : null;
+		if (freshGw) {
+			initGiwebGw(freshGw);
+		} else {
+			initGiwebGw(document);
+		}
 	}
 
 	function init() {

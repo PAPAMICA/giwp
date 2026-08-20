@@ -30,6 +30,7 @@ class MainWP_GIWeb_Sync_Ajax {
 		add_action( 'wp_ajax_mainwp_giweb_plugin_deploy_site', array( __CLASS__, 'ajax_plugin_deploy_site' ) );
 		add_action( 'wp_ajax_mainwp_giweb_plugin_deploy_cleanup', array( __CLASS__, 'ajax_plugin_deploy_cleanup' ) );
 		add_action( 'wp_ajax_mainwp_giweb_widget_refresh', array( __CLASS__, 'ajax_widget_refresh' ) );
+		add_action( 'wp_ajax_mainwp_giweb_compromise_ack', array( __CLASS__, 'ajax_compromise_ack' ) );
 		add_action( 'wp_ajax_mainwp_giweb_get_site_mail', array( __CLASS__, 'ajax_get_site_mail' ) );
 		add_action( 'wp_ajax_mainwp_giweb_get_mail_network', array( __CLASS__, 'ajax_get_mail_network' ) );
 	}
@@ -438,6 +439,157 @@ class MainWP_GIWeb_Sync_Ajax {
 		} catch ( Exception $e ) {
 			self::send_exception( $e );
 		}
+	}
+
+	/**
+	 * Acquitte les alertes de compromission (un site ou tout le réseau).
+	 *
+	 * POST : site_id (0 = sites avec alertes ouvertes), detailed (0|1).
+	 *
+	 * @return void
+	 */
+	public static function ajax_compromise_ack() {
+		self::bootstrap_ajax();
+		if ( function_exists( 'set_time_limit' ) ) {
+			set_time_limit( 300 );
+		}
+
+		try {
+			self::verify_request();
+
+			$site_id  = isset( $_POST['site_id'] ) ? absint( $_POST['site_id'] ) : 0;
+			$detailed = ! empty( $_POST['detailed'] );
+			$targets  = self::compromise_ack_targets( $site_id );
+
+			if ( empty( $targets ) ) {
+				wp_send_json_error(
+					array( 'message' => __( 'Aucune alerte ouverte à acquitter.', 'mainwp-giweb' ) )
+				);
+			}
+
+			$ok      = 0;
+			$fail    = 0;
+			$resolved_total = 0;
+			$errors  = array();
+
+			foreach ( $targets as $id ) {
+				$result = self::ack_compromise_on_site( $id );
+				if ( ! empty( $result['success'] ) ) {
+					++$ok;
+					$resolved_total += (int) ( $result['resolved'] ?? 0 );
+					continue;
+				}
+				++$fail;
+				$label = (string) ( $result['label'] ?? ( '#' . $id ) );
+				$err   = (string) ( $result['error'] ?? __( 'Échec', 'mainwp-giweb' ) );
+				$errors[] = $label . ' — ' . $err;
+			}
+
+			if ( $ok < 1 ) {
+				wp_send_json_error(
+					array(
+						'message' => ! empty( $errors )
+							? implode( "\n", $errors )
+							: __( 'Impossible d’acquitter les alertes.', 'mainwp-giweb' ),
+					)
+				);
+			}
+
+			$message = '';
+			if ( $fail > 0 ) {
+				$message = sprintf(
+					/* translators: 1: successful sites, 2: failed sites */
+					__( 'Alertes acquittées sur %1$d site(s). Échec sur %2$d site(s) — mettez à jour GI-Toolkit (2.29.24+) si l’action est inconnue.', 'mainwp-giweb' ),
+					$ok,
+					$fail
+				);
+				if ( ! empty( $errors ) ) {
+					$message .= "\n" . implode( "\n", array_slice( $errors, 0, 8 ) );
+				}
+			}
+
+			ob_start();
+			if ( $site_id > 0 ) {
+				MainWP_GIWeb_Compromise_Widget::render_site_body( $site_id );
+			} else {
+				MainWP_GIWeb_Compromise_Widget::render_network_body( $detailed );
+			}
+			$html = ob_get_clean();
+
+			wp_send_json_success(
+				array(
+					'html'            => $html,
+					'updated_at'      => time(),
+					'resolved_total'  => $resolved_total,
+					'message'         => $message,
+				)
+			);
+		} catch ( Throwable $e ) {
+			self::send_exception( $e );
+		} catch ( Exception $e ) {
+			self::send_exception( $e );
+		}
+	}
+
+	/**
+	 * @param int $site_id 0 = sites avec alertes ouvertes.
+	 * @return array<int, int>
+	 */
+	private static function compromise_ack_targets( $site_id ) {
+		$site_id = absint( $site_id );
+		if ( $site_id > 0 ) {
+			return array( $site_id );
+		}
+
+		$targets = array();
+		$agg     = MainWP_GIWeb_Compromise_Stats::get_aggregate();
+		$sites   = is_array( $agg['sites'] ?? null ) ? $agg['sites'] : array();
+
+		foreach ( $sites as $id => $row ) {
+			$id = absint( $id );
+			if ( $id < 1 || ! is_array( $row ) ) {
+				continue;
+			}
+			$cd = is_array( $row['compromise'] ?? null ) ? $row['compromise'] : null;
+			if ( is_array( $cd ) && (int) ( $cd['open_count'] ?? 0 ) > 0 ) {
+				$targets[] = $id;
+			}
+		}
+
+		return $targets;
+	}
+
+	/**
+	 * @param int $site_id ID MainWP.
+	 * @return array<string, mixed>
+	 */
+	private static function ack_compromise_on_site( $site_id ) {
+		$site_id = absint( $site_id );
+		$row     = MainWP_GIWeb_Sites::find_by_id( $site_id, self::activator() );
+		$label   = (string) ( $row['name'] ?: $row['url'] ?: ( '#' . $site_id ) );
+		$url     = (string) ( $row['url'] ?? '' );
+		$api     = MainWP_GIWeb_API::compromise_ack( $site_id );
+		$data    = is_array( $api['data'] ?? null ) ? $api['data'] : array();
+
+		if ( ! empty( $api['success'] ) ) {
+			MainWP_GIWeb_Compromise_Stats::record_site_sync( $site_id, $label, $url, $api );
+			return array(
+				'success'  => true,
+				'label'    => $label,
+				'resolved' => (int) ( $data['resolved'] ?? 0 ),
+			);
+		}
+
+		$error = ! empty( $api['errors'][0] ) ? (string) $api['errors'][0] : __( 'Échec', 'mainwp-giweb' );
+		if ( false !== stripos( $error, 'inconnue' ) || false !== stripos( $error, 'unknown' ) ) {
+			$error = __( 'Mettre à jour GI-Toolkit (2.29.24+) sur ce site.', 'mainwp-giweb' );
+		}
+
+		return array(
+			'success' => false,
+			'label'   => $label,
+			'error'   => $error,
+		);
 	}
 
 	/**

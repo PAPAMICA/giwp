@@ -232,6 +232,7 @@ class MainWP_GIWeb_Compromise_Widget {
 				'scope'    => 'cd',
 				'site_id'  => 0,
 				'detailed' => $detailed,
+				'ack'      => (int) $ctx['open_total'] > 0,
 			)
 		);
 	}
@@ -378,6 +379,7 @@ class MainWP_GIWeb_Compromise_Widget {
 						'scope'    => 'cd',
 						'site_id'  => $site_id,
 						'detailed' => false,
+						'ack'      => is_array( $cd ) && (int) ( $cd['open_count'] ?? 0 ) > 0,
 					)
 				);
 				?>

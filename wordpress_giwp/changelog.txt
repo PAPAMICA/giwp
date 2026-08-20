@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.29.24 =
+* Add: Détection de compromission — action MainWP `compromise_ack` pour marquer toutes les alertes comme traitées et figer l’état actuel comme normal (ex. après une mise à jour générale).
+
 = 2.29.23 =
 * Fix: Détection de compromission — moins de faux positifs pages (requête SQL, ignore brouillons/corbeille) et .htaccess (flush rewrite / blocs plugins ignorés, alerte seulement si charge utile suspecte) ; exclusion `*.wordpress.com` pour les requêtes sortantes.
 

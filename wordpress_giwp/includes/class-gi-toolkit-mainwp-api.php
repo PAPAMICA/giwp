@@ -58,6 +58,8 @@ class Gi_Toolkit_MainWP_API {
 				$class   = isset( $data['module_class'] ) ? sanitize_text_field( $data['module_class'] ) : '';
 				$options = isset( $data['options'] ) && is_array( $data['options'] ) ? $data['options'] : array();
 				return self::set_module_options( $class, $options );
+			case 'compromise_ack':
+				return self::handle_compromise_ack();
 			default:
 				return self::error( __( 'Action MainWP inconnue.', 'gi-toolkit' ) );
 		}
@@ -228,10 +230,7 @@ class Gi_Toolkit_MainWP_API {
 			$payload['cron'] = Gi_Toolkit_Reliable_Cron::get_health();
 		}
 
-		$cd_file = defined( 'GI_TOOLKIT_PLUGIN_PATH' ) ? GI_TOOLKIT_PLUGIN_PATH . 'admin/modules/core/class-compromise-detection.php' : '';
-		if ( $cd_file && is_file( $cd_file ) && ! class_exists( 'Gi_Toolkit_Compromise_Detection', false ) ) {
-			require_once $cd_file;
-		}
+		self::load_compromise_detection();
 		if ( class_exists( 'Gi_Toolkit_Compromise_Detection' ) ) {
 			$payload['compromise'] = Gi_Toolkit_Compromise_Detection::get_mainwp_status_payload();
 		}
@@ -329,6 +328,37 @@ class Gi_Toolkit_MainWP_API {
 			return self::error( __( 'Échec de la sauvegarde des réglages du module.', 'gi-toolkit' ) );
 		}
 		return self::success( array( 'saved' => true ) );
+	}
+
+	/**
+	 * Acquitte toutes les alertes de compromission et fige l’état actuel comme baseline.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function handle_compromise_ack() {
+		self::load_compromise_detection();
+		if ( ! class_exists( 'Gi_Toolkit_Compromise_Detection' ) ) {
+			return self::error( __( 'Module Détection de compromission indisponible.', 'gi-toolkit' ) );
+		}
+
+		$resolved = Gi_Toolkit_Compromise_Detection::ack_all_alerts();
+
+		return self::success(
+			array(
+				'resolved'    => (int) $resolved,
+				'compromise'  => Gi_Toolkit_Compromise_Detection::get_mainwp_status_payload(),
+			)
+		);
+	}
+
+	/**
+	 * @return void
+	 */
+	private static function load_compromise_detection() {
+		$cd_file = defined( 'GI_TOOLKIT_PLUGIN_PATH' ) ? GI_TOOLKIT_PLUGIN_PATH . 'admin/modules/core/class-compromise-detection.php' : '';
+		if ( $cd_file && is_file( $cd_file ) && ! class_exists( 'Gi_Toolkit_Compromise_Detection', false ) ) {
+			require_once $cd_file;
+		}
 	}
 
 	/**

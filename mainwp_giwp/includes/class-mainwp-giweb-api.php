@@ -315,6 +315,16 @@ class MainWP_GIWeb_API {
 	}
 
 	/**
+	 * Acquitte les alertes de compromission d’un site enfant.
+	 *
+	 * @param int $website_id ID MainWP.
+	 * @return array<string, mixed>
+	 */
+	public static function compromise_ack( $website_id ) {
+		return self::request( $website_id, 'compromise_ack' );
+	}
+
+	/**
 	 * Statistiques Mail Catcher d’un site enfant (action API dédiée).
 	 *
 	 * @param int                  $website_id ID MainWP.

@@ -74,10 +74,14 @@ class MainWP_GIWeb_Metabox {
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce'   => wp_create_nonce( MainWP_GIWeb_Sync_Ajax::NONCE_ACTION ),
 				'action'  => 'mainwp_giweb_widget_refresh',
+				'ackAction' => 'mainwp_giweb_compromise_ack',
 				'i18n'    => array(
-					'refresh'      => __( 'Actualiser les données', 'mainwp-giweb' ),
-					'refreshing'   => __( 'Actualisation…', 'mainwp-giweb' ),
-					'refreshError' => __( 'Impossible d’actualiser les données.', 'mainwp-giweb' ),
+					'refresh'        => __( 'Actualiser les données', 'mainwp-giweb' ),
+					'refreshing'     => __( 'Actualisation…', 'mainwp-giweb' ),
+					'refreshError'   => __( 'Impossible d’actualiser les données.', 'mainwp-giweb' ),
+					'ackConfirm'     => __( "Marquer comme traitées toutes les alertes de compromission ouvertes sur le réseau ?\n\nL’état actuel de chaque site concerné (plugins, thèmes, pages…) sera considéré comme normal, par exemple après une mise à jour générale.", 'mainwp-giweb' ),
+					'ackConfirmSite' => __( "Marquer comme traitées toutes les alertes de compromission de ce site ?\n\nL’état actuel (plugins, thèmes, pages…) sera considéré comme normal.", 'mainwp-giweb' ),
+					'ackError'       => __( 'Impossible d’acquitter les alertes.', 'mainwp-giweb' ),
 				),
 			)
 		);

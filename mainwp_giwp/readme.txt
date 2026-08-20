@@ -3,7 +3,7 @@ Contributors: genevois-informatique
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.7.8
+Stable tag: 1.7.9
 License: GPLv2 or later
 
 Gérez et déployez GI-Toolkit sur tous vos sites WordPress via MainWP.
@@ -54,6 +54,9 @@ MainWP > Extensions > GI-Toolkit Manager
 - [ ] Modèle « Default » défini comme profil par défaut dans Réglages
 
 == Changelog ==
+
+= 1.7.9 =
+* Add: Widget Compromission — bouton « Tout acquitter » (réseau) / « Acquitter » (site) pour marquer les alertes ouvertes comme traitées après une mise à jour générale.
 
 = 1.7.8 =
 * Fix: le widget Compromission ne réaffiche plus d’anciennes alertes déjà traitées après une sync (payload le plus récent conservé).
