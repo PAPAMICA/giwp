@@ -442,74 +442,367 @@
 		});
 	}
 
-	function handleCompromiseAck(btn) {
-		var cfg = window.mainwpGiwebWidgetShell;
-		if (!cfg || !cfg.ajaxUrl || !cfg.ackAction) {
-			return;
-		}
-		if (btn.classList.contains('is-loading')) {
-			return;
-		}
+	function shellCfg() {
+		return window.mainwpGiwebWidgetShell || {};
+	}
 
-		var gw = btn.closest('.giweb-gw');
-		if (!gw) {
-			return;
-		}
+	function shellI18n(key, fallback) {
+		var cfg = shellCfg();
+		return (cfg.i18n && cfg.i18n[key]) || fallback || '';
+	}
 
-		var siteId = btn.getAttribute('data-refresh-site-id') || '0';
-		var confirmMsg =
-			siteId !== '0'
-				? (cfg.i18n && cfg.i18n.ackConfirmSite) || ''
-				: (cfg.i18n && cfg.i18n.ackConfirm) || '';
-		if (confirmMsg && !window.confirm(confirmMsg)) {
-			return;
+	function extractAjaxMessage(payload, fallback) {
+		if (!payload) {
+			return fallback;
 		}
+		if (typeof payload.data === 'string' && payload.data) {
+			return payload.data;
+		}
+		if (payload.data && payload.data.message) {
+			return String(payload.data.message);
+		}
+		if (payload.data && payload.data.log) {
+			return String(payload.data.log);
+		}
+		return fallback;
+	}
 
+	function postForm(fields) {
+		var cfg = shellCfg();
 		var body = new FormData();
-		body.append('action', cfg.ackAction);
-		body.append('nonce', cfg.nonce);
-		body.append('site_id', siteId);
-		body.append('detailed', btn.getAttribute('data-refresh-detailed') || '0');
+		Object.keys(fields).forEach(function (key) {
+			body.append(key, fields[key]);
+		});
 
-		btn.classList.add('is-loading');
-		btn.disabled = true;
-
-		fetch(cfg.ajaxUrl, {
+		return fetch(cfg.ajaxUrl, {
 			method: 'POST',
 			body: body,
 			credentials: 'same-origin'
+		}).then(function (response) {
+			return response.text().then(function (text) {
+				var payload = null;
+				try {
+					payload = JSON.parse(text);
+				} catch (e) {
+					var preview = String(text || '')
+						.replace(/<[^>]+>/g, ' ')
+						.replace(/\s+/g, ' ')
+						.trim()
+						.slice(0, 240);
+					throw new Error(
+						(response.ok ? '' : 'HTTP ' + response.status + ' — ') +
+							(preview || shellI18n('ackNetworkError', 'Erreur réseau'))
+					);
+				}
+				return payload;
+			});
+		});
+	}
+
+	function getAckModal() {
+		var el = document.getElementById('mainwp-giweb-cd-ack-modal');
+		if (!el || el.dataset.giwebAckBound === '1') {
+			return el;
+		}
+
+		el.dataset.giwebAckBound = '1';
+		el.querySelector('.giweb-gw-modal__backdrop').addEventListener('click', function () {
+			if (el.dataset.running === '1') {
+				return;
+			}
+			closeAckModal();
+		});
+		el.querySelector('.giweb-gw-modal__cancel').addEventListener('click', function () {
+			if (el.dataset.running === '1') {
+				return;
+			}
+			closeAckModal();
+		});
+		el.querySelector('.giweb-gw-modal__close').addEventListener('click', function () {
+			if (el.dataset.running === '1') {
+				return;
+			}
+			closeAckModal();
+		});
+		el.querySelector('.giweb-gw-modal__confirm').addEventListener('click', function () {
+			startCompromiseAck();
+		});
+		document.addEventListener('keydown', function (ev) {
+			if (ev.key !== 'Escape' || el.dataset.running === '1' || !el.classList.contains('is-open')) {
+				return;
+			}
+			closeAckModal();
+		});
+
+		return el;
+	}
+
+	function openAckModal(intro) {
+		var el = getAckModal();
+		if (!el) {
+			return null;
+		}
+
+		el.dataset.running = '0';
+		el.querySelector('[data-ack-intro]').textContent = intro || '';
+		el.querySelector('.giweb-gw-modal__run').hidden = true;
+		el.querySelector('.giweb-gw-modal__log').innerHTML = '';
+		el.querySelector('.giweb-gw-modal__bar').style.width = '0%';
+		el.querySelector('.giweb-gw-modal__progress-label').textContent = formatAckProgress(0, 0);
+		el.querySelector('.giweb-gw-modal__bar-wrap').setAttribute('aria-valuenow', '0');
+		el.querySelector('.giweb-gw-modal__cancel').hidden = false;
+		el.querySelector('.giweb-gw-modal__confirm').hidden = false;
+		el.querySelector('.giweb-gw-modal__confirm').disabled = false;
+		el.querySelector('.giweb-gw-modal__close').hidden = true;
+		el.querySelector('.giweb-gw-modal__close').disabled = true;
+		el.classList.add('is-open');
+		el.setAttribute('aria-hidden', 'false');
+		return el;
+	}
+
+	function closeAckModal() {
+		var el = document.getElementById('mainwp-giweb-cd-ack-modal');
+		if (!el) {
+			return;
+		}
+		el.classList.remove('is-open');
+		el.setAttribute('aria-hidden', 'true');
+		el.dataset.running = '0';
+		delete el.dataset.siteId;
+		delete el.dataset.detailed;
+	}
+
+	function setAckRunning(running) {
+		var el = getAckModal();
+		if (!el) {
+			return;
+		}
+		el.dataset.running = running ? '1' : '0';
+		el.querySelector('.giweb-gw-modal__run').hidden = false;
+		el.querySelector('.giweb-gw-modal__cancel').hidden = true;
+		el.querySelector('.giweb-gw-modal__confirm').hidden = true;
+		el.querySelector('.giweb-gw-modal__close').hidden = false;
+		el.querySelector('.giweb-gw-modal__close').disabled = !!running;
+	}
+
+	function enableAckClose() {
+		var el = getAckModal();
+		if (!el) {
+			return;
+		}
+		el.dataset.running = '0';
+		el.querySelector('.giweb-gw-modal__close').hidden = false;
+		el.querySelector('.giweb-gw-modal__close').disabled = false;
+	}
+
+	function formatAckProgress(current, total) {
+		return shellI18n('progressLabel', '%1$d / %2$d sites')
+			.replace('%1$d', String(current))
+			.replace('%2$d', String(total));
+	}
+
+	function setAckProgress(current, total) {
+		var el = getAckModal();
+		if (!el) {
+			return;
+		}
+		var pct = total > 0 ? Math.round((current / total) * 100) : 0;
+		el.querySelector('.giweb-gw-modal__bar').style.width = pct + '%';
+		el.querySelector('.giweb-gw-modal__bar-wrap').setAttribute('aria-valuenow', String(pct));
+		el.querySelector('.giweb-gw-modal__progress-label').textContent = formatAckProgress(current, total);
+	}
+
+	function appendAckLog(line, isOk) {
+		var el = getAckModal();
+		if (!el || !line) {
+			return;
+		}
+		var log = el.querySelector('.giweb-gw-modal__log');
+		var row = document.createElement('div');
+		row.className = 'giweb-gw-modal__log-line';
+		if (false === isOk) {
+			row.classList.add('giweb-gw-modal__log-line--err');
+		} else if (true === isOk) {
+			row.classList.add('giweb-gw-modal__log-line--ok');
+		}
+		row.textContent = line;
+		log.appendChild(row);
+		log.scrollTop = log.scrollHeight;
+	}
+
+	function handleCompromiseAck(btn) {
+		var cfg = shellCfg();
+		if (!cfg.ajaxUrl || !cfg.ackAction || !cfg.ackInitAction) {
+			return;
+		}
+
+		var el = openAckModal(
+			(btn.getAttribute('data-refresh-site-id') || '0') !== '0'
+				? shellI18n('ackConfirmSite')
+				: shellI18n('ackConfirm')
+		);
+		if (!el) {
+			window.alert(shellI18n('ackNetworkError'));
+			return;
+		}
+
+		el.dataset.siteId = btn.getAttribute('data-refresh-site-id') || '0';
+		el.dataset.detailed = btn.getAttribute('data-refresh-detailed') || '0';
+	}
+
+	function startCompromiseAck() {
+		var cfg = shellCfg();
+		var el = getAckModal();
+		if (!el || el.dataset.running === '1') {
+			return;
+		}
+
+		el.querySelector('.giweb-gw-modal__confirm').disabled = true;
+		var siteId = el.dataset.siteId || '0';
+		var detailed = el.dataset.detailed || '0';
+
+		setAckRunning(true);
+		appendAckLog(shellI18n('ackStarting', 'Préparation…'));
+		setAckProgress(0, 0);
+
+		postForm({
+			action: cfg.ackInitAction,
+			nonce: cfg.nonce,
+			site_id: siteId
 		})
-			.then(function (response) {
-				return response.json();
-			})
 			.then(function (payload) {
-				if (!payload || !payload.success || !payload.data || !payload.data.html) {
-					var err =
-						(payload && payload.data && payload.data.message) ||
-						(cfg.i18n && cfg.i18n.ackError) ||
-						'';
-					if (err) {
-						window.alert(err);
+				if (!payload || !payload.success || !payload.data || !payload.data.sites || !payload.data.sites.length) {
+					appendAckLog(
+						extractAjaxMessage(payload, shellI18n('ackNoSites')),
+						false
+					);
+					enableAckClose();
+					return null;
+				}
+
+				return ackSitesSequentially(payload.data.sites).then(function (stats) {
+					if (stats.fail > 0) {
+						appendAckLog(shellI18n('ackDonePartial'), false);
+					} else {
+						appendAckLog(shellI18n('ackDone'), true);
 					}
-					return;
-				}
-
-				if (payload.data.message) {
-					window.alert(payload.data.message);
-				}
-
-				replaceWidgetHtml(gw, payload.data.html);
+					return refreshCdWidgets(siteId, detailed).catch(function () {
+						appendAckLog(shellI18n('ackRefreshError'), false);
+					});
+				});
 			})
-			.catch(function () {
-				var message = (cfg.i18n && cfg.i18n.ackError) || '';
-				if (message) {
-					window.alert(message);
-				}
+			.catch(function (err) {
+				appendAckLog(
+					(err && err.message) || shellI18n('ackNetworkError'),
+					false
+				);
 			})
 			.finally(function () {
-				btn.classList.remove('is-loading');
-				btn.disabled = false;
+				enableAckClose();
 			});
+	}
+
+	function ackSitesSequentially(sites) {
+		var total = sites.length;
+		var completed = 0;
+		var fail = 0;
+		var cfg = shellCfg();
+
+		setAckProgress(0, total);
+
+		return sites.reduce(function (chain, site) {
+			return chain.then(function () {
+				appendAckLog(
+					shellI18n('ackConnecting', 'Acquittement de %s…').replace('%s', site.name || ('#' + site.id))
+				);
+				return postForm({
+					action: cfg.ackAction,
+					nonce: cfg.nonce,
+					site_id: String(site.id)
+				})
+					.then(function (payload) {
+						completed += 1;
+						if (payload && payload.success) {
+							appendAckLog(
+								(payload.data && payload.data.log) || site.name,
+								true
+							);
+						} else {
+							fail += 1;
+							appendAckLog(
+								extractAjaxMessage(payload, shellI18n('ackNetworkError')),
+								false
+							);
+						}
+						setAckProgress(completed, total);
+					})
+					.catch(function (err) {
+						completed += 1;
+						fail += 1;
+						appendAckLog(
+							(site.name || ('#' + site.id)) +
+								' — ' +
+								((err && err.message) || shellI18n('ackNetworkError')),
+							false
+						);
+						setAckProgress(completed, total);
+					});
+			});
+		}, Promise.resolve()).then(function () {
+			return { fail: fail, total: total };
+		});
+	}
+
+	function refreshCdWidgets(siteId, detailed) {
+		var cfg = shellCfg();
+		var seen = {};
+		var jobs = [];
+
+		document.querySelectorAll('.giweb-gw-refresh[data-refresh-scope="cd"]').forEach(function (btn) {
+			var gw = btn.closest('.giweb-gw');
+			if (!gw) {
+				return;
+			}
+			var sid = btn.getAttribute('data-refresh-site-id') || '0';
+			var det = btn.getAttribute('data-refresh-detailed') || '0';
+			var key = sid + ':' + det;
+			if (seen[key]) {
+				return;
+			}
+			seen[key] = true;
+			jobs.push(
+				postForm({
+					action: cfg.action,
+					nonce: cfg.nonce,
+					scope: 'cd',
+					site_id: sid,
+					detailed: det,
+					skip_sync: '1'
+				}).then(function (payload) {
+					if (payload && payload.success && payload.data && payload.data.html) {
+						replaceWidgetHtml(gw, payload.data.html);
+					}
+				})
+			);
+		});
+
+		if (!jobs.length) {
+			return postForm({
+				action: cfg.action,
+				nonce: cfg.nonce,
+				scope: 'cd',
+				site_id: siteId || '0',
+				detailed: detailed || '0',
+				skip_sync: '1'
+			}).then(function (payload) {
+				var gw = document.querySelector('.mainwp-giweb-cd-widget .giweb-gw');
+				if (payload && payload.success && payload.data && payload.data.html && gw) {
+					replaceWidgetHtml(gw, payload.data.html);
+				}
+			});
+		}
+
+		return Promise.all(jobs);
 	}
 
 	function replaceWidgetHtml(gw, html) {

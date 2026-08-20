@@ -73,15 +73,23 @@ class MainWP_GIWeb_Metabox {
 			array(
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce'   => wp_create_nonce( MainWP_GIWeb_Sync_Ajax::NONCE_ACTION ),
-				'action'  => 'mainwp_giweb_widget_refresh',
-				'ackAction' => 'mainwp_giweb_compromise_ack',
-				'i18n'    => array(
-					'refresh'        => __( 'Actualiser les données', 'mainwp-giweb' ),
-					'refreshing'     => __( 'Actualisation…', 'mainwp-giweb' ),
-					'refreshError'   => __( 'Impossible d’actualiser les données.', 'mainwp-giweb' ),
-					'ackConfirm'     => __( "Marquer comme traitées toutes les alertes de compromission ouvertes sur le réseau ?\n\nL’état actuel de chaque site concerné (plugins, thèmes, pages…) sera considéré comme normal, par exemple après une mise à jour générale.", 'mainwp-giweb' ),
-					'ackConfirmSite' => __( "Marquer comme traitées toutes les alertes de compromission de ce site ?\n\nL’état actuel (plugins, thèmes, pages…) sera considéré comme normal.", 'mainwp-giweb' ),
-					'ackError'       => __( 'Impossible d’acquitter les alertes.', 'mainwp-giweb' ),
+				'action'        => 'mainwp_giweb_widget_refresh',
+				'ackAction'     => 'mainwp_giweb_compromise_ack',
+				'ackInitAction' => 'mainwp_giweb_compromise_ack_init',
+				'i18n'          => array(
+					'refresh'          => __( 'Actualiser les données', 'mainwp-giweb' ),
+					'refreshing'       => __( 'Actualisation…', 'mainwp-giweb' ),
+					'refreshError'     => __( 'Impossible d’actualiser les données.', 'mainwp-giweb' ),
+					'ackConfirm'       => __( 'Les alertes ouvertes seront marquées comme traitées sur chaque site. L’état actuel (plugins, thèmes, pages…) sera considéré comme normal, par exemple après une mise à jour générale.', 'mainwp-giweb' ),
+					'ackConfirmSite'   => __( 'Les alertes ouvertes de ce site seront marquées comme traitées. L’état actuel (plugins, thèmes, pages…) sera considéré comme normal.', 'mainwp-giweb' ),
+					'ackStarting'      => __( 'Préparation de la liste des sites…', 'mainwp-giweb' ),
+					'ackConnecting'    => __( 'Acquittement de %s…', 'mainwp-giweb' ),
+					'ackDone'          => __( 'Terminé.', 'mainwp-giweb' ),
+					'ackDonePartial'   => __( 'Terminé avec des erreurs. Consultez le journal ci-dessus.', 'mainwp-giweb' ),
+					'ackNoSites'       => __( 'Aucune alerte ouverte à acquitter.', 'mainwp-giweb' ),
+					'ackNetworkError'  => __( 'Erreur réseau ou réponse invalide.', 'mainwp-giweb' ),
+					'ackRefreshError'  => __( 'Acquittement terminé, mais le widget n’a pas pu être actualisé.', 'mainwp-giweb' ),
+					'progressLabel'    => __( '%1$d / %2$d sites', 'mainwp-giweb' ),
 				),
 			)
 		);

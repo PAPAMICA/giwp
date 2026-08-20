@@ -77,6 +77,19 @@ class MainWP_GIWeb_Compromise_Widget {
 		);
 
 		MainWP_GIWeb_Metabox::enqueue_widget_shell_script();
+		add_action( 'admin_footer', array( __CLASS__, 'render_ack_modal' ) );
+	}
+
+	/**
+	 * @return void
+	 */
+	public static function render_ack_modal() {
+		static $printed = false;
+		if ( $printed ) {
+			return;
+		}
+		$printed = true;
+		include MAINWP_GIWEB_PLUGIN_PATH . 'views/modal-compromise-ack.php';
 	}
 
 	/**
