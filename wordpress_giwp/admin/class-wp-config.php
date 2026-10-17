@@ -57,9 +57,37 @@ class Gi_Toolkit_WP_Config {
             error_log( 'Gi_Toolkit: Failed to read wp-config.php: ' . $wp_config_path );
             return false;
         }
-        
-        $wp_config_content = preg_replace("/(\r\n|\n|\r){3,}/", "\n\n", $wp_config_content);
+
+        // Ne pas normaliser les lignes vides ici : cela réécrit wp-config à chaque
+        // replace_or_add et déclenche de fausses alertes de compromission.
         return $wp_config_content;
+    }
+
+    /**
+     * Écrit wp-config seulement si le contenu change réellement.
+     *
+     * @param string $wp_config_content Nouveau contenu.
+     * @return int|false Bytes écrits, ou true si no-op, false si échec.
+     */
+    private static function write_wp_config_if_changed( $wp_config_content ) {
+        $wp_config_path = self::get_wp_config_path();
+        if ( ! is_string( $wp_config_content ) || '' === $wp_config_content ) {
+            return false;
+        }
+        $current = @file_get_contents( $wp_config_path );
+        if ( is_string( $current ) && $current === $wp_config_content ) {
+            return true;
+        }
+        self::backup_wp_config();
+        $written = file_put_contents( $wp_config_path, $wp_config_content );
+        if ( ! self::validate_wp_config() ) {
+			//phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+            error_log( 'Gi_Toolkit: wp-config.php validation failed after write - restoring backup' );
+            self::restore_wp_config_backup();
+            return false;
+        }
+        self::delete_backup();
+        return $written;
     }
     
     /**
@@ -320,24 +348,8 @@ class Gi_Toolkit_WP_Config {
             error_log( 'Gi_Toolkit: wp-config.php write cancelled - empty content after add_constant' );
             return false;
         }
-        
-        // Backup before writing
-        self::backup_wp_config();
-        
-        $written = file_put_contents( $wp_config_path, $wp_config_content );
-        
-        // Validate after writing
-        if ( !self::validate_wp_config() ) {
-			//phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log( 'Gi_Toolkit: wp-config.php validation failed after add_constant - restoring backup' );
-            self::restore_wp_config_backup();
-            return false;
-        }
-        
-        // Delete backup after successful validation
-        self::delete_backup();
-        
-        return $written;
+
+        return self::write_wp_config_if_changed( $wp_config_content );
     }
     
     /**
@@ -391,24 +403,8 @@ class Gi_Toolkit_WP_Config {
             error_log( 'Gi_Toolkit: wp-config.php write cancelled - empty content after replace_constant_value for ' . $constant_name );
             return false;
         }
-        
-        // Backup before writing
-        self::backup_wp_config();
 
-        $written = file_put_contents( $wp_config_path, $wp_config_content );
-        
-        // Validate after writing
-        if ( !self::validate_wp_config() ) {
-			//phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log( 'Gi_Toolkit: wp-config.php validation failed after replace_constant_value for ' . $constant_name . ' - restoring backup' );
-            self::restore_wp_config_backup();
-            return false;
-        }
-        
-        // Delete backup after successful validation
-        self::delete_backup();
-        
-        return $written;
+        return self::write_wp_config_if_changed( $wp_config_content );
     }
 
     /**
@@ -445,24 +441,8 @@ class Gi_Toolkit_WP_Config {
             error_log( 'Gi_Toolkit: wp-config.php write cancelled - empty content after remove_constant for ' . $constant_name );
             return false;
         }
-        
-        // Backup before writing
-        self::backup_wp_config();
-        
-        $written = file_put_contents( $wp_config_path, $wp_config_content );
-        
-        // Validate after writing
-        if ( !self::validate_wp_config() ) {
-			//phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log( 'Gi_Toolkit: wp-config.php validation failed after remove_constant for ' . $constant_name . ' - restoring backup' );
-            self::restore_wp_config_backup();
-            return false;
-        }
-        
-        // Delete backup after successful validation
-        self::delete_backup();
-        
-        return $written;
+
+        return self::write_wp_config_if_changed( $wp_config_content );
     }
 
 	/**

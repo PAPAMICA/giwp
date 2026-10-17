@@ -393,9 +393,18 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 			if ( 'htaccess_hash' === $key && ! self::htaccess_change_is_suspicious( $old_body, $new_body ) ) {
 				continue;
 			}
+			// Ignore bruit : CRLF/espaces, lignes vides, simple réordonnancement (ex. define GI réécrit en tête).
+			if ( self::sensitive_file_change_is_noop( $old_body, $new_body ) ) {
+				continue;
+			}
 			$diff = self::unified_diff( $old_body, $new_body, $meta['label'] );
 			if ( '' === $diff ) {
-				$diff = __( 'Le fichier a changé, mais le contenu précédent n’était pas encore enregistré. Les prochaines modifications afficheront un diff ligne à ligne.', 'gi-toolkit' );
+				// Hash différent mais diff normalisé vide : soit contenu absent, soit faux positif résiduel.
+				if ( '' === $old_body || '' === $new_body ) {
+					$diff = __( 'Le fichier a changé, mais le contenu précédent n’était pas encore enregistré. Les prochaines modifications afficheront un diff ligne à ligne.', 'gi-toolkit' );
+				} else {
+					continue;
+				}
 			}
 			$alerts[] = array(
 				'type'    => 'watch_core_files',
@@ -448,6 +457,69 @@ class Gi_Toolkit_Compromise_Detection_Monitor {
 		$out = array();
 		foreach ( self::sensitive_files() as $key => $meta ) {
 			$out[ $key ] = self::read_file_for_snapshot( $meta['path'], ! empty( $meta['redact'] ) );
+		}
+		return $out;
+	}
+
+	/**
+	 * Vrai si le changement de fichier sensible est du bruit (EOL, espaces, lignes vides, reorder).
+	 * Une ligne ajoutée/supprimée/modifiée (contenu) reste une alerte.
+	 *
+	 * @param string $old Ancien contenu.
+	 * @param string $new Nouveau contenu.
+	 * @return bool
+	 */
+	public static function sensitive_file_change_is_noop( $old, $new ) {
+		$old = (string) $old;
+		$new = (string) $new;
+		if ( $old === $new ) {
+			return true;
+		}
+		// Sans historique de contenu, on ne peut pas classer comme no-op.
+		if ( '' === $old || '' === $new ) {
+			return false;
+		}
+		if ( self::normalize_sensitive_file_content( $old ) === self::normalize_sensitive_file_content( $new ) ) {
+			return true;
+		}
+		$old_lines = self::normalized_content_lines( $old );
+		$new_lines = self::normalized_content_lines( $new );
+		if ( ! $old_lines && ! $new_lines ) {
+			return true;
+		}
+		sort( $old_lines, SORT_STRING );
+		sort( $new_lines, SORT_STRING );
+		return $old_lines === $new_lines;
+	}
+
+	/**
+	 * Normalise EOL, BOM, espaces de fin et lignes vides pour comparaison.
+	 *
+	 * @param string $content Contenu.
+	 * @return string
+	 */
+	public static function normalize_sensitive_file_content( $content ) {
+		return implode( "\n", self::normalized_content_lines( $content ) );
+	}
+
+	/**
+	 * Lignes non vides, trim à droite, sans BOM.
+	 *
+	 * @param string $content Contenu.
+	 * @return array<int, string>
+	 */
+	public static function normalized_content_lines( $content ) {
+		$content = str_replace( array( "\r\n", "\r" ), "\n", (string) $content );
+		if ( 0 === strpos( $content, "\xEF\xBB\xBF" ) ) {
+			$content = substr( $content, 3 );
+		}
+		$out = array();
+		foreach ( explode( "\n", $content ) as $line ) {
+			$line = rtrim( (string) $line, " \t" );
+			if ( '' === $line ) {
+				continue;
+			}
+			$out[] = $line;
 		}
 		return $out;
 	}

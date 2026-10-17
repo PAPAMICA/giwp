@@ -1,3 +1,8 @@
+= 2.29.27 =
+* Compromission: ignore les diffs no-op sur fichiers sensibles (CRLF/espaces/reorder de defines).
+* wp-config: ne plus réécrire le fichier si le contenu est inchangé (réduit les fausses alertes).
+* Compromission: préciser quand l’alerte vient du scan cron (IP Googlebot ≠ auteur).
+
 == Changelog ==
 
 = 2.29.26 =

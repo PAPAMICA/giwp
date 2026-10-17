@@ -787,7 +787,15 @@ class Gi_Toolkit_Compromise_Detection {
 	private static function request_context() {
 		self::load_helpers();
 		$rows = array();
-		$ip   = Gi_Toolkit_Compromise_Detection_Monitor::client_ip();
+		$doing_cron = ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() )
+			|| ( function_exists( 'doing_action' ) && doing_action( self::CRON_HOOK ) );
+		if ( $doing_cron ) {
+			$rows[] = Gi_Toolkit_Compromise_Detection_Monitor::fact_row(
+				__( 'Contexte', 'gi-toolkit' ),
+				__( 'Scan cron GI-Toolkit (l’IP ci-dessous est celle du processus, pas forcément l’auteur de la modification)', 'gi-toolkit' )
+			);
+		}
+		$ip = Gi_Toolkit_Compromise_Detection_Monitor::client_ip();
 		if ( '' !== $ip ) {
 			$rows[] = Gi_Toolkit_Compromise_Detection_Monitor::fact_row( __( 'Adresse IP', 'gi-toolkit' ), $ip );
 		}
@@ -801,7 +809,9 @@ class Gi_Toolkit_Compromise_Detection {
 		} else {
 			$rows[] = Gi_Toolkit_Compromise_Detection_Monitor::fact_row(
 				__( 'Utilisateur connecté', 'gi-toolkit' ),
-				__( 'aucun (cron ou visiteur anonyme)', 'gi-toolkit' )
+				$doing_cron
+					? __( 'aucun (exécution cron)', 'gi-toolkit' )
+					: __( 'aucun (cron ou visiteur anonyme)', 'gi-toolkit' )
 			);
 		}
 		return $rows;
