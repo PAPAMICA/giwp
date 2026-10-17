@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.29.26 =
+* Add: Informations techniques — détection Wipress dans la ligne Sauvegarde du widget (ex. `Wipress · UpdraftPlus`) ; payload `tech` dans l’API MainWP `status` pour Wipress (SSL, hébergeur, versions, stack).
+
 = 2.29.25 =
 * Add: Mail Catcher — action MainWP `mail_purge_failed` et route REST AI Agent `POST /gi-toolkit/v1/ai-agent/mail/purge-failed` pour supprimer uniquement les journaux en échec (conserve succès et spam) ; consommable par Wipress.
 

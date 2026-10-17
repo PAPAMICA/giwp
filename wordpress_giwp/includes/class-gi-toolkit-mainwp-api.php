@@ -237,6 +237,16 @@ class Gi_Toolkit_MainWP_API {
 			$payload['compromise'] = Gi_Toolkit_Compromise_Detection::get_mainwp_status_payload();
 		}
 
+		if ( ! class_exists( 'Gi_Toolkit_Managed_Dashboard', false ) && defined( 'GI_TOOLKIT_PLUGIN_PATH' ) ) {
+			$tech_file = GI_TOOLKIT_PLUGIN_PATH . 'admin/modules/core/class-managed-dashboard.php';
+			if ( is_readable( $tech_file ) ) {
+				require_once $tech_file;
+			}
+		}
+		if ( class_exists( 'Gi_Toolkit_Managed_Dashboard' ) && method_exists( 'Gi_Toolkit_Managed_Dashboard', 'get_mainwp_tech_payload' ) ) {
+			$payload['tech'] = Gi_Toolkit_Managed_Dashboard::get_mainwp_tech_payload();
+		}
+
 		return $payload;
 	}
 
