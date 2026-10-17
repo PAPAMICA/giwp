@@ -1679,6 +1679,65 @@ class Gi_Toolkit_Mail_Catcher {
 	}
 
 	/**
+	 * Supprime uniquement les journaux Mail Catcher en échec (pas succès, pas spam).
+	 *
+	 * @return array{ok:bool,purged:int,source:string,message:string}
+	 */
+	public static function purge_failed_logs() {
+		global $wpdb;
+
+		if ( ! defined( 'GI_TOOLKIT_PLUGIN_SETTINGS' ) ) {
+			return array(
+				'ok'      => false,
+				'purged'  => 0,
+				'source'  => 'none',
+				'message' => __( 'Mail Catcher GI-Toolkit introuvable.', 'gi-toolkit' ),
+			);
+		}
+
+		$table = $wpdb->prefix . GI_TOOLKIT_PLUGIN_SETTINGS . '_mail_catcher';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) );
+		if ( $exists !== $table ) {
+			return array(
+				'ok'      => false,
+				'purged'  => 0,
+				'source'  => 'none',
+				'message' => __( 'Table Mail Catcher introuvable.', 'gi-toolkit' ),
+			);
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$columns    = $wpdb->get_col( "DESCRIBE {$table}", 0 );
+		$has_status = is_array( $columns ) && in_array( 'send_status', $columns, true );
+
+		if ( $has_status ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$deleted = (int) $wpdb->query(
+				"DELETE FROM {$table} WHERE send_status = '" . self::SEND_STATUS_FAILED . "'"
+			);
+		} else {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$deleted = (int) $wpdb->query(
+				"DELETE FROM {$table} WHERE error IS NOT NULL AND TRIM(error) <> '' AND LOWER(error) NOT LIKE '%is rbl blacklisted%'"
+			);
+		}
+
+		return array(
+			'ok'      => true,
+			'purged'  => max( 0, $deleted ),
+			'source'  => 'gi_mail_catcher',
+			'message' => $deleted > 0
+				? sprintf(
+					/* translators: %d: nombre de mails supprimés */
+					_n( '%d mail en échec supprimé.', '%d mails en échec supprimés.', $deleted, 'gi-toolkit' ),
+					$deleted
+				)
+				: __( 'Aucun mail en échec à supprimer.', 'gi-toolkit' ),
+		);
+	}
+
+	/**
 	 * Statistiques mail pour l’API MainWP (sans graphiques lourds).
 	 *
 	 * @return array<string, mixed>

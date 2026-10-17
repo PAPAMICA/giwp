@@ -25,7 +25,7 @@ class Gi_Toolkit_MainWP_API {
 
 		$action = isset( $data['action'] ) ? sanitize_key( $data['action'] ) : '';
 
-		if ( class_exists( 'Gi_Toolkit_Reliable_Cron' ) && in_array( $action, array( 'status', 'sync_integrations', 'mail' ), true ) ) {
+		if ( class_exists( 'Gi_Toolkit_Reliable_Cron' ) && in_array( $action, array( 'status', 'sync_integrations', 'mail', 'mail_purge_failed' ), true ) ) {
 			Gi_Toolkit_Reliable_Cron::run_due( 'mainwp' );
 		}
 
@@ -34,6 +34,8 @@ class Gi_Toolkit_MainWP_API {
 				return self::success( self::get_status() );
 			case 'mail':
 				return self::handle_mail( $data );
+			case 'mail_purge_failed':
+				return self::handle_mail_purge_failed( $data );
 			case 'ai_agent_cache_purge':
 				return self::handle_ai_agent_cache_purge();
 			case 'export':
@@ -261,6 +263,47 @@ class Gi_Toolkit_MainWP_API {
 		$limit = max( 1, min( 20, $limit ) );
 
 		return self::success( Gi_Toolkit_Mail_Catcher::get_mainwp_status_payload( $limit ) );
+	}
+
+
+	/**
+	 * Supprime les journaux Mail Catcher en échec (Wipress / MainWP).
+	 *
+	 * @param array<string, mixed> $data Payload requête.
+	 * @return array<string, mixed>
+	 */
+	private static function handle_mail_purge_failed( $data = array() ) {
+		if ( ! is_array( $data ) ) {
+			$data = array();
+		}
+
+		if ( ! class_exists( 'Gi_Toolkit_Mail_Catcher' ) ) {
+			return self::error( __( 'Module Mail Catcher indisponible.', 'gi-toolkit' ) );
+		}
+
+		$purge = Gi_Toolkit_Mail_Catcher::purge_failed_logs();
+		if ( empty( $purge['ok'] ) ) {
+			return self::error( (string) ( $purge['message'] ?? __( 'Échec de la purge des mails.', 'gi-toolkit' ) ) );
+		}
+
+		$limit = isset( $data['failures_limit'] ) ? absint( $data['failures_limit'] ) : 5;
+		$limit = max( 1, min( 20, $limit ) );
+
+		$payload           = Gi_Toolkit_Mail_Catcher::get_mainwp_status_payload( $limit );
+		$payload['purged'] = (int) ( $purge['purged'] ?? 0 );
+		$payload['source'] = (string) ( $purge['source'] ?? 'gi_mail_catcher' );
+
+		if ( class_exists( 'Gi_Toolkit_Security' ) ) {
+			Gi_Toolkit_Security::log(
+				'mail_purge_failed',
+				array(
+					'purged' => (int) $payload['purged'],
+					'source' => (string) $payload['source'],
+				)
+			);
+		}
+
+		return self::success( $payload );
 	}
 
 	/**

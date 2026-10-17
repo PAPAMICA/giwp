@@ -112,6 +112,14 @@ class Gi_Toolkit_AI_Agent_Tool {
 				'callback' => 'route_cache_status',
 			),
 
+			'mail_purge_failed' => array(
+				'category' => __( 'Mail', 'gi-toolkit' ),
+				'method'   => 'POST',
+				'path'     => '/mail/purge-failed',
+				'label'    => __( 'Supprimer les mails Mail Catcher en échec (conserve succès et spam)', 'gi-toolkit' ),
+				'callback' => 'route_mail_purge_failed',
+			),
+
 			// -- Plugins & thèmes -----------------------------------------------------
 			'plugins_list' => array(
 				'category' => __( 'Plugins & Thèmes', 'gi-toolkit' ),
@@ -938,7 +946,41 @@ class Gi_Toolkit_AI_Agent_Tool {
 	}
 
 	/* ---------------------------------------------------------------- */
-	/* Routes : Plugins & Thèmes                                          */
+	/* Routes : Mail                                                      */
+	/* ---------------------------------------------------------------- */
+
+	public function route_mail_purge_failed( $request ) {
+		unset( $request );
+
+		if ( ! class_exists( 'Gi_Toolkit_Mail_Catcher' ) ) {
+			return new WP_Error( 'gi_ai_agent_mail_unavailable', __( 'Module Mail Catcher indisponible.', 'gi-toolkit' ), array( 'status' => 404 ) );
+		}
+
+		$purge = Gi_Toolkit_Mail_Catcher::purge_failed_logs();
+		if ( empty( $purge['ok'] ) ) {
+			return new WP_Error(
+				'gi_ai_agent_mail_purge_failed',
+				(string) ( $purge['message'] ?? __( 'Échec de la purge des mails.', 'gi-toolkit' ) ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$payload           = Gi_Toolkit_Mail_Catcher::get_mainwp_status_payload( 5 );
+		$payload['purged'] = (int) ( $purge['purged'] ?? 0 );
+		$payload['source'] = (string) ( $purge['source'] ?? 'gi_mail_catcher' );
+
+		self::audit_log( 'mail_purge_failed', array( 'purged' => (int) $payload['purged'] ) );
+
+		return rest_ensure_response(
+			array(
+				'success' => true,
+				'data'    => $payload,
+			)
+		);
+	}
+
+	/* ---------------------------------------------------------------- */
+	/* Routes : Plugins & thèmes                                          */
 	/* ---------------------------------------------------------------- */
 
 	public function route_plugins_list( $request ) {

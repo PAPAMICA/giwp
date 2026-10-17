@@ -1,5 +1,8 @@
 == Changelog ==
 
+= 2.29.25 =
+* Add: Mail Catcher — action MainWP `mail_purge_failed` et route REST AI Agent `POST /gi-toolkit/v1/ai-agent/mail/purge-failed` pour supprimer uniquement les journaux en échec (conserve succès et spam) ; consommable par Wipress.
+
 = 2.29.24 =
 * Add: Détection de compromission — action MainWP `compromise_ack` pour marquer toutes les alertes comme traitées et figer l’état actuel comme normal (ex. après une mise à jour générale).
 
